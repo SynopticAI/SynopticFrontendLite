@@ -12,6 +12,9 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:developer' as developer;
+import 'dart:typed_data';
+import 'package:path_provider/path_provider.dart';
+import 'package:image/image.dart' as img;
 
 class CameraTestingPage extends StatefulWidget {
   final Device device;
@@ -204,40 +207,109 @@ class _CameraTestingPageState extends State<CameraTestingPage> with TickerProvid
     await _setupCamera(newIndex);
   }
 
-  Future<void> _takePicture() async {
-    if (!_isCameraInitialized || _isProcessing || _cameraController == null) {
-      return;
-    }
+Future<void> _takePicture() async {
+  if (!_isCameraInitialized || _isProcessing || _cameraController == null) {
+    return;
+  }
 
+  setState(() {
+    _isProcessing = true;
+    _inferenceResults = null;
+    _processingStatus = 'Capturing image...';
+  });
+
+  try {
+    final XFile photo = await _cameraController!.takePicture();
+    
+    // Downscale the image to 1036x1036 before further processing
+    final File originalFile = File(photo.path);
+    final File resizedFile = await _resizeImage(originalFile, 1036);
+    
     setState(() {
-      _isProcessing = true;
-      _inferenceResults = null;
-      _processingStatus = 'Capturing image...';
+      _capturedImage = resizedFile;
+      _processingStatus = 'Image captured and optimized';
     });
 
-    try {
-      final XFile photo = await _cameraController!.takePicture();
-      
-      setState(() {
-        _capturedImage = File(photo.path);
-        _processingStatus = 'Image captured';
-      });
-
-      // Upload and process the image
-      await _processInference();
-    } catch (e) {
-      print('Error taking picture: $e');
-      setState(() {
-        _isProcessing = false;
-        _processingStatus = 'Error taking picture';
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error taking picture: $e')),
-        );
-      }
+    // Upload and process the image
+    await _processInference();
+  } catch (e) {
+    print('Error taking picture: $e');
+    setState(() {
+      _isProcessing = false;
+      _processingStatus = 'Error taking picture';
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error taking picture: $e')),
+      );
     }
   }
+}
+
+Future<File> _resizeImage(File inputFile, int targetSize) async {
+  try {
+    
+    final Uint8List bytes = await inputFile.readAsBytes();
+    final img.Image? originalImage = img.decodeImage(bytes);
+    
+    if (originalImage == null) {
+      return inputFile; // Return original if decode fails
+    }
+    
+    // Calculate dimensions while maintaining aspect ratio
+    int width, height;
+    if (originalImage.width > originalImage.height) {
+      // Landscape image
+      width = targetSize;
+      height = (originalImage.height * targetSize / originalImage.width).round();
+    } else {
+      // Portrait or square image
+      height = targetSize;
+      width = (originalImage.width * targetSize / originalImage.height).round();
+    }
+    
+    // Resize the image
+    final img.Image resizedImage = img.copyResize(
+      originalImage,
+      width: width,
+      height: height,
+      interpolation: img.Interpolation.linear
+    );
+    
+    // Center crop to square if needed
+    img.Image squareImage;
+    if (width != height) {
+      final cropSize = min(width, height);
+      final x = (width - cropSize) ~/ 2;
+      final y = (height - cropSize) ~/ 2;
+      squareImage = img.copyCrop(
+        resizedImage,
+        x: x,
+        y: y,
+        width: cropSize,
+        height: cropSize,
+      );
+    } else {
+      squareImage = resizedImage;
+    }
+    
+    // Encode as JPEG
+    final Uint8List outputBytes = Uint8List.fromList(
+      img.encodeJpg(squareImage, quality: 90)
+    );
+    
+    // Create a temporary file with the resized image
+    final tempDir = await getTemporaryDirectory();
+    final tempPath = '${tempDir.path}/resized_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final File outputFile = File(tempPath);
+    await outputFile.writeAsBytes(outputBytes);
+    
+    return outputFile;
+  } catch (e) {
+    print('Error resizing image: $e');
+    return inputFile; // Return original if resize fails
+  }
+}
   
   Future<String?> _uploadImageToStorage() async {
     if (_capturedImage == null) return null;
@@ -947,16 +1019,27 @@ class BoundingBoxPainter extends CustomPainter {
       final className = obj['class'] ?? 'Object';
       
       // Get coordinates (already scaled to 1024x1024)
-      final x1 = bbox['x1'] ?? 0;
-      final y1 = bbox['y1'] ?? 0;
-      final x2 = bbox['x2'] ?? 0;
-      final y2 = bbox['y2'] ?? 0;
+      final double x1 = bbox['x1']?.toDouble() ?? 0;
+      final double y1 = bbox['y1']?.toDouble() ?? 0;
+      final double x2 = bbox['x2']?.toDouble() ?? 0;
+      final double y2 = bbox['y2']?.toDouble() ?? 0;
       
-      // Scale to canvas size
-      final scaledX1 = (x1 / 1024.0) * size.width;
-      final scaledY1 = (y1 / 1024.0) * size.height;
-      final scaledX2 = (x2 / 1024.0) * size.width;
-      final scaledY2 = (y2 / 1024.0) * size.height;
+      // Scale to canvas size - use the smallest dimension to ensure the entire
+      // box is visible regardless of aspect ratio
+      final double scaleFactor = min(
+        size.width / 1024.0, 
+        size.height / 1024.0
+      );
+      
+      // Center the content on the canvas
+      final double xOffset = (size.width - 1024.0 * scaleFactor) / 2;
+      final double yOffset = (size.height - 1024.0 * scaleFactor) / 2;
+      
+      // Apply scaling and centering
+      final scaledX1 = x1 * scaleFactor + xOffset;
+      final scaledY1 = y1 * scaleFactor + yOffset;
+      final scaledX2 = x2 * scaleFactor + xOffset;
+      final scaledY2 = y2 * scaleFactor + yOffset;
       
       // Get color for this class
       final color = classColors[className] ?? defaultColors[0];
@@ -1047,3 +1130,6 @@ class BoundingBoxPainter extends CustomPainter {
     return objects != oldDelegate.objects;
   }
 }
+
+
+

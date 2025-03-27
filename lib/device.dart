@@ -62,7 +62,7 @@ class Device {
       imageUrl: map['imageUrl'],
       taskDescription: map['taskDescription'],
       status: map['status'] ?? 'Not Configured',
-      inferenceMode: map['inferenceMode'] ?? 'classification',
+      inferenceMode: map['inferenceMode'] ?? 'Detect',
       groupId: map['groupId'],
       promptTemplate: map['promptTemplate'] ?? '',
       connectedCameraId: map['connectedCameraId'],

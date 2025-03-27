@@ -1,0 +1,2 @@
+C:/Users/Joshua/Desktop/Visual AI-Assistant/Frontend/ai_device_manager/android/app/.cxx/Debug/675kq3z3/x86_64/CMakeFiles/edit_cache.dir
+C:/Users/Joshua/Desktop/Visual AI-Assistant/Frontend/ai_device_manager/android/app/.cxx/Debug/675kq3z3/x86_64/CMakeFiles/rebuild_cache.dir

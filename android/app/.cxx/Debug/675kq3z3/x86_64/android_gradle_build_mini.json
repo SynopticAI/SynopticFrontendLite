@@ -1,0 +1,20 @@
+{
+  "buildFiles": [
+    "C:\\Users\\Joshua\\Desktop\\Visual AI-Assistant\\Flutter\\flutter\\packages\\flutter_tools\\gradle\\src\\main\\groovy\\CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "C:\\Users\\Joshua\\AppData\\Local\\Android\\sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+      "-C",
+      "C:\\Users\\Joshua\\Desktop\\Visual AI-Assistant\\Frontend\\ai_device_manager\\android\\app\\.cxx\\Debug\\675kq3z3\\x86_64",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "C:\\Users\\Joshua\\AppData\\Local\\Android\\sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+    "-C",
+    "C:\\Users\\Joshua\\Desktop\\Visual AI-Assistant\\Frontend\\ai_device_manager\\android\\app\\.cxx\\Debug\\675kq3z3\\x86_64",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {}
+}

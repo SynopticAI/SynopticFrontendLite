@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "723311357828",
+    "project_id": "aimanagerfirebasebackend",
+    "storage_bucket": "aimanagerfirebasebackend.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:723311357828:android:9b8387af3a3467b0ab37d1",
+        "android_client_info": {
+          "package_name": "com.synoptic.ai_device_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA4azQa88b6eeN1KKxnOckC2W_dmzUWWbg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:723311357828:android:a5844146ec91c27eab37d1",
+        "android_client_info": {
+          "package_name": "com.synoptic.ai_device_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA4azQa88b6eeN1KKxnOckC2W_dmzUWWbg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,276 @@
+{
+    "appTitle": "AI Device Manager",
+    "@appTitle": {
+        "description": "The main title of the application"
+    },
+    "deviceConfigurationTitle": "Device Configuration",
+    "@deviceConfigurationTitle": {
+        "description": "Title for the device configuration page"
+    },
+    "notConfigured": "Not configured",
+    "untrained": "Untrained",
+    "untrainedNeedData": "Untrained - Need Data",
+    "operational": "Operational",
+    "busyTraining": "Busy - Training",
+    "busyTesting": "Busy - Testing",
+    "error": "Error",
+    "deviceName": "Device Name",
+    "taskDescription": "Task Description",
+    "modelType": "Model Type",
+    "binaryClassification": "Binary Classification",
+    "generalClassification": "General Classification",
+    "regression": "Regression",
+    "modelSettings": "Model Settings",
+    "trainingDataGallery": "Training Data Gallery",
+    "testDataGallery": "Test Data Gallery",
+    "hardware": "Hardware",
+    "configuration": "Configuration",
+    "cameraSetup": "Camera Setup",
+    "dataManagement": "Data Management",
+    "aiAssistant": "AI Assistant",
+    "startChat": "Start Chat",
+    "addNewDevice": "Add New Device",
+    "enterDeviceName": "Enter device name",
+    "cancel": "Cancel",
+    "connect": "Connect",
+    "add": "Add",
+    "delete": "Delete",
+    "save": "Save",
+    "done": "Done",
+    "pleaseFillInAllFields" : "Please fill in all fields",
+    "needHelpConfiguring": "Need help configuring your device? I can assist you with:",
+    "settingUpCamera": "Setting up camera parameters",
+    "choosingModelType": "Choosing the right model type",
+    "understandingData": "Understanding data requirements",
+    "configuringActions": "Configuring actions and notifications",
+    "logout": "Logout",
+    "login": "Login",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "confirmSettings": "Save Settings",
+    "errorOccurred": "An error occurred: {error}",
+    "@errorOccurred": {
+        "description": "Error message with placeholder",
+        "placeholders": {
+            "error": {
+                "type": "String",
+                "example": "Failed to connect"
+            }
+        }
+    },
+    "ok": "OK",
+    "trainingAction": "training",
+    "testingAction": "testing",
+    "statusNotConfigured": "Please configure your device before {action}",
+    "@statusNotConfigured": {
+        "placeholders": {
+            "action": {
+                "type": "String"
+            }
+        }
+    },
+    "statusUntrained": "Ready to start training",
+    "statusNeedData": "Please upload at least 10 training images before {action}",
+    "@statusNeedData": {
+        "placeholders": {
+            "action": {
+                "type": "String"
+            }
+        }
+    },
+    "statusOperational": "Model is trained and ready for testing",
+    "statusBusyTraining": "Model is currently being trained. Please wait",
+    "statusBusyTesting": "Model evaluation is in progress. Please wait",
+    "statusError": "An error occurred. Please try again",
+    "statusBusy": "Please Wait: {status}",
+    "@statusBusy": {
+        "placeholders": {
+            "status": {
+                "type": "String"
+            }
+        }
+    },
+    "statusDefault": "Unable to perform {action} in current state",
+    "@statusDefault": {
+        "placeholders": {
+            "action": {
+                "type": "String"
+            }
+        }
+    },
+    "busyUploading": "Busy - Uploading",
+    "statusBusyUploading": "Files are currently being uploaded. Please wait.",
+    "addDeviceTitle": "Add New Device",
+    "addDeviceEnterName": "Enter device name",
+    "logoutConfirmTitle": "Logout",
+    "logoutConfirmMessage": "Are you sure you want to log out?",
+    "noTaskDescription": "No task description",
+    "status": "Status: {status}",
+    "@status": {
+        "placeholders": {
+            "status": {
+                "type": "String"
+            }
+        }
+    },
+    "userNotLoggedIn": "User not logged in",
+    "uploadProgressTitle": "Uploading {count} Images",
+    "@uploadProgressTitle": {
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
+        }
+    },
+    "uploadProgressPercent": "{percent}% complete",
+    "@uploadProgressPercent": {
+        "placeholders": {
+            "percent": {
+                "type": "int"
+            }
+        }
+    },
+    "uploadComplete": "Upload Complete",
+    "uploadFailed": "Upload Failed",
+    "uploadSuccessMessage": "Files uploaded successfully",
+    "uploadFailedMessage": "Failed to upload files",
+    "trainingProgressTitle": "Training Progress",
+    "trainingCompleteTitle": "Training Complete",
+    "trainingAccuracyMessage": "Model achieved {accuracy}% accuracy",
+    "@trainingAccuracyMessage": {
+        "placeholders": {
+            "accuracy": {
+                "type": "String"
+            }
+        }
+    },
+    "trainingErrorTitle": "Training Error",
+    "trainingErrorMessage": "Error during training: {error}",
+    "@trainingErrorMessage": {
+        "placeholders": {
+            "error": {
+                "type": "String"
+            }
+        }
+    },
+    "actionRequiredTitle": "Action Required",
+    "classDetectedMessage": "Class {className} detected with {confidence}% confidence",
+    "@classDetectedMessage": {
+        "placeholders": {
+            "className": {
+                "type": "String"
+            },
+            "confidence": {
+                "type": "String"
+            }
+        }
+    },
+    "setupProgress": "Setup Progress",
+    "deviceConfigPageTitle": "Device Configuration",
+    "deviceConfigPageAiAssistant": "AI Assistant",
+    "deviceConfigPageAiAssistantHelp": "Need help configuring your device? I can assist you with:",
+    "deviceConfigPageCameraParams": "Setting up camera parameters",
+    "deviceConfigPageModelType": "Choosing the right model type",
+    "deviceConfigPageDataRequirements": "Understanding data requirements",
+    "deviceConfigPageActionsNotifications": "Configuring actions and notifications",
+    "deviceConfigPageStartChat": "Start Chat",
+    "deviceConfigPageHardware": "Hardware",
+    "deviceConfigPageCameraSetup": "Camera Setup",
+    "deviceConfigPageConfiguration": "Configuration",
+    "deviceConfigPageDeviceName": "Device Name",
+    "deviceConfigPageTaskDescription": "Task Description",
+    "deviceConfigPageWarning": "Warning",
+    "deviceConfigPageModelTypeWarning": "Changing the model type will reset all labels to 0.0. Do you want to proceed?",
+    "deviceConfigPageCancel": "Cancel",
+    "deviceConfigPageProceed": "Proceed",
+    "deviceConfigPageSelectModelType": "Select Model Type",
+    "deviceConfigPageClassification": "Classification",
+    "deviceConfigPageRegression": "Regression",
+    "deviceConfigPageModelSettings": "Model Settings",
+    "deviceConfigPageDataManagement": "Data Management",
+    "deviceConfigPageTrainingDataGallery": "Training Data Gallery",
+    "deviceConfigPageTestDataGallery": "Test Data Gallery",
+    "deviceConfigPageDeleteDevice": "Delete Device",
+    "deviceConfigPageNoDescription": "No description",
+    "deviceConfigPageErrorUpdatingModelType": "Error updating model type: {error}",
+    "deviceConfigPageErrorDeletingDevice": "Error deleting device: {error}",
+    "deviceConfigPageDeviceNotFound": "Device not found",
+    "deviceConfigPageCannotDelete": "Cannot delete device while operations are in progress",
+    "deviceConfigPageDeleteConfirmationTitle": "Delete Device",
+    "deviceConfigPageDeleteConfirmationContent": "Are you sure you want to delete this device? This will permanently delete all data, images, and settings. This action cannot be undone.",
+    
+    "deviceDashboardPageLatestOutput": "Latest Output",
+    "deviceDashboardPageConfidence": "Confidence: {confidence}%",
+    "deviceDashboardPageConsecutiveOccurrences": "Consecutive occurrences: {count}",
+    "deviceDashboardPageOutputHistory": "Output History",
+    "deviceDashboardPageLatestImage": "Latest Image",
+    "deviceDashboardPageOutputDistribution": "Output Distribution",
+    "deviceDashboardPageToday": "Today",
+    "deviceDashboardPageLast7Days": "Last 7 Days",
+    "deviceDashboardPageAllTime": "All Time",
+    "deviceDashboardPageNoOutputData": "No output data available",
+    "deviceDashboardPageNoHourlyData": "No hourly data available",
+    "deviceDashboardPageNoDistributionData": "No distribution data available",
+    "deviceDashboardPageNoDataSelectedRange": "No data for selected time range",
+    "assistantChat": "Assistant Chat",
+    "typeYourMessage": "Type your message...",
+    "errorInitializingChat": "Error initializing chat: {error}",
+    "failedToGetResponse": "Failed to get response: {response}",
+
+    "espConfigTitle": "ESP Configuration",
+    "espConfigDescription": "Configure your ESP device settings below.",
+    "espWifiSSID": "WiFi SSID",
+    "espWifiSSIDHint": "Enter WiFi network name",
+    "espWifiPassword": "WiFi Password",
+    "espWifiPasswordHint": "Enter WiFi password",
+    "espSaveSettings": "Save Settings",
+    "espSetupCameraLater": "Set up camera later",
+    "permissionsRequired": "Permissions Required",
+    "permissionsBluetoothLocationMessage": "This app needs Bluetooth and Location permissions to find and connect to cameras. Please grant these permissions to continue.",
+    "espSetupCameraLaterExplanation": "You can either connect a camera now or set it up later",
+    "noCameraConnected": "No camera connected",
+    "saveImages": "Save Images",
+    "saveImagesExplanation": "Store captured images in device storage",
+    "motionTriggered": "Motion Triggered",
+    "motionTriggeredExplanation": "Capture images when motion is detected",
+    "hours": "Hours",
+    "minutes": "Minutes",
+    "seconds": "Seconds",
+    "captureInterval": "Capture Interval",
+    "replace": "Replace",
+    "connectedCamera": "Connected Camera",
+    "openSettings": "Open Settings",
+    "toContinuePleaseEnable": "To continue, please enable the following:",
+
+    "swipeToAssignClass": "swipe to assign class",
+    "dataCollectionMode": "Data Collection",
+    "cameraPermissionDenied": "no Camera Permission",
+    "testingMode": "Testing",
+    "quickDataCapture": "SwipeSight",
+    "quickDataCaptureExplanation": "Collect Data & Test",
+    "tapToAssignClass": "Tap to a Assign Class",
+    "tapOrSwipeToAssign": "Tap or Swipe to a Assign Class",
+    "testResult": "Test Result",
+    "confidence": "Confidence",
+    "detected": "Detected",
+    "processingImage": "Processing Image",
+    "retry": "reload",
+    "listeningHint": "listening...",
+    "speechNotAvailable": "Speech Not Available...",
+    "microphonePermissionDenied": "Microphone Permission Denied",
+    "deviceConfigPageAdvancedSettings": "Advanced Settings",
+    "deviceConfigPageEditDeviceInfo": "Edit Device Info",
+    "noSpeechDetected": "no Speech Detected",
+    
+
+
+    "testCamera": "Test Camera",
+    "testCameraDescription": "Use your camera to test the inference model",
+    "cameraTesting": "Test Camera",
+    "deviceConfigPageInferenceMode": "Inference Mode"
+    
+
+    
+    
+}

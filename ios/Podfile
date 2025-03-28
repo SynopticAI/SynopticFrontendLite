@@ -1,14 +1,20 @@
-# Include Flutter’s CocoaPods helper
-install! 'cocoapods', :deterministic_uuids => false
-require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), 'flutter')
-
 platform :ios, '13.0'
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+# Use FLUTTER_ROOT to reference Flutter’s podhelper
+flutter_root = ENV['FLUTTER_ROOT']
+if flutter_root.nil? || flutter_root.empty?
+  abort("FLUTTER_ROOT is not set. Please set it to the Flutter SDK path.")
+end
+
+require File.expand_path(File.join(flutter_root, 'packages', 'flutter_tools', 'bin', 'podhelper'))
 
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
-  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  flutter_install_all_ios_pods(File.dirname(File.realpath(__FILE__)))
+  
   # Firebase dependencies for cloud_firestore
   pod 'Firebase/Core'
   pod 'Firebase/Firestore'

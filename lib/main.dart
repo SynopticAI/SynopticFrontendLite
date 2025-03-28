@@ -37,8 +37,9 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  // Create a key that will be used to force UI refresh
-  Key _appKey = UniqueKey();
+  // Flag to track if we came from background
+  bool _forceRebuildAfterNextBuild = false;
+  bool _wasInBackground = false;
   
   @override
   void initState() {
@@ -56,11 +57,24 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // When app is resumed from background
-    if (state == AppLifecycleState.resumed) {
-      // Force rebuild of the entire UI by creating a new key
-      setState(() {
-        _appKey = UniqueKey();
+    if (state == AppLifecycleState.paused) {
+      // App is going to background
+      _wasInBackground = true;
+    } else if (state == AppLifecycleState.resumed && _wasInBackground) {
+      // App is coming from background (not just an overlay or notification)
+      _wasInBackground = false;
+      
+      // Schedule a rebuild, but do it gently with a short delay
+      // This prevents jittery behavior during normal app interactions
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          // Clear the GPU cache/force a texture refresh without rebuilding the whole tree
+          PaintingBinding.instance.imageCache.clear();
+          PaintingBinding.instance.imageCache.clearLiveImages();
+          
+          // This is a gentler approach than recreating the entire widget tree
+          setState(() {});
+        }
       });
     }
   }
@@ -74,7 +88,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         print('Current language from stream: $locale'); // Debug print
         
         return MaterialApp(
-          key: _appKey, // Apply the key here to force rebuild on resume
           title: 'Synoptic',
           theme: AppTheme.getTheme(), // Use our custom theme
           locale: locale != null ? Locale(locale) : null,

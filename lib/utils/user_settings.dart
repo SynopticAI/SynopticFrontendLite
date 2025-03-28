@@ -17,11 +17,11 @@ class UserSettings {
   // Supported languages
   static const Map<String, String> supportedLanguages = {
     'en': 'English',
-    'es': 'Español',
+    //'es': 'Español',
     'de': 'Deutsch',
-    'fr': 'Français',
-    'zh': '中文',
-    'ja': '日本語',
+    //'fr': 'Français',
+    //'zh': '中文',
+    //'ja': '日本語',
   };
 
   // Get current user language

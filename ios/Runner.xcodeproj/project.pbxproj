@@ -218,7 +218,6 @@
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
-				1234567890ABCDEF12345678 /* GoogleService-Info.plist in Resources */ = { isa = PBXBuildFile; fileRef = ABCDEF1234567890ABCDEF12 /* GoogleService-Info.plist */; },
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -124,15 +124,8 @@ class _DeviceConfigPageState extends State<DeviceConfigPage> {
 
 Future<void> _backgroundDelete() async {
   try {
-    // First fully delete the document from Firestore
-    await _firestore
-        .collection('users')
-        .doc(widget.userId)
-        .collection('devices')
-        .doc(widget.device.id)
-        .delete();
-    
-    // Then remove the device from its group
+    // Step 1: First remove the device from its group
+    // This ensures the group doesn't have references to a device that will be deleted
     if (widget.device.groupId != null) {
       await _firestore
           .collection('users')
@@ -143,8 +136,16 @@ Future<void> _backgroundDelete() async {
             'deviceIds': FieldValue.arrayRemove([widget.device.id])
           });
     }
-
-    // Finally clean up storage data recursively
+    
+    // Step 2: Delete the document from Firestore
+    await _firestore
+        .collection('users')
+        .doc(widget.userId)
+        .collection('devices')
+        .doc(widget.device.id)
+        .delete();
+    
+    // Step 3: Clean up storage data recursively
     final storageRef = FirebaseStorage.instance.ref()
         .child('users/${widget.userId}/devices/${widget.device.id}');
     
@@ -172,35 +173,38 @@ Future<void> _backgroundDelete() async {
   }
 }
 
-  Future<void> _deleteDevice() async {
-    try {
-      // First, mark the device as being deleted in Firestore
-      await _firestore
-          .collection('users')
-          .doc(widget.userId)
-          .collection('devices')
-          .doc(widget.device.id)
-          .update({
-        'status': 'Being Deleted',
-        'deletionStarted': FieldValue.serverTimestamp(),
-      });
+Future<void> _deleteDevice() async {
+  try {
+    // First, mark the device as being deleted in Firestore
+    await _firestore
+        .collection('users')
+        .doc(widget.userId)
+        .collection('devices')
+        .doc(widget.device.id)
+        .update({
+      'status': 'Being Deleted',
+      'deletionStarted': FieldValue.serverTimestamp(),
+      'name': null, // Set name to null to help filter out in queries
+    });
 
-      // Return to home page immediately
-      if (mounted) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      }
+    // Return to home page immediately
+    if (mounted) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
 
-      // Start background deletion
-      _backgroundDelete();
-    } catch (e) {
-      print('Error initiating device deletion: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting device: $e')),
-        );
-      }
+    // Start background deletion
+    _backgroundDelete();
+  } catch (e) {
+    print('Error initiating device deletion: $e');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting device: $e')),
+      );
     }
   }
+}
+
+
 
   Future<void> _showDeleteConfirmation(BuildContext context) async {
     final confirmed = await showDialog<bool>(

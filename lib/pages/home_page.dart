@@ -212,7 +212,7 @@ Stream<List<Device>> _getDevices() {
           return Device.fromMap(data);
         }).toList();
         
-        // Filter out devices that are being deleted or have null names
+        // Improved filter to remove devices that are being deleted or have null names
         devices.removeWhere((device) => 
           device.name == null || 
           device.status == 'Being Deleted'
@@ -481,6 +481,8 @@ Stream<List<Device>> _getDevices() {
   
   Widget _buildGroupSection(DeviceGroup group, List<Device> devices) {
     final isExpanded = _expandedGroups.contains(group.id);
+
+    devices = devices.where((device) => device.name != null && device.name.isNotEmpty).toList();
     
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

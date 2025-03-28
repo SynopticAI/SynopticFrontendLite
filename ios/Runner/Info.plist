@@ -46,13 +46,13 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app requires access to your location to provide personalized content based on your current position.</string>
+	<string>This app requires access to your location to connect to a device via BLE.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>This app requires access to your camera to capture photos or videos for your profile.</string>
+	<string>This app requires access to your camera to capture photos or videos to test the AI inference functionality.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>This app may use the microphone for optional voice input features or third-party services.</string>
+	<string>This app may use the microphone for optional voice input for a chat assistant.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>This app may use speech recognition for optional voice commands or third-party services.</string>
+	<string>This app may use speech recognition for optional voice commands for the chat assistant.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>This app may use Bluetooth to connect to nearby devices for enhanced functionality.</string>
 </dict>

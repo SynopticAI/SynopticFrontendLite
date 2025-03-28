@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Ai Device Manager</string>
+	<string>Synoptic</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -49,5 +49,11 @@
 	<string>This app requires access to your location to provide personalized content based on your current position.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>This app requires access to your camera to capture photos or videos for your profile.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app may use the microphone for optional voice input features or third-party services.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>This app may use speech recognition for optional voice commands or third-party services.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>This app may use Bluetooth to connect to nearby devices for enhanced functionality.</string>
 </dict>
 </plist>

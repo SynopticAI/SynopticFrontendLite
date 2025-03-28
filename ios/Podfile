@@ -9,6 +9,9 @@ target 'Runner' do
   use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  # Firebase dependencies for cloud_firestore
+  pod 'Firebase/Core'
+  pod 'Firebase/Firestore'
 end
 
 post_install do |installer|

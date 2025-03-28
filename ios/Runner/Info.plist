@@ -55,5 +55,9 @@
 	<string>This app may use speech recognition for optional voice commands for the chat assistant.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>This app may use Bluetooth to connect to nearby devices for enhanced functionality.</string>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+	<key>GoogleServiceFile</key>
+	<string>GoogleService-Info.plist</string>
 </dict>
 </plist>

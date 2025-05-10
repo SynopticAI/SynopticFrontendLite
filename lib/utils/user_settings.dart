@@ -11,19 +11,12 @@ class UserSettings {
   static final UserSettings _instance = UserSettings._internal();
   factory UserSettings() => _instance;
 
-  late final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  UserSettings._internal() {
-    // Initialize _firestore in the constructor
-    if (AppInitializer.isInitialized) {
-      _firestore = FirebaseFirestore.instance;
-    } else {
-      // Provide a fallback or handle uninitialized state
-      print('Warning: Firebase not initialized when creating UserSettings');
-      _firestore = FirebaseFirestore.instance; // This might throw an error
-    }
-  }
+  // Use nullable FirebaseFirestore to prevent initialization errors
+  FirebaseFirestore? _firestore;
+  FirebaseAuth? _auth;
+  
+  // Flag to check initialization status
+  bool _isInitialized = false;
 
   // Supported languages
   static const Map<String, String> supportedLanguages = {
@@ -35,14 +28,47 @@ class UserSettings {
     //'ja': '日本語',
   };
 
+  // Private constructor - doesn't immediately initialize Firebase
+  UserSettings._internal() {
+    // No initialization happens here - this prevents the race condition
+    print('UserSettings instance created, awaiting initialization');
+  }
+
+  // Method to safely ensure initialization before using Firebase services
+  Future<void> ensureInitialized() async {
+    if (_isInitialized) return;
+    
+    try {
+      // Make sure Firebase is initialized first
+      if (!AppInitializer.isInitialized) {
+        print('Firebase not initialized, initializing now...');
+        await AppInitializer.initialize();
+      }
+      
+      // Now it's safe to initialize Firebase services
+      _firestore = FirebaseFirestore.instance;
+      _auth = FirebaseAuth.instance;
+      _isInitialized = true;
+      print('UserSettings successfully initialized');
+    } catch (e) {
+      print('Error initializing UserSettings: $e');
+      // Still mark as initialized to prevent repeated attempts that would fail
+      _isInitialized = true;
+      // Don't rethrow - just handle gracefully
+    }
+  }
+
   // Get current user language
   Future<String> getCurrentLanguage() async {
+    // Ensure we're initialized before accessing Firebase
+    await ensureInitialized();
+    
     try {
-      final user = _auth.currentUser;
+      final user = _auth?.currentUser;
       if (user == null) return 'en';
 
-      final doc = await _firestore.collection('users').doc(user.uid).get();
-      if (!doc.exists) {
+      final doc = await _firestore?.collection('users').doc(user.uid).get();
+      if (doc == null || !doc.exists) {
         final defaultLang = await _detectDefaultLanguage();
         await setUserLanguage(defaultLang);
         return defaultLang;
@@ -59,8 +85,11 @@ class UserSettings {
 
   // Set user language
   Future<void> setUserLanguage(String languageCode) async {
+    // Ensure initialization
+    await ensureInitialized();
+    
     try {
-      final user = _auth.currentUser;
+      final user = _auth?.currentUser;
       if (user == null) {
         print('UserSettings - setUserLanguage: No user logged in');
         return;
@@ -72,7 +101,7 @@ class UserSettings {
       }
 
       print('UserSettings - Setting language to: $languageCode');
-      await _firestore.collection('users').doc(user.uid).set({
+      await _firestore?.collection('users').doc(user.uid).set({
         'language': languageCode,
       }, SetOptions(merge: true));
 
@@ -83,24 +112,54 @@ class UserSettings {
 
   // Stream for language changes
   Stream<String> get languageStream {
-      // Create a stream that reacts to auth state changes
-      return FirebaseAuth.instance.authStateChanges().switchMap((user) {
+    // Create a stream that handles initialization first
+    final controller = BehaviorSubject<String>();
+    
+    // Initial value while initializing
+    controller.add('en');
+    
+    // Schedule initialization and setup
+    Future<void> setup() async {
+      try {
+        // Ensure initialized first
+        await ensureInitialized();
+        
+        // Now that we're initialized, set up the real stream
+        FirebaseAuth.instance.authStateChanges().listen((user) {
           if (user == null) {
-              print('UserSettings - languageStream: No user logged in, defaulting to en');
-              return Stream.value('en');
+            controller.add('en');
+            return;
           }
-
-          return _firestore
-              .collection('users')
-              .doc(user.uid)
-              .snapshots()
-              .map<String>((doc) {
-                  final data = doc.data();
-                  final lang = data?['language'] as String? ?? 'en';
-                  print('UserSettings - Language stream update: $lang');
-                  return lang;
-              });
-      });
+          
+          // Setup Firestore listener
+          _firestore?.collection('users').doc(user.uid).snapshots().listen(
+            (doc) {
+              final data = doc.data();
+              final lang = data?['language'] as String? ?? 'en';
+              controller.add(lang);
+            },
+            onError: (e) {
+              print('Error in language stream: $e');
+              // Don't propagate error, just maintain last value
+            }
+          );
+        }, onError: (e) {
+          print('Auth state error: $e');
+          // On auth error, default to 'en'
+          controller.add('en');
+        });
+      } catch (e) {
+        print('Setup error in languageStream: $e');
+        // If setup fails, still provide default value
+        controller.add('en');
+      }
+    }
+    
+    // Start the setup process
+    setup();
+    
+    // Return the controlled stream
+    return controller.stream;
   }
 
   // Detect default language based on system settings and location

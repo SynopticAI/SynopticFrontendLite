@@ -87,6 +87,45 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return StreamBuilder<String>(
       stream: UserSettings().languageStream,
       builder: (context, snapshot) {
+        // Show loading instead of empty screen while initializing
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return MaterialApp(
+            title: 'Synoptic',
+            theme: AppTheme.getTheme(),
+            home: Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          );
+        }
+        
+        // Handle errors gracefully
+        if (snapshot.hasError) {
+          print("Error in language stream: ${snapshot.error}");
+          // Fall back to default language
+          return MaterialApp(
+            title: 'Synoptic',
+            theme: AppTheme.getTheme(),
+            locale: const Locale('en'),
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('en'),
+              Locale('de'),
+              Locale('es'),
+              Locale('fr'),
+              Locale('zh'),
+              Locale('ja'),
+            ],
+            home: const WidgetTree(),
+          );
+        }
+
         final locale = snapshot.data;
         print('Current language from stream: $locale'); // Debug print
         

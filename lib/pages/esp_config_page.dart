@@ -8,6 +8,7 @@ import 'package:ai_device_manager/pages/device_config_page.dart';
 import 'package:ai_device_manager/device.dart';
 import 'package:ai_device_manager/widgets/latest_received_image.dart';
 import 'package:ai_device_manager/l10n/app_localizations.dart';
+import 'dart:io' show Platform;
 
 class ESPConfigPage extends StatefulWidget {
   final String deviceId;
@@ -140,20 +141,30 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
   Future<void> _checkBluetoothPermissions() async {
     try {
       bool isBtEnabled = await FlutterBluePlus.isOn;
-      bool isLocationEnabled = await Permission.location.serviceStatus.isEnabled;
+      
+      // Only check location for Android
+      bool isLocationEnabled = Platform.isAndroid 
+          ? await Permission.location.serviceStatus.isEnabled 
+          : true;  // Skip location check for iOS
 
-      if (!isBtEnabled || !isLocationEnabled) {
+      if (!isBtEnabled || (Platform.isAndroid && !isLocationEnabled)) {
         if (!mounted) return; 
-        _showServicesDialog(!isBtEnabled, !isLocationEnabled);
+        _showServicesDialog(!isBtEnabled, Platform.isAndroid && !isLocationEnabled);
         return;
       }
 
-      // Explicitly request BLE permissions
-      Map<Permission, PermissionStatus> statuses = await [
+      // Request only the permissions needed for this platform
+      List<Permission> permissionsToRequest = [
         Permission.bluetoothScan,
         Permission.bluetoothConnect,
-        Permission.location,
-      ].request();
+      ];
+      
+      // Only add location permission for Android
+      if (Platform.isAndroid) {
+        permissionsToRequest.add(Permission.location);
+      }
+      
+      Map<Permission, PermissionStatus> statuses = await permissionsToRequest.request();
 
       if (statuses.values.every((status) => status.isGranted)) {
         _startScanning();
@@ -187,7 +198,7 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
                   Text('Bluetooth'),
                 ],
               ),
-            if (needsLocation)
+            if (needsLocation && Platform.isAndroid)  // Only show location for Android
               const Row(
                 children: [
                   Icon(Icons.location_on, size: 20),
@@ -208,7 +219,7 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
               if (needsBluetooth) {
                 await FlutterBluePlus.turnOn();
               }
-              if (needsLocation) {
+              if (needsLocation && Platform.isAndroid) {  // Only handle location for Android
                 await openAppSettings();
               }
               // Recheck after settings change
@@ -308,7 +319,9 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: Text(context.l10n.permissionsRequired),
-        content: Text(context.l10n.permissionsBluetoothLocationMessage),
+        content: Text(Platform.isAndroid 
+          ? context.l10n.permissionsBluetoothLocationMessage 
+          : 'This app needs Bluetooth permissions to find and connect to cameras.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),

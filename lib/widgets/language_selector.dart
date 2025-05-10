@@ -48,15 +48,24 @@ class LanguageSelector extends StatelessWidget {
       stream: UserSettings().languageStream,
       builder: (context, snapshot) {
         final languageCode = snapshot.data ?? 'en';
-        return IconButton(
-          icon: SvgPicture.asset(
-            'assets/flags/$languageCode.svg',
-            width: 24,
-            height: 24,
-            // If SVG fails to load, show language icon
-            placeholderBuilder: (context) => const Icon(Icons.language),
+        final languageName = UserSettings.supportedLanguages[languageCode] ?? 'English';
+        
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: TextButton.icon(
+            icon: const Icon(Icons.translate),
+            label: Text(languageName),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: Theme.of(context).appBarTheme.foregroundColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: Colors.grey.withOpacity(0.3))
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            onPressed: () => _showLanguageMenu(context),
           ),
-          onPressed: () => _showLanguageMenu(context),
         );
       },
     );

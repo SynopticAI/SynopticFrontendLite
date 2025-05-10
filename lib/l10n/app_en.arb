@@ -1,5 +1,5 @@
 {
-    "appTitle": "AI Device Manager",
+    "appTitle": "Device Manager",
     "@appTitle": {
         "description": "The main title of the application"
     },

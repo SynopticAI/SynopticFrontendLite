@@ -14,19 +14,23 @@ import 'package:ai_device_manager/app_initializer.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await AppInitializer.initialize();
-  // await Firebase.initializeApp(
-  //   options: DefaultFirebaseOptions.currentPlatform,
-  // );
   
-  // Only run cache cleanup on non-web platforms
-  if (!kIsWeb) {
-    await ImageCacheManager.cleanupOldCache();
-  }
-
-  // Initialize notifications only on non-web platforms
-  if (!kIsWeb) {
-    await NotificationService().initialize();
+  try {
+    // Initialize Firebase first
+    await AppInitializer.initialize();
+    
+    // Then clean up cache
+    if (!kIsWeb) {
+      await ImageCacheManager.cleanupOldCache();
+    }
+    
+    // Initialize notifications after Firebase
+    if (!kIsWeb) {
+      await NotificationService().initialize();
+    }
+  } catch (e) {
+    print("Error during app initialization: $e");
+    // Continue anyway, the app should handle errors gracefully
   }
 
   runApp(const MyApp());

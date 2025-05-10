@@ -140,51 +140,35 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
   // Permission handling
   Future<void> _checkBluetoothPermissions() async {
     try {
-      // First check if Bluetooth is enabled
-      bool isBtEnabled = await FlutterBluePlus.isOn;
-      
-      // Only check location for Android
-      bool isLocationEnabled = Platform.isAndroid 
-          ? await Permission.location.serviceStatus.isEnabled 
-          : true;  // Skip location check for iOS
-      
-      // Show the service enablement dialog if needed
-      if (!isBtEnabled || (Platform.isAndroid && !isLocationEnabled)) {
-        if (!mounted) return;
-        _showServicesDialog(!isBtEnabled, Platform.isAndroid && !isLocationEnabled);
-        return;
-      }
-      
-      // Now check actual permissions status before requesting
-      List<Permission> permissionsToCheck = [
-        Permission.bluetoothScan,
-        Permission.bluetoothConnect,
-      ];
-      
-      // Only add location permission for Android
-      if (Platform.isAndroid) {
-        permissionsToCheck.add(Permission.location);
-      }
-      
-      // Check current status of needed permissions BEFORE requesting
-      Map<Permission, PermissionStatus> currentStatus = {};
-      for (var permission in permissionsToCheck) {
-        currentStatus[permission] = await permission.status;
-      }
-      
-      // If all permissions are already granted, start scanning directly
-      if (currentStatus.values.every((status) => status.isGranted)) {
+      // For iOS, we'll use a simplified approach that skips unnecessary checks
+      if (Platform.isIOS) {
+        // For iOS, directly start scanning which will trigger the iOS system dialog if needed
+        // This avoids our custom dialogs entirely for iOS
         _startScanning();
         return;
       }
       
-      // Otherwise, request the permissions
-      Map<Permission, PermissionStatus> statuses = await permissionsToCheck.request();
+      // Android-specific flow below
+      // Check if Bluetooth is enabled
+      bool isBtEnabled = await FlutterBluePlus.isOn;
+      bool isLocationEnabled = await Permission.location.serviceStatus.isEnabled;
+      
+      if (!isBtEnabled || !isLocationEnabled) {
+        if (!mounted) return;
+        _showServicesDialog(!isBtEnabled, !isLocationEnabled);
+        return;
+      }
+      
+      // Request Android permissions
+      Map<Permission, PermissionStatus> statuses = await [
+        Permission.bluetoothScan,
+        Permission.bluetoothConnect,
+        Permission.location,
+      ].request();
       
       if (statuses.values.every((status) => status.isGranted)) {
         _startScanning();
       } else {
-        // Only show the permission dialog if we're still missing permissions
         _showPermissionDialog();
       }
     } catch (e) {
@@ -214,7 +198,7 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
                   Text('Bluetooth'),
                 ],
               ),
-            if (needsLocation && Platform.isAndroid)  // Only show location for Android
+            if (needsLocation)
               const Row(
                 children: [
                   Icon(Icons.location_on, size: 20),
@@ -232,13 +216,19 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
+              // Directly open system settings (not app settings)
               if (needsBluetooth) {
-                await FlutterBluePlus.turnOn();
+                if (Platform.isAndroid) {
+                  await FlutterBluePlus.turnOn();
+                } else {
+                  await openAppSettings();
+                }
               }
-              if (needsLocation && Platform.isAndroid) {  // Only handle location for Android
+              if (needsLocation) {
                 await openAppSettings();
               }
-              // Recheck after settings change
+              // Recheck after a brief pause
+              await Future.delayed(Duration(milliseconds: 500));
               await _checkBluetoothPermissions();
             },
             child: Text(context.l10n.openSettings),

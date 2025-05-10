@@ -15,6 +15,7 @@ import 'dart:developer' as developer;
 import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 import 'package:image/image.dart' as img;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class CameraTestingPage extends StatefulWidget {
   final Device device;
@@ -30,6 +31,8 @@ class CameraTestingPage extends StatefulWidget {
   State<CameraTestingPage> createState() => _CameraTestingPageState();
 }
 
+
+
 class _CameraTestingPageState extends State<CameraTestingPage> with TickerProviderStateMixin {
   // Camera controller
   CameraController? _cameraController;
@@ -42,6 +45,7 @@ class _CameraTestingPageState extends State<CameraTestingPage> with TickerProvid
   bool _isProcessing = false;
   bool _isUploading = false;
   String _processingStatus = '';
+  Uint8List? _imageBytes;
   
   // Inference results
   Map<String, dynamic>? _inferenceResults;
@@ -94,6 +98,40 @@ class _CameraTestingPageState extends State<CameraTestingPage> with TickerProvid
     _taskDescriptionController.dispose();
     super.dispose();
   }
+
+Future<void> _setupCameraForWeb(int cameraIndex) async {
+  if (_cameraController != null) {
+    await _cameraController!.dispose();
+  }
+
+  if (_cameras.isEmpty || cameraIndex >= _cameras.length) {
+    return;
+  }
+
+  // For web, use more compatible settings
+  _cameraController = CameraController(
+    _cameras[cameraIndex],
+    ResolutionPreset.medium, // Lower resolution for better compatibility
+    enableAudio: false,
+    imageFormatGroup: ImageFormatGroup.jpeg,
+  );
+
+  try {
+    await _cameraController!.initialize();
+    if (mounted) {
+      setState(() {
+        _isCameraInitialized = true;
+        _isFrontCamera = _cameras[cameraIndex].lensDirection == CameraLensDirection.front;
+      });
+    }
+  } catch (e) {
+    print('Error initializing web camera: $e');
+    // Log detailed error for debugging
+    if (e is CameraException) {
+      print('Camera error: ${e.code} - ${e.description}');
+    }
+  }
+}
   
   Future<void> _updateDevice() async {
     try {
@@ -145,27 +183,50 @@ class _CameraTestingPageState extends State<CameraTestingPage> with TickerProvid
     });
   }
 
-  Future<void> _initializeCamera() async {
-    try {
-      _cameras = await availableCameras();
-      if (_cameras.isEmpty) {
-        setState(() {
-          _isCameraInitialized = false;
-        });
-        return;
-      }
-
-      // Start with back camera (index 0)
-      await _setupCamera(0);
-      
-      // If initialization was successful, no need to retry
-      if (_isCameraInitialized) {
-        print('Camera initialized successfully');
-      }
-    } catch (e) {
-      print('Error initializing camera: $e');
+Future<void> _initializeCamera() async {
+  try {
+    _cameras = await availableCameras();
+    
+    if (_cameras.isEmpty) {
+      setState(() {
+        _isCameraInitialized = false;
+      });
+      return;
     }
+
+    // Log available cameras for debugging
+    print('Available cameras:');
+    for (int i = 0; i < _cameras.length; i++) {
+      print('Camera $i: ${_cameras[i].lensDirection}, ${_cameras[i].name}');
+    }
+
+    // Find the back camera for initial use
+    int backCameraIndex = _cameras.indexWhere(
+      (camera) => camera.lensDirection == CameraLensDirection.back
+    );
+    
+    // If no back camera, use the first available camera
+    int initialCameraIndex = backCameraIndex >= 0 ? backCameraIndex : 0;
+    
+    if (kIsWeb) {
+      // Web-specific camera setup
+      setState(() {
+        _isFrontCamera = _cameras[initialCameraIndex].lensDirection == CameraLensDirection.front;
+      });
+      await _setupCameraForWeb(initialCameraIndex);
+    } else {
+      // Mobile camera setup
+      await _setupCamera(initialCameraIndex);
+    }
+    
+    // If initialization was successful, no need to retry
+    if (_isCameraInitialized) {
+      print('Camera initialized successfully');
+    }
+  } catch (e) {
+    print('Error initializing camera: $e');
   }
+}
 
   Future<void> _setupCamera(int cameraIndex) async {
     if (_cameraController != null) {
@@ -197,18 +258,52 @@ class _CameraTestingPageState extends State<CameraTestingPage> with TickerProvid
     }
   }
 
-  Future<void> _switchCamera() async {
-    if (_cameras.length <= 1) return;
+Future<void> _switchCamera() async {
+  if (_cameras.length <= 1) return;
 
-    final int newIndex = _isFrontCamera ? 0 : 1;
-    setState(() {
-      _isCameraInitialized = false;
-    });
-    await _setupCamera(newIndex);
+  // Keep track of which camera index we're currently using and which we want to switch to
+  int currentIndex = _cameras.indexWhere((camera) => 
+      (_isFrontCamera && camera.lensDirection == CameraLensDirection.front) ||
+      (!_isFrontCamera && camera.lensDirection == CameraLensDirection.back));
+  
+  if (currentIndex < 0) currentIndex = 0;
+  
+  // Find the index of a camera with the opposite direction
+  int targetIndex = -1;
+  for (int i = 0; i < _cameras.length; i++) {
+    if (i != currentIndex) {
+      if (_isFrontCamera && _cameras[i].lensDirection == CameraLensDirection.back) {
+        targetIndex = i;
+        break;
+      } else if (!_isFrontCamera && _cameras[i].lensDirection == CameraLensDirection.front) {
+        targetIndex = i;
+        break;
+      }
+    }
   }
+  
+  // If we didn't find an opposite camera, just try the next camera
+  if (targetIndex < 0) {
+    targetIndex = (currentIndex + 1) % _cameras.length;
+  }
+  
+  // Log what we're doing
+  print('Switching from camera $currentIndex (${_cameras[currentIndex].lensDirection}) to camera $targetIndex (${_cameras[targetIndex].lensDirection})');
+  
+  setState(() {
+    _isCameraInitialized = false;
+  });
+  
+  if (kIsWeb) {
+    await _setupCameraForWeb(targetIndex);
+  } else {
+    await _setupCamera(targetIndex);
+  }
+}
 
 Future<void> _takePicture() async {
   if (!_isCameraInitialized || _isProcessing || _cameraController == null) {
+    print('Cannot take picture: Camera not initialized or already processing');
     return;
   }
 
@@ -219,25 +314,52 @@ Future<void> _takePicture() async {
   });
 
   try {
+    print('[WEB DEBUG] Starting to take picture...');
+    
+    // Take the picture
     final XFile photo = await _cameraController!.takePicture();
+    print('[WEB DEBUG] Picture taken, path: ${photo.path}');
     
-    // Downscale the image to 1036x1036 before further processing
-    final File originalFile = File(photo.path);
-    final File resizedFile = await _resizeImage(originalFile, 1036);
-    
-    setState(() {
-      _capturedImage = resizedFile;
-      _processingStatus = 'Image captured and optimized';
-    });
-
-    // Upload and process the image
-    await _processInference();
+    if (kIsWeb) {
+      print('[WEB DEBUG] Processing for web platform');
+      
+      try {
+        // For web, use XFile directly
+        final Uint8List imageBytes = await photo.readAsBytes();
+        print('[WEB DEBUG] Successfully read ${imageBytes.length} bytes from XFile');
+        
+        setState(() {
+          _imageBytes = imageBytes;
+          _capturedImage = null;
+          _processingStatus = 'Image captured for web';
+        });
+        
+        print('[WEB DEBUG] About to call _processInference()');
+        await _processInference();
+      } catch (webError) {
+        print('[WEB DEBUG] Error in web-specific image processing: $webError');
+        throw webError; // Re-throw to be caught by outer catch
+      }
+    } else {
+      // Mobile-specific code (unchanged)
+      final File originalFile = File(photo.path);
+      final File resizedFile = await _resizeImage(originalFile, 1036);
+      
+      setState(() {
+        _capturedImage = resizedFile;
+        _imageBytes = null;
+        _processingStatus = 'Image captured and optimized';
+      });
+      
+      await _processInference();
+    }
   } catch (e) {
-    print('Error taking picture: $e');
+    print('[WEB DEBUG] Error in _takePicture: $e');
     setState(() {
       _isProcessing = false;
-      _processingStatus = 'Error taking picture';
+      _processingStatus = 'Error: ${e.toString()}';
     });
+    
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error taking picture: $e')),
@@ -311,116 +433,152 @@ Future<File> _resizeImage(File inputFile, int targetSize) async {
   }
 }
   
-  Future<String?> _uploadImageToStorage() async {
-    if (_capturedImage == null) return null;
-    
-    setState(() {
-      _isUploading = true;
-      _processingStatus = 'Uploading image...';
-    });
-    
-    try {
-      // Generate a timestamp-based path
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final path = 'users/${widget.userId}/devices/${widget.device.id}/testing/${timestamp}.jpg';
-      
-      // Create a storage reference
-      final Reference storageRef = FirebaseStorage.instance.ref().child(path);
-      
-      // Upload the file
-      final TaskSnapshot uploadTask = await storageRef.putFile(_capturedImage!);
-      
-      // Get the download URL (not required but useful for debugging)
-      final downloadUrl = await uploadTask.ref.getDownloadURL();
-      print('Image uploaded to: $path');
-      print('Download URL: $downloadUrl');
-      
-      setState(() {
-        _isUploading = false;
-        _processingStatus = 'Image uploaded';
-      });
-      
-      return path;
-    } catch (e) {
-      print('Error uploading image: $e');
-      setState(() {
-        _isUploading = false;
-        _processingStatus = 'Error uploading image';
-      });
-      return null;
-    }
+Future<String?> _uploadImageToStorage() async {
+  if (_capturedImage == null && _imageBytes == null) {
+    print('[WEB DEBUG] No image data available for upload');
+    return null;
   }
   
-  Future<void> _processInference() async {
-    // First upload the image to Firebase Storage
-    final imagePath = await _uploadImageToStorage();
-    if (imagePath == null) {
-      setState(() {
-        _isProcessing = false;
-        _processingStatus = 'Failed to upload image';
-      });
-      return;
-    }
+  setState(() {
+    _isUploading = true;
+    _processingStatus = 'Uploading image...';
+  });
+  
+  try {
+    // Generate a timestamp-based path
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final path = 'users/${widget.userId}/devices/${widget.device.id}/testing/${timestamp}.jpg';
+    print('[WEB DEBUG] Upload path: $path');
     
-    setState(() {
-      _processingStatus = 'Running inference...';
-    });
+    // Create a storage reference
+    final Reference storageRef = FirebaseStorage.instance.ref().child(path);
     
-    try {
-      // Call the Firebase Function for inference
-      final response = await http.post(
-        Uri.parse(_inferenceApiUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'user_id': widget.userId,
-          'device_id': widget.device.id,
-          'image_path': imagePath,
-        }),
+    // Upload with platform-specific handling
+    TaskSnapshot uploadTask;
+    
+    if (kIsWeb) {
+      if (_imageBytes == null) {
+        throw Exception('No image bytes available for web upload');
+      }
+      
+      print('[WEB DEBUG] Uploading web image bytes (${_imageBytes!.length} bytes)');
+      
+      // Try a more direct upload approach for web
+      uploadTask = await storageRef.putData(
+        _imageBytes!,
+        SettableMetadata(contentType: 'image/jpeg')
       );
       
-      if (response.statusCode == 200) {
-        // Parse the response
-        final result = json.decode(response.body);
-        
-        // Log the result for debugging
-        developer.log('Inference result: ${result.toString().substring(0, min(500, result.toString().length))}...');
-        
-        setState(() {
-          _inferenceResults = result;
-          _isProcessing = false;
-          _processingStatus = 'Inference complete';
-        });
-        
-        // Start pulse animation for highlighting results
-        _pulseController.reset();
-        _pulseController.repeat(reverse: true);
-      } else {
-        print('Error from inference API: ${response.statusCode} - ${response.body}');
-        setState(() {
-          _isProcessing = false;
-          _processingStatus = 'Inference failed: ${response.statusCode}';
-        });
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${response.statusCode} - ${response.body}')),
-          );
-        }
+      print('[WEB DEBUG] Web upload completed. Status: ${uploadTask.state}');
+    } else {
+      // Mobile code (unchanged)
+      if (_capturedImage == null) {
+        throw Exception('No image file available for mobile upload');
       }
-    } catch (e) {
-      print('Error calling inference API: $e');
+      
+      uploadTask = await storageRef.putFile(_capturedImage!);
+    }
+    
+    // Get the download URL
+    final downloadUrl = await uploadTask.ref.getDownloadURL();
+    print('[WEB DEBUG] Upload succeeded. Download URL: $downloadUrl');
+    
+    setState(() {
+      _isUploading = false;
+      _processingStatus = 'Image uploaded';
+    });
+    
+    return path;
+  } catch (e) {
+    print('[WEB DEBUG] Error uploading image: $e');
+    setState(() {
+      _isUploading = false;
+      _processingStatus = 'Error uploading image: ${e.toString()}';
+    });
+    return null;
+  }
+}
+  
+Future<void> _processInference() async {
+  print('[WEB DEBUG] Starting _processInference');
+  
+  // First upload the image to Firebase Storage
+  final imagePath = await _uploadImageToStorage();
+  if (imagePath == null) {
+    print('[WEB DEBUG] Failed to upload image, cannot proceed with inference');
+    setState(() {
+      _isProcessing = false;
+      _processingStatus = 'Failed to upload image';
+    });
+    return;
+  }
+  
+  setState(() {
+    _processingStatus = 'Running inference...';
+  });
+  
+  try {
+    print('[WEB DEBUG] Calling inference API with path: $imagePath');
+    
+    final Uri apiUri = Uri.parse(_inferenceApiUrl);
+    print('[WEB DEBUG] API URL: $apiUri');
+    
+    final Map<String, dynamic> requestBody = {
+      'user_id': widget.userId,
+      'device_id': widget.device.id,
+      'image_path': imagePath,
+    };
+    
+    print('[WEB DEBUG] Request body: ${json.encode(requestBody)}');
+    
+    final response = await http.post(
+      apiUri,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(requestBody),
+    );
+    
+    print('[WEB DEBUG] API response status: ${response.statusCode}');
+    print('[WEB DEBUG] API response body: ${response.body.length > 500 ? response.body.substring(0, 500) + "..." : response.body}');
+    
+    if (response.statusCode == 200) {
+      // Process successful response
+      final result = json.decode(response.body);
+      
+      setState(() {
+        _inferenceResults = result;
+        _isProcessing = false;
+        _processingStatus = 'Inference complete';
+      });
+      
+      _pulseController.reset();
+      _pulseController.repeat(reverse: true);
+    } else {
+      print('[WEB DEBUG] Error from inference API: ${response.statusCode} - ${response.body}');
       setState(() {
         _isProcessing = false;
-        _processingStatus = 'Inference failed: $e';
+        _processingStatus = 'API error: ${response.statusCode}';
       });
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error calling inference API: $e')),
+          SnackBar(content: Text('Error: ${response.statusCode} - ${response.body.substring(0, min(100, response.body.length))}')),
         );
       }
     }
+  } catch (e) {
+    print('[WEB DEBUG] Error calling inference API: $e');
+    setState(() {
+      _isProcessing = false;
+      _processingStatus = 'Network error: $e';
+    });
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Network error: $e')),
+      );
+    }
   }
+}
 
   // Function to parse and display Moondream API results
   Widget _buildResultsText() {
@@ -722,7 +880,7 @@ Future<File> _resizeImage(File inputFile, int targetSize) async {
   }
 
   Widget _buildCapturedImageWithResults() {
-    if (_capturedImage == null) return const SizedBox.shrink();
+    if (_capturedImage == null && _imageBytes == null) return const SizedBox.shrink();
     
     return Column(
       children: [
@@ -732,10 +890,16 @@ Future<File> _resizeImage(File inputFile, int targetSize) async {
             fit: StackFit.expand,
             children: [
               // Image
-              Image.file(
-                _capturedImage!,
-                fit: BoxFit.contain,
-              ),
+              if (kIsWeb && _imageBytes != null)
+                Image.memory(
+                  _imageBytes!,
+                  fit: BoxFit.contain,
+                )
+              else if (_capturedImage != null)
+                Image.file(
+                  _capturedImage!,
+                  fit: BoxFit.contain,
+                ),
               
               // Overlay based on inference mode
               if (_inferenceResults != null && !_isProcessing)
@@ -792,19 +956,45 @@ Future<File> _resizeImage(File inputFile, int targetSize) async {
     );
   }
 
-  Widget _buildFloatingActionButton() {
-    // Hide capture button if already processing an image
-    if (_isProcessing) return const SizedBox.shrink();
-    
-    // Show capture button only when camera is active
-    if (_capturedImage != null) return const SizedBox.shrink();
+Widget _buildFloatingActionButton() {
+  // Hide capture button if already processing an image
+  if (_isProcessing) return const SizedBox.shrink();
+  
+  // Show capture button only when camera is active
+  if (_capturedImage != null || _imageBytes != null) return const SizedBox.shrink();
 
-    return FloatingActionButton(
-      backgroundColor: Colors.white,
-      child: const Icon(Icons.camera_alt, color: Colors.black),
-      onPressed: _takePicture,
-    );
-  }
+  return FloatingActionButton(
+    backgroundColor: Colors.white,
+    child: const Icon(Icons.camera_alt, color: Colors.black),
+    onPressed: () {
+      if (kIsWeb) {
+        // For web, use a simpler approach initially to debug
+        setState(() {
+          _isProcessing = true;
+          _processingStatus = "Web camera clicked";
+        });
+        
+        // Add a delay to simulate processing and see if UI updates
+        Future.delayed(Duration(seconds: 1), () {
+          setState(() {
+            _processingStatus = "Simulating upload...";
+          });
+          
+          // Check if UI updates for this state change
+          Future.delayed(Duration(seconds: 1), () {
+            setState(() {
+              _isProcessing = false;
+              _processingStatus = "Simulation complete";
+            });
+          });
+        });
+      } else {
+        // Regular takePicture for Android
+        _takePicture();
+      }
+    },
+  );
+}
   
   String _getInferenceModeLabel(String mode) {
     switch (mode) {

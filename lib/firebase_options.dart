@@ -64,7 +64,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '723311357828',
     projectId: 'aimanagerfirebasebackend',
     storageBucket: 'aimanagerfirebasebackend.firebasestorage.app',
-    iosBundleId: 'com.example.aiDeviceManager',
+    iosBundleId: 'com.synoptic.AiDeviceManager',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -73,7 +73,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '723311357828',
     projectId: 'aimanagerfirebasebackend',
     storageBucket: 'aimanagerfirebasebackend.firebasestorage.app',
-    iosBundleId: 'com.example.aiDeviceManager',
+    iosBundleId: 'com.synoptic.AiDeviceManager',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

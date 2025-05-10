@@ -5,14 +5,25 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:ai_device_manager/app_initializer.dart';
 
 class UserSettings {
   static final UserSettings _instance = UserSettings._internal();
   factory UserSettings() => _instance;
-  UserSettings._internal();
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late final FirebaseFirestore _firestore;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  UserSettings._internal() {
+    // Initialize _firestore in the constructor
+    if (AppInitializer.isInitialized) {
+      _firestore = FirebaseFirestore.instance;
+    } else {
+      // Provide a fallback or handle uninitialized state
+      print('Warning: Firebase not initialized when creating UserSettings');
+      _firestore = FirebaseFirestore.instance; // This might throw an error
+    }
+  }
 
   // Supported languages
   static const Map<String, String> supportedLanguages = {

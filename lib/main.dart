@@ -10,11 +10,14 @@ import 'package:ai_device_manager/utils/user_settings.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:ai_device_manager/utils/app_theme.dart';
 
+import 'package:ai_device_manager/app_initializer.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await AppInitializer.initialize();
+  // await Firebase.initializeApp(
+  //   options: DefaultFirebaseOptions.currentPlatform,
+  // );
   
   // Only run cache cleanup on non-web platforms
   if (!kIsWeb) {

@@ -268,9 +268,19 @@
     "testCamera": "Test Camera",
     "testCameraDescription": "Use your camera to test the inference model",
     "cameraTesting": "Test Camera",
-    "deviceConfigPageInferenceMode": "Inference Mode"
+    "deviceConfigPageInferenceMode": "Inference Mode",
     
-
+    "notificationSettings": "Notification Settings",
+    "notificationSettingsDescription": "Configure when to receive notifications",
+    "notificationConfigTitle": "Notification Configuration",
+    "notificationConfigDescription": "Configure when to receive notifications for each detected class.",
+    "countThreshold": "Count Threshold",
+    "locationTrigger": "Location",
+    "notifyWhenExceedsThreshold": "Notify when count exceeds threshold:",
+    "drawRegionToTrigger": "Draw region to trigger notification:",
+    "saveSettings": "Save Settings",
+    "settingsSaved": "Notification settings saved",
+    "errorSavingSettings": "Error saving settings: {error}"
     
     
 }

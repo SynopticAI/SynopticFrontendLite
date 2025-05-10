@@ -183,5 +183,17 @@
     "testCamera": "Test Kamera",
     "testCameraDescription": "Benutze deine Kamera um die KI zu testen",
     "cameraTesting": "Kamera testen",
-    "deviceConfigPageInferenceMode": "Ausgabe Modus"
+    "deviceConfigPageInferenceMode": "Ausgabe Modus",
+
+    "notificationSettings": "Benachrichtigungseinstellungen",
+    "notificationSettingsDescription": "Konfigurieren Sie, wann Sie Benachrichtigungen erhalten",
+    "notificationConfigTitle": "Benachrichtigungskonfiguration",
+    "notificationConfigDescription": "Konfigurieren Sie, wann Sie für jede erkannte Klasse Benachrichtigungen erhalten.",
+    "countThreshold": "Anzahlschwellenwert",
+    "locationTrigger": "Standort",
+    "notifyWhenExceedsThreshold": "Benachrichtigen, wenn die Anzahl den Schwellenwert überschreitet:",
+    "drawRegionToTrigger": "Zeichnen Sie einen Bereich, um eine Benachrichtigung auszulösen:",
+    "saveSettings": "Einstellungen speichern",
+    "settingsSaved": "Benachrichtigungseinstellungen gespeichert",
+    "errorSavingSettings": "Fehler beim Speichern der Einstellungen: {error}"
 }

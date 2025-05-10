@@ -7,6 +7,7 @@ import 'package:ai_device_manager/pages/esp_config_page.dart';
 import 'package:ai_device_manager/pages/camera_testing_page.dart';
 import 'package:ai_device_manager/utils/app_theme.dart';
 import 'package:ai_device_manager/l10n/app_localizations.dart';
+import 'package:ai_device_manager/pages/notification_settings_page.dart';
 
 class DeviceConfigPage extends StatefulWidget {
   final Device device;
@@ -97,9 +98,9 @@ class _DeviceConfigPageState extends State<DeviceConfigPage> {
                 items: const [
                   DropdownMenuItem(value: 'point', child: Text('Point Detection')),
                   DropdownMenuItem(value: 'boundingBox', child: Text('Bounding Box Detection')),
-                  DropdownMenuItem(value: 'counting', child: Text('Object Counting')),
-                  DropdownMenuItem(value: 'classification', child: Text('Classification')),
-                  DropdownMenuItem(value: 'VGA', child: Text('Visual Q&A')),
+                  //DropdownMenuItem(value: 'counting', child: Text('Object Counting')),
+                  //DropdownMenuItem(value: 'classification', child: Text('Classification')),
+                  //DropdownMenuItem(value: 'VGA', child: Text('Visual Q&A')),
                 ],
                 onChanged: (value) {
                   if (value != null) {
@@ -592,6 +593,72 @@ class _DeviceConfigPageState extends State<DeviceConfigPage> {
                           ),
                         ),
                     ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                Card(
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => NotificationSettingsPage(
+                            device: updatedDevice,
+                            userId: widget.userId,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: AppTheme.accentColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.notifications_active,
+                              color: AppTheme.accentColor,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  context.l10n.notificationSettings ?? 'Notification Settings',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  context.l10n.notificationSettingsDescription ?? 
+                                  'Configure when to receive notifications',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.grey[400],
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
 

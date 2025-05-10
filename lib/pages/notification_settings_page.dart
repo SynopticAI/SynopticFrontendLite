@@ -5,7 +5,9 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:ai_device_manager/device.dart';
 import 'package:ai_device_manager/utils/app_theme.dart';
 import 'package:ai_device_manager/l10n/app_localizations.dart';
-import 'package:ai_device_manager/pages/notification_settings_page.dart';
+import '../models/region_selector_data.dart';
+import '../widgets/region_selector.dart';
+
 
 class NotificationSettingsPage extends StatefulWidget {
   final Device device;
@@ -76,6 +78,26 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       });
     } catch (e) {
       print('Error loading classes: $e');
+    }
+  }
+
+  Future<List<String>> _getRecentDeviceImages() async {
+    try {
+      final storageRef = FirebaseStorage.instance.ref()
+        .child('users/${widget.userId}/devices/${widget.device.id}/receiving');
+        
+      final result = await storageRef.listAll();
+      
+      // Get download URLs for the most recent images (up to 5)
+      final urls = <String>[];
+      for (var item in result.items.take(5)) {
+        urls.add(await item.getDownloadURL());
+      }
+      
+      return urls;
+    } catch (e) {
+      print('Error loading device images: $e');
+      return [];
     }
   }
 
@@ -168,55 +190,62 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       appBar: AppBar(
         title: Text('Notification Settings'),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Info card
-                  Card(
-                    margin: const EdgeInsets.only(bottom: 16.0),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Notification Configuration',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Configure when to receive notifications for each detected class. ' +
-                            'You can set notifications based on count or location.',
-                            style: TextStyle(color: Colors.grey[700]),
-                          ),
-                        ],
+      // Prevent overscroll glow effect
+      body: NotificationListener<OverscrollIndicatorNotification>(
+        onNotification: (overscroll) {
+          overscroll.disallowIndicator();
+          return true;
+        },
+        child: SingleChildScrollView(
+          // Use less aggressive physics
+          physics: const ClampingScrollPhysics(),
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Info card
+              Card(
+                margin: const EdgeInsets.only(bottom: 16.0),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Notification Configuration',
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
-                    ),
-                  ),
-                  
-                  // Class sections
-                  ..._deviceClasses.map((className) => _buildClassSection(className)),
-                  
-                  // Save button
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.save),
-                      label: const Text('Save Settings'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.all(16),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Configure when to receive notifications for each detected class. ' +
+                        'You can set notifications based on count or location.',
+                        style: TextStyle(color: Colors.grey[700]),
                       ),
-                      onPressed: _saveSettings,
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+              
+              // Class sections
+              ..._deviceClasses.map((className) => _buildClassSection(className)),
+              
+              // Save button
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.save),
+                  label: const Text('Save Settings'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.all(16),
+                  ),
+                  onPressed: _saveSettings,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -348,49 +377,48 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   }
 
   Widget _buildLocationTriggerSettings(String className, Map<String, dynamic> settings) {
-    // This would be replaced with actual camera feed or a placeholder
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Draw region to trigger notification:',
-          style: TextStyle(fontWeight: FontWeight.w500),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          height: 250,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.camera_alt, size: 48, color: Colors.grey[600]),
-                const SizedBox(height: 8),
-                Text(
-                  'Camera feed placeholder',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.edit),
-                  label: const Text('Draw Region'),
-                  onPressed: () {
-                    // This would open a drawing interface
-                    // For now, just show a message
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Drawing functionality coming soon')),
-                    );
-                  },
-                ),
-              ],
+    // Get existing region data or create new
+    final regionData = RegionSelectorData();
+    
+    // If we have existing data, deserialize it
+    if (settings.containsKey('regionData')) {
+      regionData.fromMap(settings['regionData']);
+    }
+    
+    return FutureBuilder<List<String>>(
+      future: _getRecentDeviceImages(),
+      builder: (context, snapshot) {
+        // Default placeholder image
+        String imageUrl = 'https://via.placeholder.com/400x300';
+        
+        // Use the first real image if available
+        if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+          imageUrl = snapshot.data!.first;
+        }
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Draw region to trigger notification:',
+              style: TextStyle(fontWeight: FontWeight.w500),
             ),
-          ),
-        ),
-      ],
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 400,
+              child: RegionSelector(
+                imageUrl: imageUrl,
+                data: regionData,
+                onRegionChanged: (data) {
+                  final newSettings = Map<String, dynamic>.from(settings);
+                  newSettings['regionData'] = data.toMap();
+                  _updateClassSettings(className, newSettings);
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

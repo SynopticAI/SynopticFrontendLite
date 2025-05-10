@@ -228,6 +228,8 @@
     "espSetupCameraLater": "Set up camera later",
     "permissionsRequired": "Permissions Required",
     "permissionsBluetoothLocationMessage": "This app needs Bluetooth and Location permissions to find and connect to cameras. Please grant these permissions to continue.",
+    "permissionsBluetoothMessage": "This app needs Bluetooth permissions to find and connect to cameras. Please grant these permissions to continue.",
+
     "espSetupCameraLaterExplanation": "You can either connect a camera now or set it up later",
     "noCameraConnected": "No camera connected",
     "saveImages": "Save Images",

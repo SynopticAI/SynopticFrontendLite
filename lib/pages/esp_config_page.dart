@@ -140,35 +140,51 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
   // Permission handling
   Future<void> _checkBluetoothPermissions() async {
     try {
+      // First check if Bluetooth is enabled
       bool isBtEnabled = await FlutterBluePlus.isOn;
       
       // Only check location for Android
       bool isLocationEnabled = Platform.isAndroid 
           ? await Permission.location.serviceStatus.isEnabled 
           : true;  // Skip location check for iOS
-
+      
+      // Show the service enablement dialog if needed
       if (!isBtEnabled || (Platform.isAndroid && !isLocationEnabled)) {
-        if (!mounted) return; 
+        if (!mounted) return;
         _showServicesDialog(!isBtEnabled, Platform.isAndroid && !isLocationEnabled);
         return;
       }
-
-      // Request only the permissions needed for this platform
-      List<Permission> permissionsToRequest = [
+      
+      // Now check actual permissions status before requesting
+      List<Permission> permissionsToCheck = [
         Permission.bluetoothScan,
         Permission.bluetoothConnect,
       ];
       
       // Only add location permission for Android
       if (Platform.isAndroid) {
-        permissionsToRequest.add(Permission.location);
+        permissionsToCheck.add(Permission.location);
       }
       
-      Map<Permission, PermissionStatus> statuses = await permissionsToRequest.request();
-
+      // Check current status of needed permissions BEFORE requesting
+      Map<Permission, PermissionStatus> currentStatus = {};
+      for (var permission in permissionsToCheck) {
+        currentStatus[permission] = await permission.status;
+      }
+      
+      // If all permissions are already granted, start scanning directly
+      if (currentStatus.values.every((status) => status.isGranted)) {
+        _startScanning();
+        return;
+      }
+      
+      // Otherwise, request the permissions
+      Map<Permission, PermissionStatus> statuses = await permissionsToCheck.request();
+      
       if (statuses.values.every((status) => status.isGranted)) {
         _startScanning();
       } else {
+        // Only show the permission dialog if we're still missing permissions
         _showPermissionDialog();
       }
     } catch (e) {
@@ -321,11 +337,11 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
         title: Text(context.l10n.permissionsRequired),
         content: Text(Platform.isAndroid 
           ? context.l10n.permissionsBluetoothLocationMessage 
-          : 'This app needs Bluetooth permissions to find and connect to cameras.'),
+          : context.l10n.permissionsBluetoothMessage ?? 'This app needs Bluetooth permissions to find and connect to cameras.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(context.l10n.pleaseFillInAllFields)
+            child: Text(context.l10n.cancel) // Use cancel here, not "fill fields"
           ),
           TextButton(
             onPressed: () async {

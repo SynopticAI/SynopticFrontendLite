@@ -141,6 +141,8 @@
     "espSetupCameraLater": "Kamera später einrichten",
     "permissionsRequired":"Berechtigungen benötigt",
     "permissionsBluetoothLocationMessage":"Bluetooth und GPS Berechtigungen werden zum verbinde der Kamera benötigt. Bitte geben sie diese Funktionen frei.",
+    "permissionsBluetoothMessage":"Bluetooth Berechtigungen werden zum verbinde der Kamera benötigt. Bitte geben sie diese Funktionen frei.",
+    
     "espSetupCameraLaterExplanation": "Sie können die Kamera sowohl jetzt als auch später einrichten",
     "noCameraConnected": "Keine Kamera verbunden",
     "saveImages": "Bilder speichern",

@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:ai_device_manager/utils/app_theme.dart';
 
 import 'package:ai_device_manager/app_initializer.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +20,9 @@ Future<void> main() async {
     // Initialize Firebase first
     await AppInitializer.initialize();
     
+    // Set up background message handler
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
     // Then clean up cache
     if (!kIsWeb) {
       await ImageCacheManager.cleanupOldCache();

@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "aimanagerfirebasebackend"
-  }
+  },
+  "targets": {
+    "aimanagerfirebasebackend": {
+      "hosting": {
+        "app": [
+          "synoptic-vision-app"
+        ],
+        "main": [
+          "synoptic-vision"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

@@ -98,8 +98,8 @@ class _DeviceConfigPageState extends State<DeviceConfigPage> {
                 items: const [
                   DropdownMenuItem(value: 'Point', child: Text('Point Detection')),
                   DropdownMenuItem(value: 'Detect', child: Text('Object Detection')),
-                  DropdownMenuItem(value: 'VQA', child: Text('Visual Q&A')),
-                  DropdownMenuItem(value: 'Caption', child: Text('Image Captioning')),
+                  // DropdownMenuItem(value: 'VQA', child: Text('Visual Q&A')), // diabled for now
+                  // DropdownMenuItem(value: 'Caption', child: Text('Image Captioning')), // diabled for now
                 ],
                 onChanged: (value) {
                   if (value != null) {

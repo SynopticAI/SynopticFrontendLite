@@ -8,7 +8,6 @@ import 'package:ai_device_manager/l10n/app_localizations.dart';
 import '../models/region_selector_data.dart';
 import '../widgets/region_selector.dart';
 
-
 class NotificationSettingsPage extends StatefulWidget {
   final Device device;
   final String userId;
@@ -60,8 +59,6 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       final data = doc.data()!;
       
       // Get classes from device data
-      // This assumes there's a 'classes' field in the device document
-      // Adjust this based on your actual data structure
       List<String> classes = [];
       if (data.containsKey('classes')) {
         classes = List<String>.from(data['classes'] ?? []);
@@ -69,7 +66,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       
       // If no classes are defined yet, add some default ones for testing
       if (classes.isEmpty) {
-        classes = ['Cat', 'Dog', 'Goat']; // Default classes from your sketch
+        classes = ['Cat', 'Dog', 'Person']; // Default classes
       }
       
       setState(() {
@@ -90,8 +87,15 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       
       // Get download URLs for the most recent images (up to 5)
       final urls = <String>[];
-      for (var item in result.items.take(5)) {
-        urls.add(await item.getDownloadURL());
+      final sortedItems = result.items.toList()
+        ..sort((a, b) => b.name.compareTo(a.name)); // Sort by name (timestamp) descending
+      
+      for (var item in sortedItems.take(5)) {
+        try {
+          urls.add(await item.getDownloadURL());
+        } catch (e) {
+          print('Error getting download URL for ${item.name}: $e');
+        }
       }
       
       return urls;
@@ -146,11 +150,11 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       return _notificationSettings[className]!;
     }
     
-    // Default settings
+    // Default settings - "none" is the new default
     return {
-      'triggerType': 'count',
+      'triggerType': 'none',
       'threshold': 1,
-      'regionImagePath': null,
+      'regionData': null,
     };
   }
 
@@ -164,16 +168,21 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           .doc(widget.device.id)
           .update({
         'notificationSettings': _notificationSettings,
+        'notificationSettingsUpdated': FieldValue.serverTimestamp(),
       });
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Notification settings saved')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Notification settings saved successfully')),
+        );
+      }
     } catch (e) {
       print('Error saving notification settings: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving settings: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving settings: $e')),
+        );
+      }
     }
   }
 
@@ -184,8 +193,33 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     });
   }
 
+  // Get summary text for a class setting
+  String _getSettingSummary(String className) {
+    final settings = _getClassSettings(className);
+    final triggerType = settings['triggerType'] as String? ?? 'none';
+    
+    switch (triggerType) {
+      case 'count':
+        final threshold = settings['threshold'] as int? ?? 1;
+        return 'Threshold: $threshold';
+      case 'location':
+        final hasRegion = settings['regionData'] != null;
+        return hasRegion ? 'Region defined' : 'No region set';
+      case 'none':
+      default:
+        return 'No notifications';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: Text('Notification Settings')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Notification Settings'),
@@ -218,7 +252,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                       const SizedBox(height: 8),
                       Text(
                         'Configure when to receive notifications for each detected class. ' +
-                        'You can set notifications based on count or location.',
+                        'You can disable notifications, set count thresholds, or define location-based triggers.',
                         style: TextStyle(color: Colors.grey[700]),
                       ),
                     ],
@@ -227,7 +261,20 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               ),
               
               // Class sections
-              ..._deviceClasses.map((className) => _buildClassSection(className)),
+              if (_deviceClasses.isEmpty)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Center(
+                      child: Text(
+                        'No classes configured yet. Set up your device first.',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                ..._deviceClasses.map((className) => _buildClassSection(className)),
               
               // Save button
               const SizedBox(height: 24),
@@ -238,6 +285,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                   label: const Text('Save Settings'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.all(16),
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
                   ),
                   onPressed: _saveSettings,
                 ),
@@ -252,8 +301,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   Widget _buildClassSection(String className) {
     final isExpanded = _expandedClass == className;
     final settings = _getClassSettings(className);
-    final triggerType = settings['triggerType'] as String? ?? 'count';
-    final threshold = settings['threshold'] as int? ?? 1;
+    final triggerType = settings['triggerType'] as String? ?? 'none';
     
     return Card(
       margin: const EdgeInsets.only(bottom: 8.0),
@@ -283,12 +331,32 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                     ),
                   ),
                   const Spacer(),
-                  // Show a summary of the current setting
-                  Text(
-                    triggerType == 'count'
-                        ? 'Threshold: $threshold'
-                        : 'Location trigger',
-                    style: TextStyle(color: Colors.grey[600]),
+                  // Show notification status with color coding
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getTriggerTypeColor(triggerType).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _getTriggerTypeIcon(triggerType),
+                          size: 14,
+                          color: _getTriggerTypeColor(triggerType),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _getSettingSummary(className),
+                          style: TextStyle(
+                            color: _getTriggerTypeColor(triggerType),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -316,13 +384,20 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                     ),
                     value: triggerType,
                     items: const [
+                      DropdownMenuItem(value: 'none', child: Text('No Notifications')),
                       DropdownMenuItem(value: 'count', child: Text('Count Threshold')),
-                      DropdownMenuItem(value: 'location', child: Text('Location')),
+                      DropdownMenuItem(value: 'location', child: Text('Location-Based')),
                     ],
                     onChanged: (value) {
                       if (value != null) {
                         final newSettings = Map<String, dynamic>.from(settings);
                         newSettings['triggerType'] = value;
+                        
+                        // Clear region data when switching away from location
+                        if (value != 'location') {
+                          newSettings['regionData'] = null;
+                        }
+                        
                         _updateClassSettings(className, newSettings);
                       }
                     },
@@ -332,11 +407,63 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                   // Settings specific to the trigger type
                   if (triggerType == 'count')
                     _buildCountThresholdSettings(className, settings)
-                  else
-                    _buildLocationTriggerSettings(className, settings),
+                  else if (triggerType == 'location')
+                    _buildLocationTriggerSettings(className, settings)
+                  else if (triggerType == 'none')
+                    _buildNoNotificationSettings(),
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Color _getTriggerTypeColor(String triggerType) {
+    switch (triggerType) {
+      case 'count':
+        return Colors.orange;
+      case 'location':
+        return Colors.blue;
+      case 'none':
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getTriggerTypeIcon(String triggerType) {
+    switch (triggerType) {
+      case 'count':
+        return Icons.numbers;
+      case 'location':
+        return Icons.location_on;
+      case 'none':
+      default:
+        return Icons.notifications_off;
+    }
+  }
+
+  Widget _buildNoNotificationSettings() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.notifications_off, color: Colors.grey[600], size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'No notifications will be sent for this class.',
+              style: TextStyle(
+                color: Colors.grey[700],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -348,29 +475,58 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Notify when count exceeds threshold:',
-          style: TextStyle(fontWeight: FontWeight.w500),
+        Row(
+          children: [
+            Icon(Icons.numbers, color: Colors.orange, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Notify when count reaches or exceeds:',
+              style: TextStyle(fontWeight: FontWeight.w500, color: Colors.grey[800]),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
+        
+        // Threshold value display
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            '$threshold detection${threshold == 1 ? '' : 's'}',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.orange[700],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        
+        // Slider
         Slider(
           value: threshold.toDouble(),
           min: 1,
-          max: 10,
-          divisions: 9,
+          max: 5,
+          divisions: 4,
           label: threshold.toString(),
+          activeColor: Colors.orange,
           onChanged: (value) {
             final newSettings = Map<String, dynamic>.from(settings);
             newSettings['threshold'] = value.round();
             _updateClassSettings(className, newSettings);
           },
         ),
+        
+        // Min/Max labels
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: List.generate(
-            10,
-            (index) => Text('${index + 1}', style: TextStyle(fontSize: 12)),
-          ),
+          children: [
+            Text('1', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            Text('5', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          ],
         ),
       ],
     );
@@ -381,15 +537,19 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     final regionData = RegionSelectorData();
     
     // If we have existing data, deserialize it
-    if (settings.containsKey('regionData')) {
-      regionData.fromMap(settings['regionData']);
+    if (settings.containsKey('regionData') && settings['regionData'] != null) {
+      try {
+        regionData.fromMap(settings['regionData']);
+      } catch (e) {
+        print('Error loading region data: $e');
+      }
     }
     
     return FutureBuilder<List<String>>(
       future: _getRecentDeviceImages(),
       builder: (context, snapshot) {
-        // Default placeholder image
-        String imageUrl = 'https://via.placeholder.com/400x300';
+        // Default placeholder image URL
+        String imageUrl = 'https://via.placeholder.com/400x300/e0e0e0/666666?text=No+Camera+Feed';
         
         // Use the first real image if available
         if (snapshot.hasData && snapshot.data!.isNotEmpty) {
@@ -399,21 +559,78 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              children: [
+                Icon(Icons.location_on, color: Colors.blue, size: 20),
+                const SizedBox(width: 8),
+                Expanded(  // ← ADD THIS Expanded widget
+                  child: Text(
+                    'Draw trigger region:',
+                    style: TextStyle(fontWeight: FontWeight.w500, color: Colors.grey[800]),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             Text(
-              'Draw region to trigger notification:',
-              style: TextStyle(fontWeight: FontWeight.w500),
+              'Notifications will be sent when detections occur within the drawn area.',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 400,
-              child: RegionSelector(
-                imageUrl: imageUrl,
-                data: regionData,
-                onRegionChanged: (data) {
-                  final newSettings = Map<String, dynamic>.from(settings);
-                  newSettings['regionData'] = data.toMap();
-                  _updateClassSettings(className, newSettings);
-                },
+            
+            // Region selector
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.blue.withOpacity(0.3), width: 2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  height: 400,
+                  child: RegionSelector(
+                    imageUrl: imageUrl,
+                    data: regionData,
+                    onRegionChanged: (data) {
+                      final newSettings = Map<String, dynamic>.from(settings);
+                      newSettings['regionData'] = data.toMap();
+                      _updateClassSettings(className, newSettings);
+                    },
+                  ),
+                ),
+              ),
+            ),
+            
+            // Status indicator
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: regionData.hasRegions 
+                    ? Colors.blue.withOpacity(0.1) 
+                    : Colors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    regionData.hasRegions ? Icons.check_circle : Icons.info,
+                    color: regionData.hasRegions ? Colors.blue : Colors.grey[600],
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      regionData.hasRegions 
+                          ? 'Trigger region defined. Notifications will be sent when $className is detected in this area.'
+                          : 'No trigger region defined yet. Draw an area above to set up location-based notifications.',
+                      style: TextStyle(
+                        color: regionData.hasRegions ? Colors.blue[700] : Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

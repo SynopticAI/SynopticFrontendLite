@@ -31,9 +31,23 @@ class DeviceDashboardPage extends StatefulWidget {
 class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
   TimeRange _selectedTimeRange = TimeRange.lastHour;
   
-  // Hardcoded bin parameters (ideally fetched from device config)
-  final double resolution = 0.5; // Bin width
-  final double maxValue = 5.0;   // Maximum expected output value
+  // Class colors for consistent chart visualization
+  final Map<String, Color> _classColors = {};
+  final List<Color> _availableColors = [
+    Colors.blue,
+    Colors.red,
+    Colors.green,
+    Colors.orange,
+    Colors.purple,
+    Colors.teal,
+    Colors.indigo,
+    Colors.pink,
+    Colors.amber,
+    Colors.cyan,
+  ];
+  
+  // Class filtering state
+  Set<String> _activeClasses = <String>{};
 
   // Stream for the latest inference result
   Stream<QuerySnapshot> get _latestInferenceStream => FirebaseFirestore.instance
@@ -56,7 +70,7 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
         return firestore
             .collection('$basePath/recent_outputs')
             .orderBy('timestamp', descending: true)
-            .limit(60) // Assuming up to 60 points in an hour
+            .limit(60) // Last 60 data points
             .snapshots()
             .map((snapshot) => snapshot.docs);
 
@@ -82,16 +96,40 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
     }
   }
 
-  // Compute average output value from aggregated counts
-  double computeAverage(Map<String, dynamic> counts, int totalCount) {
-    if (totalCount == 0) return 0.0;
-    double sum = 0;
-    counts.forEach((binIndexStr, count) {
-      int binIndex = int.parse(binIndexStr);
-      double midpoint = (binIndex + 0.5) * resolution;
-      sum += midpoint * (count as int);
+  Color _getClassColor(String className) {
+    if (!_classColors.containsKey(className)) {
+      final colorIndex = _classColors.length % _availableColors.length;
+      _classColors[className] = _availableColors[colorIndex];
+    }
+    return _classColors[className]!;
+  }
+  
+  // Handle class selection for filtering
+  void _toggleClassSelection(String className, Set<String> allClasses) {
+    setState(() {
+      if (_activeClasses.isEmpty) {
+        // If no filter active, show all classes initially
+        _activeClasses.addAll(allClasses);
+      }
+      
+      if (_activeClasses.contains(className) && _activeClasses.length == 1) {
+        // If this is the only active class, show all classes
+        _activeClasses.clear();
+        _activeClasses.addAll(allClasses);
+      } else {
+        // Show only the selected class
+        _activeClasses.clear();
+        _activeClasses.add(className);
+      }
     });
-    return sum / totalCount;
+  }
+  
+  // Check if a class should be displayed actively
+  bool _isClassActive(String className, Set<String> allClasses) {
+    if (_activeClasses.isEmpty) {
+      return true; // Show all classes when no filter is active
+    }
+    return _activeClasses.contains(className);
   }
 
   // Build the latest inference card
@@ -115,8 +153,10 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
 
         final doc = snapshot.data!.docs.first;
         final data = doc.data() as Map<String, dynamic>;
-        final outputValue = data['outputValue'] as double;
-        final timestamp = data['timestamp'] as int;
+        final outputValue = (data['outputValue'] as num?)?.toDouble() ?? 0.0;
+        final timestamp = (data['timestamp'] as num?)?.toInt() ?? 0;
+        final inferenceMode = data['inferenceMode'] as String? ?? 'Unknown';
+        final classMetrics = data['classMetrics'] as Map<String, dynamic>? ?? {};
         final dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
 
         return Card(
@@ -130,15 +170,100 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  'Output Value: ${outputValue.toStringAsFixed(2)}',
-                  style: const TextStyle(fontSize: 18),
+                
+                // Total detections
+                Row(
+                  children: [
+                    Icon(Icons.visibility, color: AppTheme.primaryColor, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Total Detections: ${outputValue.toInt()}',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  'Timestamp: ${DateFormat('MMM d, yyyy h:mm a').format(dateTime)}',
-                  style: TextStyle(color: Colors.grey[600]),
+                
+                // Inference mode
+                Row(
+                  children: [
+                    Icon(Icons.settings, color: Colors.grey[600], size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Mode: $inferenceMode',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 8),
+                
+                // Timestamp
+                Row(
+                  children: [
+                    Icon(Icons.access_time, color: Colors.grey[600], size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Time: ${DateFormat('MMM d, yyyy h:mm a').format(dateTime)}',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+                
+                // Class breakdown if available
+                if (classMetrics.containsKey('classCounts')) ...[
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Class Breakdown:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                                      ...(() {
+                    final classCounts = classMetrics['classCounts'] as Map<String, dynamic>? ?? {};
+                    return classCounts.entries.map((entry) {
+                      final className = entry.key;
+                      final count = (entry.value as num?)?.toInt() ?? 0;
+                      final color = _getClassColor(className);
+                      
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text('$className: $count'),
+                          ],
+                        ),
+                      );
+                    }).toList();
+                  })(),
+                ],
+                
+                // Confidence if available
+                if (classMetrics.containsKey('averageConfidence')) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.stars, color: Colors.amber, size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Avg. Confidence: ${(((classMetrics['averageConfidence'] as num?)?.toDouble() ?? 0.0) * 100).toStringAsFixed(1)}%',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -147,8 +272,8 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
     );
   }
 
-  // Build the inference history card with chart
-  Widget _buildInferenceHistory() {
+  // Build the detection history chart
+  Widget _buildClassDetectionHistory() {
     return StreamBuilder<List<DocumentSnapshot>>(
       stream: getInferenceHistoryStream(),
       builder: (context, snapshot) {
@@ -162,7 +287,7 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
                   Row(
                     children: [
                       Text(
-                        'Inference History',
+                        'Detections',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const Spacer(),
@@ -188,7 +313,7 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
                   Row(
                     children: [
                       Text(
-                        'Inference History',
+                        'Detections',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const Spacer(),
@@ -197,8 +322,8 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
                   ),
                   const SizedBox(height: 24),
                   Center(
-                    child: Text(
-                      'No inference history available',
+                    child:                     Text(
+                      'No detection data available',
                       style: TextStyle(color: Colors.grey[600], fontStyle: FontStyle.italic),
                     ),
                   ),
@@ -209,36 +334,74 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
         }
 
         // Process data for the chart
-        List<FlSpot> spots = [];
+        Map<String, List<FlSpot>> classData = {};
         List<DateTime> timestamps = [];
+        Set<String> allClasses = {};
 
-        if (_selectedTimeRange == TimeRange.lastHour) {
-          // Use individual points from recent_outputs
-          for (var doc in entries) {
-            final data = doc.data() as Map<String, dynamic>;
-            final timestamp = data['timestamp'] as int;
-            final outputValue = data['outputValue'] as double;
-            spots.add(FlSpot(timestamp.toDouble(), outputValue));
-            timestamps.add(DateTime.fromMillisecondsSinceEpoch(timestamp));
+        // Sort entries by timestamp (ascending for chart)
+        final sortedEntries = entries.toList();
+        sortedEntries.sort((a, b) {
+          final aData = a.data() as Map<String, dynamic>;
+          final bData = b.data() as Map<String, dynamic>;
+          final aTime = ((aData['timestamp'] ?? aData['startTimestamp']) as num?)?.toInt() ?? 0;
+          final bTime = ((bData['timestamp'] ?? bData['startTimestamp']) as num?)?.toInt() ?? 0;
+          return aTime.compareTo(bTime);
+        });
+
+        for (var doc in sortedEntries) {
+          final data = doc.data() as Map<String, dynamic>;
+          final timestamp = ((data['timestamp'] ?? data['startTimestamp']) as num?)?.toInt() ?? 0;
+          timestamps.add(DateTime.fromMillisecondsSinceEpoch(timestamp));
+
+          Map<String, dynamic> classCounts = {};
+          
+          if (_selectedTimeRange == TimeRange.lastHour) {
+            // Use classMetrics.classCounts from recent_outputs (individual inference results)
+            final classMetrics = data['classMetrics'] as Map<String, dynamic>? ?? {};
+            classCounts = classMetrics['classCounts'] as Map<String, dynamic>? ?? {};
+          } else {
+            // Calculate average from aggregations (classTotals / totalCount)
+            final classTotals = data['classTotals'] as Map<String, dynamic>? ?? {};
+            final totalCount = (data['totalCount'] as num?)?.toInt() ?? 1; // Prevent division by zero
+            
+            // Convert totals to averages
+            classCounts = {};
+            for (final entry in classTotals.entries) {
+              final totalDetections = (entry.value as num?)?.toInt() ?? 0;
+              final averageDetections = totalCount > 0 ? (totalDetections / totalCount).round() : 0;
+              classCounts[entry.key] = averageDetections;
+            }
           }
-        } else {
-          // Use aggregated data (hourly or daily)
-          for (var doc in entries) {
-            final data = doc.data() as Map<String, dynamic>;
-            final startTimestamp = data['startTimestamp'] as int;
-            final counts = data['counts'] as Map<String, dynamic>;
-            final totalCount = data['totalCount'] as int;
-            final average = computeAverage(counts, totalCount);
-            spots.add(FlSpot(startTimestamp.toDouble(), average));
-            timestamps.add(DateTime.fromMillisecondsSinceEpoch(startTimestamp));
+
+          // Add classes to our tracking
+          allClasses.addAll(classCounts.keys);
+
+          // Create data points for each class
+          for (final className in allClasses) {
+            if (!classData.containsKey(className)) {
+              classData[className] = [];
+            }
+            
+            final count = (classCounts[className] as num?)?.toInt() ?? 0;
+            classData[className]!.add(FlSpot(timestamp.toDouble(), count.toDouble()));
           }
         }
 
-        // Sort by timestamp (ascending for chart)
-        final sortedPairs = List.generate(spots.length, (i) => {'spot': spots[i], 'time': timestamps[i]});
-        sortedPairs.sort((a, b) => (a['time'] as DateTime).compareTo(b['time'] as DateTime));
-        spots = sortedPairs.map((p) => p['spot'] as FlSpot).toList();
-        timestamps = sortedPairs.map((p) => p['time'] as DateTime).toList();
+        // Fill in missing data points for consistent lines
+        for (final className in allClasses) {
+          final spots = classData[className]!;
+          if (spots.length < timestamps.length) {
+            for (int i = 0; i < timestamps.length; i++) {
+              final timestamp = timestamps[i].millisecondsSinceEpoch.toDouble();
+              final hasSpot = spots.any((spot) => spot.x == timestamp);
+              if (!hasSpot) {
+                spots.add(FlSpot(timestamp, 0));
+              }
+            }
+            // Sort spots by timestamp
+            spots.sort((a, b) => a.x.compareTo(b.x));
+          }
+        }
 
         return Card(
           child: Padding(
@@ -249,7 +412,7 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
                 Row(
                   children: [
                     Text(
-                      'Inference History',
+                      'Detections',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const Spacer(),
@@ -257,9 +420,51 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
+                
+                // Legend
+                if (allClasses.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 8,
+                    children: allClasses.map((className) {
+                      final color = _getClassColor(className);
+                      final isActive = _isClassActive(className, allClasses);
+                      
+                      return GestureDetector(
+                        onTap: () => _toggleClassSelection(className, allClasses),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: isActive ? color : Colors.grey[400],
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 200),
+                              style: TextStyle(
+                                fontSize: 12, 
+                                color: isActive ? Colors.grey[700] : Colors.grey[400],
+                              ),
+                              child: Text(className),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                
+                // Chart
                 SizedBox(
-                  height: 200,
-                  child: _buildHistoryChart(spots, timestamps),
+                  height: 250,
+                  child: _buildClassDetectionChart(classData, timestamps, allClasses),
                 ),
               ],
             ),
@@ -269,33 +474,45 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
     );
   }
 
-  // Build the history chart
-  Widget _buildHistoryChart(List<FlSpot> spots, List<DateTime> timestamps) {
-    if (spots.isEmpty) {
+  // Build the class detection chart
+  Widget _buildClassDetectionChart(Map<String, List<FlSpot>> classData, List<DateTime> timestamps, Set<String> allClasses) {
+    if (classData.isEmpty || timestamps.isEmpty) {
       return const Center(child: Text('No data available'));
     }
 
-    double minY = spots.map((s) => s.y).reduce(min);
-    double maxY = spots.map((s) => s.y).reduce(max);
-    double yRange = maxY - minY;
-    minY = minY - (yRange == 0 ? 1 : yRange * 0.1);
-    maxY = maxY + (yRange == 0 ? 1 : yRange * 0.1);
+    // Find min/max values for scaling (only for active classes)
+    double maxY = 0;
+    for (final entry in classData.entries) {
+      if (_isClassActive(entry.key, allClasses)) {
+        for (final spot in entry.value) {
+          if (spot.y > maxY) maxY = spot.y;
+        }
+      }
+    }
+    
+    if (maxY == 0) maxY = 1; // Prevent division by zero
+
+    // Calculate safe intervals to prevent zero values
+    final timeSpan = timestamps.isNotEmpty && timestamps.length > 1 
+        ? (timestamps.last.millisecondsSinceEpoch - timestamps.first.millisecondsSinceEpoch).toDouble()
+        : 3600000.0; // Default to 1 hour if no time span
+    final verticalInterval = max(timeSpan / 5, 60000.0); // Minimum 1 minute intervals
+    final horizontalInterval = max(maxY / 5, 1.0);
 
     return LineChart(
       LineChartData(
         gridData: FlGridData(
           show: true,
-          horizontalInterval: (maxY - minY) / 5,
+          horizontalInterval: horizontalInterval,
+          verticalInterval: verticalInterval,
         ),
         titlesData: FlTitlesData(
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              interval: (spots.last.x - spots.first.x) / 5,
+              interval: max(timeSpan / 4, 60000.0), // Minimum 1 minute intervals
               getTitlesWidget: (value, meta) {
-                final index = spots.indexWhere((s) => s.x == value);
-                if (index == -1) return const SizedBox.shrink();
-                final date = timestamps[index];
+                final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
                 String label;
                 switch (_selectedTimeRange) {
                   case TimeRange.lastHour:
@@ -318,9 +535,9 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              interval: (maxY - minY) / 5,
+              interval: horizontalInterval,
               getTitlesWidget: (value, meta) => Text(
-                value.toStringAsFixed(1),
+                value.toInt().toString(),
                 style: const TextStyle(fontSize: 10),
               ),
             ),
@@ -329,50 +546,75 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
         borderData: FlBorderData(show: true),
-        minY: minY,
-        maxY: maxY,
-        lineBarsData: [
-          LineChartBarData(
+        minY: 0,
+        maxY: maxY + (maxY * 0.1), // Add 10% padding
+        lineBarsData: classData.entries.where((entry) {
+          // Only show lines for active classes
+          return _isClassActive(entry.key, allClasses);
+        }).map((entry) {
+          final className = entry.key;
+          final spots = entry.value;
+          final color = _getClassColor(className);
+          
+          return LineChartBarData(
             spots: spots,
-            isCurved: true,
-            color: Colors.blue,
+            isCurved: false, // Use linear interpolation to prevent overshooting
+            color: color,
             barWidth: 3,
             isStrokeCapRound: true,
-            dotData: FlDotData(show: false),
+            dotData: FlDotData(
+              show: true,
+              getDotPainter: (spot, percent, barData, index) {
+                return FlDotCirclePainter(
+                  radius: 3,
+                  color: color,
+                  strokeWidth: 1,
+                  strokeColor: Colors.white,
+                );
+              },
+            ),
             belowBarData: BarAreaData(
               show: true,
-              color: Colors.blue.withOpacity(0.15),
+              color: color.withOpacity(0.1),
             ),
-          ),
-        ],
+          );
+        }).toList(),
       ),
     );
   }
 
   // Time range selector
   Widget _buildTimeRangeSelector() {
-    return DropdownButton<TimeRange>(
-      value: _selectedTimeRange,
-      underline: const SizedBox(),
-      items: [
-        DropdownMenuItem(
-          value: TimeRange.lastHour,
-          child: Text('Last Hour', style: TextStyle(fontSize: 14, color: Colors.grey[700])),
-        ),
-        DropdownMenuItem(
-          value: TimeRange.today,
-          child: Text('Today', style: TextStyle(fontSize: 14, color: Colors.grey[700])),
-        ),
-        DropdownMenuItem(
-          value: TimeRange.lastWeek,
-          child: Text('Last Week', style: TextStyle(fontSize: 14, color: Colors.grey[700])),
-        ),
-      ],
-      onChanged: (value) {
-        if (value != null) {
-          setState(() => _selectedTimeRange = value);
-        }
-      },
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[300]!),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: DropdownButton<TimeRange>(
+        value: _selectedTimeRange,
+        underline: const SizedBox(),
+        isDense: true,
+        items: [
+          DropdownMenuItem(
+            value: TimeRange.lastHour,
+            child: Text('1H', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+          ),
+          DropdownMenuItem(
+            value: TimeRange.today,
+            child: Text('1D', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+          ),
+          DropdownMenuItem(
+            value: TimeRange.lastWeek,
+            child: Text('7D', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+          ),
+        ],
+        onChanged: (value) {
+          if (value != null) {
+            setState(() => _selectedTimeRange = value);
+          }
+        },
+      ),
     );
   }
 
@@ -400,6 +642,7 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Device info and latest image
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -422,25 +665,47 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
                                 widget.device.taskDescription ?? 'No task description',
                                 style: TextStyle(color: Colors.grey[700]),
                               ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: widget.device.status == 'Operational'
+                                          ? Colors.green.withOpacity(0.2)
+                                          : Colors.orange.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      widget.device.status,
+                                      style: TextStyle(
+                                        color: widget.device.status == 'Operational'
+                                            ? Colors.green[700]
+                                            : Colors.orange[700],
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryColor.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      widget.device.inferenceMode,
+                                      style: TextStyle(
+                                        color: AppTheme.primaryColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: widget.device.status == 'Operational'
-                                ? Colors.green.withOpacity(0.2)
-                                : Colors.orange.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            widget.device.status,
-                            style: TextStyle(
-                              color: widget.device.status == 'Operational'
-                                  ? Colors.green[700]
-                                  : Colors.orange[700],
-                              fontWeight: FontWeight.bold,
-                            ),
                           ),
                         ),
                       ],
@@ -465,9 +730,13 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
               ),
             ),
             const SizedBox(height: 16),
+            
+            // Latest inference results
             _buildLatestInference(),
             const SizedBox(height: 16),
-            _buildInferenceHistory(),
+            
+            // Detection history chart
+            _buildClassDetectionHistory(),
           ],
         ),
       ),

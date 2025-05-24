@@ -23,7 +23,8 @@
     }
   },
   "hosting": {
-    "public": "build/web",
+    "site": "synoptic-app",
+    "public": "build/web", 
     "ignore": [
       "firebase.json",
       "**/.*",

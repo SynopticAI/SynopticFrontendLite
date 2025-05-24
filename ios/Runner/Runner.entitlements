@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>aps-environment</key>
+    <string>development</string> 
+    <!-- IMPORTANT: Codemagic should automatically switch this to "production" 
+         for release/App Store builds if using automatic code signing or properly
+         configured provisioning profiles. If you are manually managing profiles
+         for different environments, you might need different versions of this file
+         or a script to change it. For TestFlight/AppStore, it MUST be "production". -->
+</dict>
+</plist>

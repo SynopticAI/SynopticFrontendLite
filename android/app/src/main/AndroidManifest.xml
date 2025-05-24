@@ -51,9 +51,9 @@
             android:resource="@mipmap/ic_launcher"/> -->
         
         <!-- Optional: Custom notification color -->
-        <meta-data
+        <!-- <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"
-            android:resource="@color/notification_color"/>
+            android:resource="@color/notification_color"/> -->
         <!-- NOTIFICATION SECTION  END  -->
     </application>
     <!-- Required to query activities that can process text, see:

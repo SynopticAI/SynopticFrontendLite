@@ -11,6 +11,7 @@ import 'package:ai_device_manager/utils/user_settings.dart';
 import 'package:ai_device_manager/widgets/language_selector.dart';
 import 'package:ai_device_manager/l10n/app_localizations.dart';
 import 'package:ai_device_manager/pages/esp_config_page.dart';
+import 'package:ai_device_manager/services/notification_service.dart';
 
 import 'package:ai_device_manager/l10n/context_extensions.dart';
 
@@ -37,6 +38,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadGroups();
+    Future.delayed(const Duration(seconds: 3), () {NotificationService().debugFCMToken(); });
   }
   
   Future<void> _loadGroups() async {

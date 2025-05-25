@@ -1,5 +1,6 @@
 // lib/services/notification_service.dart
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -24,21 +25,50 @@ class NotificationService {
     if (kIsWeb) return; // Skip for web platform
 
     try {
-      // Request notification permissions
+      // iOS-specific: Request provisional authorization first
+      if (Platform.isIOS) {
+        final provisionalSettings = await _fcm.requestPermission(
+          provisional: true,
+        );
+        print('iOS provisional authorization status: ${provisionalSettings.authorizationStatus}');
+      }
+      
+      // Then request full permissions
       final settings = await _fcm.requestPermission(
         alert: true,
         badge: true,
         sound: true,
+        provisional: false,
+        announcement: false,
+        carPlay: false,
+        criticalAlert: false,
       );
 
       if (settings.authorizationStatus != AuthorizationStatus.authorized) {
-        print('User declined or has not accepted permission');
-        return;
+        if (settings.authorizationStatus == AuthorizationStatus.provisional) {
+          print('User granted provisional permission');
+        } else {
+          print('User declined or has not accepted permission');
+          return;
+        }
       }
 
-      // Initialize local notifications for Android
+      // iOS-specific: Set foreground notification presentation options
+      if (Platform.isIOS) {
+        await _fcm.setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+      }
+
+      // Initialize local notifications
       const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-      const iosSettings = DarwinInitializationSettings();
+      const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
       const initSettings = InitializationSettings(
         android: androidSettings,
         iOS: iosSettings,
@@ -49,7 +79,11 @@ class NotificationService {
         onDidReceiveNotificationResponse: _handleNotificationTap,
       );
 
-      // Get and save FCM token
+      // Get and save FCM token - add delay for iOS
+      if (Platform.isIOS) {
+        await Future.delayed(const Duration(seconds: 1));
+      }
+      
       await _setupFCMToken();
 
       // Set up message handlers
@@ -70,6 +104,8 @@ class NotificationService {
       _fcmToken = await _fcm.getToken();
       if (_fcmToken != null) {
         await _updateFCMToken(_fcmToken!);
+      } else {
+        print('FCM token is null - this might be a simulator or token generation issue');
       }
     } catch (e) {
       print('Error getting FCM token: $e');
@@ -84,6 +120,7 @@ class NotificationService {
         await _firestore.collection('users').doc(user.uid).set({
           'fcmToken': token,
           'fcmTokenUpdated': FieldValue.serverTimestamp(),
+          'platform': Platform.isIOS ? 'ios' : 'android',
         }, SetOptions(merge: true));
         
         _fcmToken = token;
@@ -139,7 +176,11 @@ class NotificationService {
       icon: '@mipmap/ic_launcher',
     );
 
-    const iosDetails = DarwinNotificationDetails();
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
     
     const details = NotificationDetails(
       android: androidDetails,
@@ -177,8 +218,86 @@ class NotificationService {
     }
   }
 
+  /// Debug FCM token generation
+  Future<void> debugFCMToken() async {
+    try {
+      print('=== FCM Token Debug ===');
+      
+      // Check APNS token (iOS only)
+      if (Platform.isIOS) {
+        final apnsToken = await _fcm.getAPNSToken();
+        print('APNS Token: ${apnsToken ?? "null"}');
+      }
+      
+      // Get FCM token
+      final fcmToken = await _fcm.getToken();
+      print('FCM Token: ${fcmToken ?? "null"}');
+      
+      // Check notification settings
+      final settings = await _fcm.getNotificationSettings();
+      print('Authorization Status: ${settings.authorizationStatus}');
+      print('Alert: ${settings.alert}');
+      print('Badge: ${settings.badge}');
+      print('Sound: ${settings.sound}');
+      
+      // Check if we're on a simulator
+      if (Platform.isIOS) {
+        final isSimulator = await _checkIfSimulator();
+        print('Is Simulator: $isSimulator');
+      }
+      
+      print('=== End Debug ===');
+    } catch (e) {
+      print('Error in debugFCMToken: $e');
+    }
+  }
+
+  /// Check if running on iOS simulator
+  Future<bool> _checkIfSimulator() async {
+    // On iOS simulator, certain features like push notifications won't work
+    // This is a simple check - FCM token will be null on simulator
+    return Platform.isIOS && _fcmToken == null;
+  }
+
+  /// Manually refresh FCM token
+  Future<void> refreshFCMToken() async {
+    try {
+      print('Manually refreshing FCM token...');
+      
+      // Delete current token to force refresh
+      await _fcm.deleteToken();
+      
+      // Wait a bit
+      await Future.delayed(const Duration(seconds: 1));
+      
+      // Get new token
+      await _setupFCMToken();
+      
+      print('FCM token refresh complete');
+    } catch (e) {
+      print('Error refreshing FCM token: $e');
+    }
+  }
+
   /// Get current FCM token
   String? get fcmToken => _fcmToken;
+
+  /// Check if notifications are properly set up
+  Future<bool> isNotificationSetupComplete() async {
+    if (kIsWeb) return false;
+    
+    try {
+      final settings = await _fcm.getNotificationSettings();
+      final hasPermission = settings.authorizationStatus == AuthorizationStatus.authorized ||
+                           settings.authorizationStatus == AuthorizationStatus.provisional;
+      final hasToken = _fcmToken != null;
+      
+      return hasPermission && hasToken;
+    } catch (e) {
+      print('Error checking notification setup: $e');
+      return false;
+    }
+  }
 
   /// Dispose of resources
   void dispose() {

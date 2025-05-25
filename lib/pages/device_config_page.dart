@@ -9,6 +9,8 @@ import 'package:ai_device_manager/utils/app_theme.dart';
 import 'package:ai_device_manager/l10n/app_localizations.dart';
 import 'package:ai_device_manager/pages/notification_settings_page.dart';
 
+import 'package:ai_device_manager/l10n/context_extensions.dart';
+
 class DeviceConfigPage extends StatefulWidget {
   final Device device;
   final String userId;

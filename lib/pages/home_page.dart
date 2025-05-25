@@ -12,6 +12,8 @@ import 'package:ai_device_manager/widgets/language_selector.dart';
 import 'package:ai_device_manager/l10n/app_localizations.dart';
 import 'package:ai_device_manager/pages/esp_config_page.dart';
 
+import 'package:ai_device_manager/l10n/context_extensions.dart';
+
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 

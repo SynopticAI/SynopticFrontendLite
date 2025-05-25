@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:ai_device_manager/device.dart';
 import 'package:ai_device_manager/utils/app_theme.dart';
 import 'package:ai_device_manager/l10n/app_localizations.dart';
+//import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
@@ -16,6 +17,8 @@ import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 import 'package:image/image.dart' as img;
 import 'package:flutter/foundation.dart' show kIsWeb;
+
+import 'package:ai_device_manager/l10n/context_extensions.dart';
 
 class CameraTestingPage extends StatefulWidget {
   final Device device;

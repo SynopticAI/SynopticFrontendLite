@@ -1,12 +1,5 @@
 arb-dir: lib/l10n
 template-arb-file: app_en.arb
-output-localization-file: app_localizations.dart 
-output-dir: lib/l10n # Add this to be explicit
+output-localization-file: app_localizations.dart
 output-class: AppLocalizations
 synthetic-package: false
-
-
-# arb-dir: lib/l10n
-# template-arb-file: app_en.arb
-# output-localization-file: app_localizations.dart
-# output-class: AppLocalizations

@@ -10,6 +10,8 @@ import 'package:ai_device_manager/widgets/latest_received_image.dart';
 import 'package:ai_device_manager/l10n/app_localizations.dart';
 import 'dart:io' show Platform;
 
+import 'package:ai_device_manager/l10n/context_extensions.dart';
+
 class ESPConfigPage extends StatefulWidget {
   final String deviceId;
   final String userId;

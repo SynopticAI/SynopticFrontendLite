@@ -21,6 +21,8 @@ import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:ai_device_manager/pages/camera_testing_page.dart';
 
+import 'package:ai_device_manager/l10n/context_extensions.dart';
+
 class AssistantPage extends StatefulWidget {
   final String userId;
   final String deviceId;

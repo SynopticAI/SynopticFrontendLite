@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>aps-environment</key>
-    <string>development</string> 
+    <string>production</string> 
     <!-- IMPORTANT: Codemagic should automatically switch this to "production" 
          for release/App Store builds if using automatic code signing or properly
          configured provisioning profiles. If you are manually managing profiles

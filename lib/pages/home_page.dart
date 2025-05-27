@@ -420,6 +420,12 @@ Stream<List<Device>> _getDevices() {
           ),
           body: Column(
             children: [
+              ////////////  DEBUGGING FOR IOS FCM TOKEN ////////////
+              ElevatedButton(
+                onPressed: () => Navigator.pushNamed(context, '/notification-debug'),
+                child: Text('🔔 Debug Notifications'),
+              ),
+              ////////////  DEBUGGING FOR IOS FCM TOKEN ////////////
               // Group management bar (visible when editing)
               if (_isEditingGroups)
                 Container(

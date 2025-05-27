@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:ai_device_manager/widget_tree.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -8,11 +9,12 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:ai_device_manager/l10n/app_localizations.dart';
 import 'package:ai_device_manager/l10n/context_extensions.dart';
 import 'package:ai_device_manager/utils/user_settings.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:ai_device_manager/utils/app_theme.dart';
-
 import 'package:ai_device_manager/app_initializer.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+
+// Add this debug import - you'll need to create this file or comment out if not using
+import 'package:ai_device_manager/pages/notification_debug_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,12 +31,24 @@ Future<void> main() async {
       await ImageCacheManager.cleanupOldCache();
     }
     
-    // Initialize notifications after Firebase
+    // Initialize enhanced notifications after Firebase with delay for iOS
     if (!kIsWeb) {
+      print('🔔 Initializing NotificationService...');
+      
+      // Add delay for iOS to ensure proper initialization order
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+      
       await NotificationService().initialize();
+      
+      // Debug FCM tokens after a short delay (iOS needs more time)
+      Future.delayed(const Duration(seconds: 3), () {
+        NotificationService().debugFCMToken();
+      });
     }
   } catch (e) {
-    print("Error during app initialization: $e");
+    print("❌ Error during app initialization: $e");
     // Continue anyway, the app should handle errors gracefully
   }
 
@@ -58,12 +72,35 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.initState();
     // Register for app lifecycle events
     WidgetsBinding.instance.addObserver(this);
+    
+    // Setup notification service lifecycle handling
+    if (!kIsWeb) {
+      _setupNotificationLifecycle();
+    }
+  }
+
+  void _setupNotificationLifecycle() {
+    // Listen for when app comes to foreground to refresh tokens if needed
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          // Check notification setup and refresh if needed
+          NotificationService().isNotificationSetupComplete().then((isComplete) {
+            if (!isComplete) {
+              print('🔄 Notification setup incomplete, attempting refresh...');
+              NotificationService().refreshFCMToken();
+            }
+          });
+        }
+      });
+    });
   }
 
   @override
   void dispose() {
     // Unregister when the app is disposed
     WidgetsBinding.instance.removeObserver(this);
+    NotificationService().dispose();
     super.dispose();
   }
 
@@ -73,8 +110,20 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       // App is going to background
       _wasInBackground = true;
     } else if (state == AppLifecycleState.resumed && _wasInBackground) {
-      // App is coming from background (not just an overlay or notification)
+      // App is coming from background
       _wasInBackground = false;
+      
+      // Check notification setup when coming back from background
+      if (!kIsWeb) {
+        Future.delayed(const Duration(milliseconds: 100), () {
+          NotificationService().isNotificationSetupComplete().then((isComplete) {
+            if (!isComplete) {
+              print('🔄 App resumed, refreshing notification setup...');
+              NotificationService().refreshFCMToken();
+            }
+          });
+        });
+      }
       
       // Schedule a rebuild, but do it gently with a short delay
       // This prevents jittery behavior during normal app interactions
@@ -101,9 +150,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           return MaterialApp(
             title: 'Synoptic',
             theme: AppTheme.getTheme(),
-            home: Scaffold(
+            home: const Scaffold(
               body: Center(
-                child: CircularProgressIndicator(),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Initializing...'),
+                  ],
+                ),
               ),
             ),
           );
@@ -131,6 +187,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               Locale('zh'),
               Locale('ja'),
             ],
+            // Uncomment if you create the debug page
+            routes: {
+              '/notification-debug': (context) => const NotificationDebugPage(),
+            },
             home: const WidgetTree(),
           );
         }
@@ -156,6 +216,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             Locale('zh'),
             Locale('ja'),
           ],
+          // Uncomment if you create the debug page
+          routes: {
+            '/notification-debug': (context) => const NotificationDebugPage(),
+          },
           home: const WidgetTree(),
         );
       },

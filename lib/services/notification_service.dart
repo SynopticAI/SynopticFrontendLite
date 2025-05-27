@@ -183,15 +183,18 @@ class NotificationService {
         
         // For iOS, check APNS token first
         if (Platform.isIOS) {
-          final apnsToken = await _fcm.getAPNSToken();
-          print('📱 APNS Token available: ${apnsToken != null}');
-          
-          if (apnsToken == null && attempt < maxRetries) {
-            print('⏳ APNS token not ready, waiting...');
+        final apnsToken = await _fcm.getAPNSToken();
+        print('🍎 APNS Token (attempt $attempt): ${apnsToken}'); // More logging
+        if (apnsToken == null) {
+          if (attempt < maxRetries) {
+            print('⏳ APNS token not ready, waiting for attempt ${attempt + 1}...');
             await Future.delayed(baseDelay * attempt);
-            continue;
+            continue; // Crucial: Skip to next iteration if APNS token is null
+          } else {
+            print('❌ APNS token still null after $maxRetries retries. FCM token will likely fail.');
           }
         }
+      }
         
         // Get FCM token
         _fcmToken = await _fcm.getToken();

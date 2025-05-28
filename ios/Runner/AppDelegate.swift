@@ -33,11 +33,6 @@ import UserNotifications
     // Set notification center delegate
     UNUserNotificationCenter.current().delegate = self
     
-    // Configure foreground presentation options
-    Messaging.messaging().setForegroundNotificationPresentationOptions(
-      [.alert, .badge, .sound]
-    )
-    
     // Request notification permissions
     UNUserNotificationCenter.current().requestAuthorization(
       options: [.alert, .badge, .sound]

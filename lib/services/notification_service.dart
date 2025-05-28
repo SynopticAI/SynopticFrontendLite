@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:ai_device_manager/utils/cloud_logger.dart'; // Add this import
+import 'package:flutter/services.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -35,7 +36,7 @@ class NotificationService {
       await _initializeDeviceIdentifier();
       
       if (Platform.isIOS) {
-        await _setupiOSNotificationsEnhanced();
+        await _setupiOSNotificationsWithProductionFix();
       } else {
         await _setupAndroidPermissions();
       }
@@ -55,12 +56,12 @@ class NotificationService {
   }
 
   /// Enhanced iOS setup with cloud logging
-  Future<void> _setupiOSNotificationsEnhanced() async {
+  Future<void> _setupiOSNotificationsWithProductionFix() async {
     try {
-      await _cloudLogger.logNotification('🍎 Setting up iOS notifications...');
-      print('🍎 Setting up iOS notifications with enhanced debugging...');
+      await _cloudLogger.logNotification('🍎 Setting up iOS notifications with production fix...');
+      print('🍎 Setting up iOS notifications with production fix...');
       
-      // Step 1: Check current authorization first
+      // Step 1: Check current authorization
       final initialSettings = await _fcm.getNotificationSettings();
       await _cloudLogger.logNotification('📋 Initial authorization: ${initialSettings.authorizationStatus}');
       print('📋 Initial authorization: ${initialSettings.authorizationStatus}');
@@ -74,37 +75,42 @@ class NotificationService {
       await _cloudLogger.logNotification('✅ FCM foreground options configured');
       print('✅ FCM foreground options configured');
       
-      // Step 3: Request permissions with explicit options
+      // Step 3: Request permissions
       final settings = await _fcm.requestPermission(
         alert: true,
         badge: true,
         sound: true,
         provisional: false,
-        announcement: false,
-        carPlay: false,
-        criticalAlert: false,
       );
       
       await _cloudLogger.logNotification('🔔 Permission result: ${settings.authorizationStatus}');
-      await _cloudLogger.logNotification('🚨 Alert enabled: ${settings.alert}');
-      await _cloudLogger.logNotification('🔢 Badge enabled: ${settings.badge}');
-      await _cloudLogger.logNotification('🔊 Sound enabled: ${settings.sound}');
-      
       print('🔔 Permission result: ${settings.authorizationStatus}');
-      print('🚨 Alert enabled: ${settings.alert}');
-      print('🔢 Badge enabled: ${settings.badge}');
-      print('🔊 Sound enabled: ${settings.sound}');
       
       if (settings.authorizationStatus == AuthorizationStatus.denied) {
-        await _cloudLogger.logError('❌ User denied notification permissions - APNS token will not be generated');
-        print('❌ User denied notification permissions - APNS token will not be generated');
+        await _cloudLogger.logError('❌ User denied notification permissions');
         return;
       }
       
-      // Step 4: Wait for iOS to process permissions
-      await _cloudLogger.logNotification('⏳ Waiting for iOS to process permissions...');
-      print('⏳ Waiting for iOS to process permissions...');
-      await Future.delayed(const Duration(seconds: 2));
+      // Step 4: CRITICAL - Explicitly register for remote notifications
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        await _cloudLogger.logNotification('🚀 EXPLICITLY registering for remote notifications...');
+        print('🚀 EXPLICITLY registering for remote notifications...');
+        
+        // Use method channel to call iOS registerForRemoteNotifications
+        try {
+          const platform = MethodChannel('flutter.io/notifications');
+          await platform.invokeMethod('registerForRemoteNotifications');
+          await _cloudLogger.logNotification('✅ Called iOS registerForRemoteNotifications via method channel');
+          print('✅ Called iOS registerForRemoteNotifications via method channel');
+        } catch (e) {
+          await _cloudLogger.logError('❌ Method channel call failed', e);
+          print('❌ Method channel call failed: $e');
+        }
+      }
+      
+      // Step 5: Wait longer for iOS processing
+      await _cloudLogger.logNotification('⏳ Waiting for iOS to process registration...');
+      await Future.delayed(const Duration(seconds: 5));
       
     } catch (e) {
       await _cloudLogger.logError('❌ iOS setup error', e);

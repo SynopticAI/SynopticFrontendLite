@@ -5,11 +5,11 @@
   "targets": {
     "aimanagerfirebasebackend": {
       "hosting": {
-        "app": [
-          "synoptic-vision-app"
+        "console": [
+          "aimanagerfirebasebackend"
         ],
-        "main": [
-          "synoptic-vision"
+        "shop": [
+          "synoptic-shop"
         ]
       }
     }

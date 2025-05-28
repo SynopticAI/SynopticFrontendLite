@@ -56,7 +56,7 @@
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>This app may use Bluetooth to connect to nearby devices for enhanced functionality.</string>
 	<key>FirebaseAppDelegateProxyEnabled</key>
-	<false/>
+	<true/>
 	<key>GoogleServiceFile</key>
 	<string>GoogleService-Info.plist</string>
 	<key>UIBackgroundModes</key>

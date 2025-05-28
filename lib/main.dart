@@ -15,6 +15,13 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 // Add this debug import - you'll need to create this file or comment out if not using
 import 'package:ai_device_manager/pages/notification_debug_page.dart';
+import 'package:ai_device_manager/utils/cloud_logger.dart';
+
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  print('📨 Background message received: ${message.messageId}');
+  // Handle background message if needed
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -107,8 +114,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
-      // App is going to background
+      // App is going to background - upload logs
       _wasInBackground = true;
+      
+      // Upload cloud logs when app goes to background
+      if (!kIsWeb) {
+        CloudLogger().uploadOnAppPause();
+        NotificationService().dispose(); // This also triggers log upload
+      }
     } else if (state == AppLifecycleState.resumed && _wasInBackground) {
       // App is coming from background
       _wasInBackground = false;

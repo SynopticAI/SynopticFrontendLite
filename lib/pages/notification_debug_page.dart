@@ -1,4 +1,4 @@
-// lib/pages/notification_debug_page.dart
+// lib/pages/notification_debug_page.dart - Updated with Cloud Logging
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ai_device_manager/services/notification_service.dart';
@@ -116,6 +116,22 @@ class _NotificationDebugPageState extends State<NotificationDebugPage> {
     await _loadNotificationStatus(showLoading: false);
   }
 
+  Future<void> _uploadDebugLogs() async {
+    _addToLog('📤 Uploading debug logs to cloud storage...');
+    setState(() => _isLoading = true);
+    try {
+      await _notificationService.uploadDebugLogs();
+      final user = FirebaseAuth.instance.currentUser;
+      _addToLog('✅ Debug logs uploaded successfully');
+      if (user != null) {
+        _addToLog('💡 Access logs at: Firebase Console → Storage → debug_logs/${user.uid}/');
+      }
+    } catch (e) {
+      _addToLog('❌ Error uploading logs: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
 
   Future<void> _testNotification() async {
     _addToLog('📨 Sending test notification...');
@@ -410,6 +426,12 @@ class _NotificationDebugPageState extends State<NotificationDebugPage> {
                         label: const Text('Get Local Token'),
                       ),
                       ElevatedButton.icon(
+                        onPressed: _isLoading ? null : _uploadDebugLogs,
+                        icon: const Icon(Icons.cloud_upload),
+                        label: const Text('Upload Logs'),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo),
+                      ),
+                      ElevatedButton.icon(
                         onPressed: _isLoading ? null : _testNotification,
                         icon: const Icon(Icons.send_to_mobile),
                         label: const Text('Send Test Push'),
@@ -473,6 +495,34 @@ class _NotificationDebugPageState extends State<NotificationDebugPage> {
                         ),
                       ),
                     ],
+                  ),
+                  
+                  // Add cloud logging info
+                  const SizedBox(height: 20),
+                  Card(
+                    color: Colors.blue[50],
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.cloud, color: Colors.blue),
+                              SizedBox(width: 8),
+                              Text('Cloud Logging', style: TextStyle(fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          const Text('Debug logs are automatically uploaded to Firebase Storage.'),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Access: Firebase Console → Storage → debug_logs/[user-id]/',
+                            style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: Colors.grey[700]),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),

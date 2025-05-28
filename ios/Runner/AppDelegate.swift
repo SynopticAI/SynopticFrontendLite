@@ -33,6 +33,11 @@ import UserNotifications
     // Set notification center delegate
     UNUserNotificationCenter.current().delegate = self
     
+    // Configure foreground presentation options
+    Messaging.messaging().setForegroundNotificationPresentationOptions(
+      [.alert, .badge, .sound]
+    )
+    
     // Request notification permissions
     UNUserNotificationCenter.current().requestAuthorization(
       options: [.alert, .badge, .sound]
@@ -56,7 +61,16 @@ import UserNotifications
   ) {
     print("✅ APNS Token received: \(deviceToken.map { String(format: "%02.2hhx", $0) }.joined())")
     
-    // Set APNS token for Firebase
+    // CRITICAL FIX: Set APNS token type based on build configuration
+    #if DEBUG
+    print("🔧 Setting APNS token type: SANDBOX (Development)")
+    Messaging.messaging().setAPNSToken(deviceToken, type: .sandbox)
+    #else
+    print("🔧 Setting APNS token type: PRODUCTION (Release/TestFlight)")
+    Messaging.messaging().setAPNSToken(deviceToken, type: .prod)
+    #endif
+    
+    // Also set the token without type for fallback
     Messaging.messaging().apnsToken = deviceToken
     
     // Call super to ensure Flutter plugins get the token

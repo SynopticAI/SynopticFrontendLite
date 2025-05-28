@@ -31,25 +31,29 @@ import UserNotifications
     Messaging.messaging().delegate = self
     
     // Set notification center delegate
-    UNUserNotificationCenter.current().delegate = self
-    
-    // Configure foreground presentation options
-    Messaging.messaging().setForegroundNotificationPresentationOptions(
-      [.alert, .badge, .sound]
-    )
+    if #available(iOS 10.0, *) {
+      UNUserNotificationCenter.current().delegate = self
+    }
     
     // Request notification permissions
-    UNUserNotificationCenter.current().requestAuthorization(
-      options: [.alert, .badge, .sound]
-    ) { granted, error in
-      print("Notification permission granted: \(granted)")
-      if let error = error {
-        print("Notification permission error: \(error)")
+    if #available(iOS 10.0, *) {
+      UNUserNotificationCenter.current().requestAuthorization(
+        options: [.alert, .badge, .sound]
+      ) { granted, error in
+        print("Notification permission granted: \(granted)")
+        if let error = error {
+          print("Notification permission error: \(error)")
+        }
+        
+        DispatchQueue.main.async {
+          application.registerForRemoteNotifications()
+        }
       }
-      
-      DispatchQueue.main.async {
-        application.registerForRemoteNotifications()
-      }
+    } else {
+      // Fallback for iOS 9
+      let settings = UIUserNotificationSettings(types: [.alert, .badge, .sound], categories: nil)
+      application.registerUserNotificationSettings(settings)
+      application.registerForRemoteNotifications()
     }
   }
   
@@ -59,7 +63,8 @@ import UserNotifications
     _ application: UIApplication,
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
   ) {
-    print("✅ APNS Token received: \(deviceToken.map { String(format: "%02.2hhx", $0) }.joined())")
+    let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+    print("✅ APNS Token received: \(tokenString)")
     
     // CRITICAL FIX: Set APNS token type based on build configuration
     #if DEBUG
@@ -70,7 +75,7 @@ import UserNotifications
     Messaging.messaging().setAPNSToken(deviceToken, type: .prod)
     #endif
     
-    // Also set the token without type for fallback
+    // Also set the token without type for fallback compatibility
     Messaging.messaging().apnsToken = deviceToken
     
     // Call super to ensure Flutter plugins get the token
@@ -85,8 +90,9 @@ import UserNotifications
     super.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
   }
   
-  // MARK: - UNUserNotificationCenterDelegate
+  // MARK: - UNUserNotificationCenterDelegate (iOS 10+)
   
+  @available(iOS 10.0, *)
   override func userNotificationCenter(
     _ center: UNUserNotificationCenter,
     willPresent notification: UNNotification,
@@ -103,6 +109,7 @@ import UserNotifications
     }
   }
   
+  @available(iOS 10.0, *)
   override func userNotificationCenter(
     _ center: UNUserNotificationCenter,
     didReceive response: UNNotificationResponse,
@@ -110,7 +117,26 @@ import UserNotifications
   ) {
     let userInfo = response.notification.request.content.userInfo
     print("👆 Notification tapped: \(userInfo)")
+    
+    // Handle notification tap if needed
+    // You can add navigation logic here based on userInfo
+    
     completionHandler()
+  }
+  
+  // MARK: - Legacy notification handling (iOS 9)
+  
+  override func application(
+    _ application: UIApplication,
+    didReceiveRemoteNotification userInfo: [AnyHashable : Any],
+    fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+  ) {
+    print("📨 Legacy remote notification: \(userInfo)")
+    
+    // Handle the notification
+    // This method is called for iOS 9 and as fallback for iOS 10+
+    
+    completionHandler(.newData)
   }
 }
 
@@ -120,6 +146,18 @@ extension AppDelegate: MessagingDelegate {
     print("✅ FCM Token received: \(fcmToken?.prefix(20) ?? "nil")...")
     
     let dataDict: [String: String] = ["token": fcmToken ?? ""]
+    NotificationCenter.default.post(
+      name: Notification.Name("FCMToken"),
+      object: nil,
+      userInfo: dataDict
+    )
+  }
+  
+  // Optional: Handle token refresh
+  func messaging(_ messaging: Messaging, didRefreshRegistrationToken fcmToken: String) {
+    print("🔄 FCM Token refreshed: \(fcmToken.prefix(20))...")
+    
+    let dataDict: [String: String] = ["token": fcmToken]
     NotificationCenter.default.post(
       name: Notification.Name("FCMToken"),
       object: nil,

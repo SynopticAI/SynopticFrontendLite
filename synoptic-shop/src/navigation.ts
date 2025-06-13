@@ -1,3 +1,4 @@
+// src/navigation.ts - Updated with products page link
 import { getPermalink} from './utils/permalinks';
 
 export const headerData = {
@@ -5,6 +6,10 @@ export const headerData = {
     {
       text: 'Products',
       links: [
+        {
+          text: 'All Products',
+          href: getPermalink('/products'),
+        },
         {
           text: 'Starter Kit',
           href: getPermalink('/products/starter-kit'),
@@ -62,6 +67,7 @@ export const footerData = {
     {
       title: 'Products',
       links: [
+        { text: 'All Products', href: '/products' },
         { text: 'Starter Kit', href: '/products/starter-kit' },
         { text: 'Synopticam', href: '/products/synopticam' },
         { text: 'Inference Credits', href: '/products/inference-credits' },

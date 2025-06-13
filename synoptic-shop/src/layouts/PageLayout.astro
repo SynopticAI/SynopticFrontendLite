@@ -1,11 +1,11 @@
 ---
-import Layout from '~/layouts/Layout.astro';
+// src/layouts/PageLayout.astro - Updated to include Firebase Auth
+import Layout from './Layout.astro';
 import Header from '~/components/widgets/Header.astro';
 import Footer from '~/components/widgets/Footer.astro';
-import Announcement from '~/components/widgets/Announcement.astro';
+import AuthModal from '~/components/auth/AuthModal.astro';
 
 import { headerData, footerData } from '~/navigation';
-
 import type { MetaData } from '~/types';
 
 export interface Props {
@@ -16,16 +16,71 @@ const { metadata } = Astro.props;
 ---
 
 <Layout metadata={metadata}>
-  <slot name="announcement">
-    <Announcement />
-  </slot>
   <slot name="header">
-    <Header {...headerData} isSticky showRssFeed showToggleTheme />
+    <Header {...headerData} isSticky showToggleTheme />
   </slot>
+  
   <main>
     <slot />
   </main>
+  
   <slot name="footer">
     <Footer {...footerData} />
   </slot>
+
+  <!-- Firebase Auth Modal -->
+  <AuthModal />
 </Layout>
+
+<!-- Firebase and Auth Scripts -->
+<script>
+  // Import Firebase auth handler
+  import('../scripts/auth-handler.js');
+</script>
+
+<!-- Update Header Component Integration -->
+<style>
+  /* Add this to your Header.astro component where you want the auth section */
+  /*
+  In your Header.astro, add this where you want the auth buttons to appear:
+  
+  ---
+  import AuthHeader from '~/components/auth/AuthHeader.astro';
+  ---
+  
+  // Inside your header navigation:
+  <AuthHeader />
+  
+  */
+</style>
+
+<!-- Example Header Integration Code -->
+<!-- 
+Add this to your existing Header.astro component:
+
+<div class="header-auth-section">
+  <AuthHeader />
+</div>
+
+And update your header styles to accommodate the auth section.
+-->
+
+<script is:inline>
+  // Initialize auth state management
+  window.addEventListener('load', function() {
+    console.log('🔥 Firebase Auth initialized for Synoptic Shop');
+    
+    // Check for URL parameters for auth redirects
+    const urlParams = new URLSearchParams(window.location.search);
+    const authAction = urlParams.get('auth');
+    
+    if (authAction === 'signin' || authAction === 'signup') {
+      // Auto-open auth modal if redirected from Flutter app
+      setTimeout(() => {
+        if (window.authHandler) {
+          window.authHandler.openModal(authAction);
+        }
+      }, 500);
+    }
+  });
+</script>

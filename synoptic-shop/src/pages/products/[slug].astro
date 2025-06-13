@@ -108,7 +108,7 @@ const pageDescription = showError ? 'The requested product could not be found.' 
         <!-- Product Images with Working Zoom -->
         <div class="space-y-4">
           <!-- Main Image with Modal Trigger -->
-          <div class="aspect-square overflow-hidden rounded-lg bg-gray-100 relative group cursor-pointer" id="main-image-container">
+          <div class="aspect-square overflow-hidden rounded-lg bg-gray-100 relative group cursor-pointer zoom-trigger">
             <img 
               id="main-image"
               src={productImages[0]} 
@@ -439,15 +439,15 @@ const pageDescription = showError ? 'The requested product could not be found.' 
   }
   
   /* Modal styling */
-  #image-modal.show {
-    display: flex;
+  #image-modal {
+    display: none;
   }
 </style>
 
 <script>
   // Image zoom functionality
   document.addEventListener('DOMContentLoaded', function() {
-    const mainImageContainer = document.getElementById('main-image-container');
+    const zoomTrigger = document.querySelector('.zoom-trigger');
     const mainImage = document.getElementById('main-image');
     const modal = document.getElementById('image-modal');
     const modalImage = document.getElementById('modal-image');
@@ -455,13 +455,13 @@ const pageDescription = showError ? 'The requested product could not be found.' 
     const galleryThumbs = document.querySelectorAll('.gallery-thumb img');
     
     // Open modal on main image click
-    if (mainImageContainer && modal && modalImage) {
-      mainImageContainer.addEventListener('click', function() {
+    if (zoomTrigger && modal && modalImage && mainImage) {
+      zoomTrigger.addEventListener('click', function() {
         const imageSrc = mainImage.src;
         const imageAlt = mainImage.alt;
         modalImage.src = imageSrc;
         modalImage.alt = imageAlt;
-        modal.classList.add('show');
+        modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
       });
     }
@@ -469,22 +469,22 @@ const pageDescription = showError ? 'The requested product could not be found.' 
     // Close modal
     if (closeModal && modal) {
       closeModal.addEventListener('click', function() {
-        modal.classList.remove('show');
+        modal.style.display = 'none';
         document.body.style.overflow = '';
       });
       
       // Close on backdrop click
       modal.addEventListener('click', function(e) {
         if (e.target === modal) {
-          modal.classList.remove('show');
+          modal.style.display = 'none';
           document.body.style.overflow = '';
         }
       });
       
       // Close on escape key
       document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && modal.classList.contains('show')) {
-          modal.classList.remove('show');
+        if (e.key === 'Escape' && modal.style.display === 'flex') {
+          modal.style.display = 'none';
           document.body.style.overflow = '';
         }
       });
@@ -504,18 +504,20 @@ const pageDescription = showError ? 'The requested product could not be found.' 
     const quantityInput = document.getElementById('quantity');
     const quantityBtns = document.querySelectorAll('.quantity-btn');
     
-    quantityBtns.forEach(btn => {
-      btn.addEventListener('click', function() {
-        const action = this.getAttribute('data-action');
-        let currentValue = parseInt(quantityInput.value) || 1;
-        
-        if (action === 'increase' && currentValue < 99) {
-          quantityInput.value = currentValue + 1;
-        } else if (action === 'decrease' && currentValue > 1) {
-          quantityInput.value = currentValue - 1;
-        }
+    if (quantityInput && quantityBtns.length > 0) {
+      quantityBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+          const action = this.getAttribute('data-action');
+          let currentValue = parseInt(quantityInput.value) || 1;
+          
+          if (action === 'increase' && currentValue < 99) {
+            quantityInput.value = currentValue + 1;
+          } else if (action === 'decrease' && currentValue > 1) {
+            quantityInput.value = currentValue - 1;
+          }
+        });
       });
-    });
+    }
     
     // Product options price updates
     const optionSelects = document.querySelectorAll('.option-select');
@@ -545,13 +547,17 @@ const pageDescription = showError ? 'The requested product could not be found.' 
     }
     
     // Attach price update listeners
-    optionSelects.forEach(select => {
-      select.addEventListener('change', updatePrice);
-    });
+    if (optionSelects.length > 0) {
+      optionSelects.forEach(select => {
+        select.addEventListener('change', updatePrice);
+      });
+    }
     
-    optionRadios.forEach(radio => {
-      radio.addEventListener('change', updatePrice);
-    });
+    if (optionRadios.length > 0) {
+      optionRadios.forEach(radio => {
+        radio.addEventListener('change', updatePrice);
+      });
+    }
     
     // Add to cart functionality (placeholder)
     const addToCartBtn = document.getElementById('add-to-cart-btn');
@@ -574,7 +580,7 @@ const pageDescription = showError ? 'The requested product could not be found.' 
           }
         });
         
-        const quantity = parseInt(quantityInput.value) || 1;
+        const quantity = parseInt(quantityInput?.value) || 1;
         
         console.log('Selected options:', selectedOptions);
         console.log('Quantity:', quantity);

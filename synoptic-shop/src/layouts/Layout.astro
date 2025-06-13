@@ -1,7 +1,6 @@
 ---
+// src/layouts/Layout.astro - Complete base layout with Firebase Auth integration
 import '~/assets/styles/tailwind.css';
-
-import { I18N } from 'astrowind:config';
 
 import CommonMeta from '~/components/common/CommonMeta.astro';
 import Favicons from '~/components/Favicons.astro';
@@ -11,22 +10,22 @@ import Metadata from '~/components/common/Metadata.astro';
 import SiteVerification from '~/components/common/SiteVerification.astro';
 import Analytics from '~/components/common/Analytics.astro';
 import BasicScripts from '~/components/common/BasicScripts.astro';
+import AuthModal from '~/components/auth/AuthModal.astro';
 
-// Comment the line below to disable View Transitions
-import { ClientRouter } from 'astro:transitions';
-
-import type { MetaData as MetaDataType } from '~/types';
+import { MetaData } from '~/types';
+import { getAsset } from '~/utils/permalinks';
 
 export interface Props {
-  metadata?: MetaDataType;
+  metadata?: MetaData;
 }
 
 const { metadata = {} } = Astro.props;
-const { language, textDirection } = I18N;
+
+const { language, textDirection } = metadata;
 ---
 
 <!doctype html>
-<html lang={language} dir={textDirection} class="2xl:text-[20px]">
+<html lang={language || 'en'} dir={textDirection || 'ltr'} class="2xl:text-[20px]">
   <head>
     <CommonMeta />
     <Favicons />
@@ -36,13 +35,186 @@ const { language, textDirection } = I18N;
     <SiteVerification />
     <Analytics />
 
-    <!-- Comment the line below to disable View Transitions -->
-    <ClientRouter fallback="swap" />
+    <!-- Firebase SDK -->
+    <script type="module">
+      // Import Firebase modules
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+      import { getAuth, connectAuthEmulator } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+      
+      // Initialize Firebase early for better SSO experience
+      const firebaseConfig = {
+        apiKey: 'AIzaSyBSUx6kTj34uo7vqcVml0NA4s4_miTTcR0',
+        authDomain: 'aimanagerfirebasebackend.firebaseapp.com',
+        projectId: 'aimanagerfirebasebackend',
+        storageBucket: 'aimanagerfirebasebackend.firebasestorage.app',
+        messagingSenderId: '723311357828',
+        appId: '1:723311357828:web:d55617cf5b0a5282ab37d1',
+        measurementId: 'G-GF71C63N9P'
+      };
+      
+      // Store config globally for the auth module
+      window.__FIREBASE_CONFIG__ = firebaseConfig;
+      
+      // Pre-initialize Firebase for faster auth state detection
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      
+      // Make auth available globally for debugging if needed
+      window.__FIREBASE_AUTH__ = auth;
+    </script>
   </head>
 
   <body class="antialiased text-default bg-page tracking-tight">
     <slot />
 
+    <!-- Firebase Auth Modal -->
+    <AuthModal />
+
+    <!-- Load auth handler after DOM is ready -->
+    <script>
+      // Dynamic import of auth handler to avoid loading issues
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+          import('/src/scripts/auth-handler.js').catch(err => {
+            console.warn('Auth handler not loaded:', err);
+          });
+        });
+      } else {
+        import('/src/scripts/auth-handler.js').catch(err => {
+          console.warn('Auth handler not loaded:', err);
+        });
+      }
+    </script>
+
+    <!-- Auth state management for SSO -->
+    <script>
+      // Handle auth redirects and SSO detection
+      window.addEventListener('load', function() {
+        console.log('🔥 Firebase Auth SSO initialized');
+        
+        // Check for URL parameters for auth redirects from Flutter app
+        const urlParams = new URLSearchParams(window.location.search);
+        const authAction = urlParams.get('auth');
+        
+        if (authAction === 'signin' || authAction === 'signup') {
+          // Auto-open auth modal if redirected from Flutter app
+          setTimeout(() => {
+            if (window.authHandler) {
+              window.authHandler.openModal(authAction);
+              
+              // Clean up URL without refreshing
+              const cleanUrl = window.location.pathname;
+              window.history.replaceState({}, document.title, cleanUrl);
+            }
+          }, 1000);
+        }
+
+        // Check for existing auth state for SSO
+        if (window.__FIREBASE_AUTH__) {
+          window.__FIREBASE_AUTH__.onAuthStateChanged((user) => {
+            if (user) {
+              console.log('🔐 User authenticated via SSO:', user.email);
+              
+              // Store user info for cart integration
+              sessionStorage.setItem('synoptic_user', JSON.stringify({
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                emailVerified: user.emailVerified
+              }));
+            } else {
+              // Clear stored user data on sign out
+              sessionStorage.removeItem('synoptic_user');
+            }
+          });
+        }
+      });
+
+      // Handle messages from Flutter app for cross-platform auth
+      window.addEventListener('message', function(event) {
+        // Only accept messages from trusted origins
+        const trustedOrigins = [
+          'https://app.synoptic.vision',
+          'https://aimanagerfirebasebackend.web.app',
+          'https://aimanagerfirebasebackend.firebaseapp.com'
+        ];
+        
+        if (trustedOrigins.includes(event.origin)) {
+          if (event.data.type === 'AUTH_SUCCESS') {
+            // Refresh auth state if notified by Flutter app
+            if (window.__FIREBASE_AUTH__) {
+              window.__FIREBASE_AUTH__.currentUser?.reload();
+            }
+          }
+        }
+      });
+    </script>
+
     <BasicScripts />
+
+    <style is:global>
+      img {
+        content-visibility: auto;
+      }
+
+      /* Loading states for auth components */
+      .auth-loading {
+        opacity: 0.6;
+        pointer-events: none;
+      }
+
+      /* Smooth transitions for auth UI */
+      .auth-transition {
+        transition: all 0.2s ease-in-out;
+      }
+
+      /* Firebase auth specific styles */
+      .firebase-auth-container {
+        position: relative;
+      }
+
+      .firebase-auth-container.loading::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+      }
+
+      /* Ensure proper z-index for auth modal */
+      .auth-modal {
+        z-index: 9999;
+      }
+
+      /* Custom scrollbar for better UX */
+      .auth-modal-content {
+        scrollbar-width: thin;
+        scrollbar-color: rgb(156, 163, 175) rgb(243, 244, 246);
+      }
+
+      .auth-modal-content::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .auth-modal-content::-webkit-scrollbar-track {
+        background: rgb(243, 244, 246);
+        border-radius: 3px;
+      }
+
+      .auth-modal-content::-webkit-scrollbar-thumb {
+        background: rgb(156, 163, 175);
+        border-radius: 3px;
+      }
+
+      .auth-modal-content::-webkit-scrollbar-thumb:hover {
+        background: rgb(107, 114, 128);
+      }
+    </style>
   </body>
 </html>

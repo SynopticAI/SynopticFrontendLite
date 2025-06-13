@@ -110,7 +110,11 @@ const metadata = {
       <!-- Products Grid -->
       <div class="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
         {productCards.map((product) => (
-          <div class="group relative bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+          <a 
+            href={product.href}
+            class="group relative bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 block"
+            aria-label={`View details for ${product.name}`}
+          >
             
             <!-- Product Image -->
             <div class="aspect-square overflow-hidden bg-gray-100 relative">
@@ -207,20 +211,18 @@ const metadata = {
                 )}
               </div>
               
-              <!-- CTA Button -->
-              <a 
-                href={product.href}
-                class={`block w-full text-center py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+              <!-- CTA Button Visual (no longer functional since whole card is clickable) -->
+              <div 
+                class={`w-full text-center py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
                   product.inStock 
-                    ? 'bg-primary text-white hover:bg-primary-dark hover:shadow-md active:transform active:scale-95' 
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    ? 'bg-primary text-white group-hover:bg-primary-dark group-hover:shadow-md' 
+                    : 'bg-gray-100 text-gray-400'
                 }`}
-                aria-label={`View details for ${product.name}`}
               >
                 {product.inStock ? 'View Details' : 'View Product'}
-              </a>
+              </div>
             </div>
-          </div>
+          </a>
         ))}
       </div>
     )}

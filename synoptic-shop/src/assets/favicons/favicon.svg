@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="favicon" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 879.43 879.43">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #3b3b3b;
+      }
+
+      .cls-2, .cls-3 {
+        fill: #231f20;
+      }
+
+      .cls-4 {
+        fill: url(#radial-gradient);
+      }
+
+      .cls-5 {
+        fill: url(#radial-gradient-2);
+      }
+
+      .cls-6 {
+        fill: none;
+        stroke-miterlimit: 10;
+      }
+
+      .cls-6, .cls-3 {
+        stroke: #231f20;
+        stroke-linecap: round;
+        stroke-width: 60px;
+      }
+
+      .cls-3 {
+        stroke-linejoin: round;
+      }
+
+      .cls-7 {
+        fill: url(#linear-gradient);
+      }
+    </style>
+    <radialGradient id="radial-gradient" cx="437.42" cy="439.89" fx="437.42" fy="439.89" r="259.91" gradientUnits="userSpaceOnUse">
+      <stop offset=".71" stop-color="#131213" stop-opacity="0"/>
+      <stop offset=".85" stop-color="#131213"/>
+    </radialGradient>
+    <radialGradient id="radial-gradient-2" cx="442.17" cy="443.45" fx="429.24" fy="480.18" r="188.84" gradientTransform="translate(890.83 883.71) rotate(179.16)" gradientUnits="userSpaceOnUse">
+      <stop offset=".72" stop-color="#131213"/>
+      <stop offset=".91" stop-color="#131213" stop-opacity=".14"/>
+      <stop offset=".94" stop-color="#131213" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="linear-gradient" x1="296.62" y1="439.71" x2="582.81" y2="439.71" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3ac1d1"/>
+      <stop offset=".63" stop-color="#3572ab"/>
+      <stop offset="1" stop-color="#334998"/>
+    </linearGradient>
+  </defs>
+  <g id="V1Shadow">
+    <rect class="cls-1" x="185.37" y="389.75" width="242.01" height="99.92"/>
+    <path class="cls-4" d="M257.76,389.75c-10.39,32.99-10.5,66.88-.34,99.92h-57.36v-99.92h57.7Z"/>
+    <path class="cls-5" d="M274.57,389.75c-13.14,32.99-13.28,66.88-.43,99.92h64.15v-99.92h-63.72Z"/>
+  </g>
+  <circle class="cls-7" cx="439.71" cy="439.71" r="143.09"/>
+  <circle class="cls-2" cx="439.71" cy="439.71" r="70.65"/>
+  <path class="cls-6" d="M507.14,685.02c-21.47,5.89-44.08,9.03-67.43,9.03-140.47,0-254.34-113.87-254.34-254.34s113.87-254.34,254.34-254.34c23.34,0,45.95,3.14,67.43,9.03"/>
+  <path class="cls-3" d="M613.63,254.13c59.18,44.03,149.38,186,233.24,185.59-83.87-.41-174.07,141.55-233.24,185.59,49.5-46.4,80.42-112.38,80.42-185.59s-30.93-139.18-80.42-185.59Z"/>
+  <path class="cls-3" d="M265.8,625.3c-59.18-44.03-149.38-186-233.24-185.59,83.87.41,174.07-141.55,233.24-185.59-49.5,46.4-80.42,112.38-80.42,185.59s30.93,139.18,80.42,185.59Z"/>
+</svg>

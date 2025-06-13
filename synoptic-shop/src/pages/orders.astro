@@ -1,0 +1,262 @@
+---
+// src/pages/orders.astro - My Orders page
+import PageLayout from '~/layouts/PageLayout.astro';
+
+const metadata = {
+  title: 'My Orders | Synoptic',
+  description: 'View and manage your Synoptic orders'
+};
+---
+
+<PageLayout metadata={metadata}>
+  <!-- Orders Page Content -->
+  <section class="px-4 py-16 mx-auto max-w-6xl lg:px-8 lg:py-20">
+    
+    <!-- Page Header -->
+    <div class="mb-8">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900 lg:text-4xl mb-2">
+            My Orders
+          </h1>
+          <p class="text-gray-600">
+            Track and manage your Synoptic purchases
+          </p>
+        </div>
+        
+        <!-- Search and Filters -->
+        <div class="mt-6 md:mt-0 flex flex-col sm:flex-row gap-4">
+          <!-- Search -->
+          <div class="relative">
+            <input 
+              type="text" 
+              id="order-search"
+              placeholder="Search orders..."
+              class="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+            <svg class="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+          
+          <!-- Status Filter -->
+          <select 
+            id="status-filter"
+            class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+          >
+            <option value="">All Orders</option>
+            <option value="pending">Pending</option>
+            <option value="delivery_pending">Processing</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+            <option value="canceled">Canceled</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Auth Check Message -->
+    <div id="auth-required" class="hidden text-center py-16">
+      <div class="max-w-md mx-auto">
+        <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+        </svg>
+        <h2 class="text-xl font-semibold text-gray-900 mb-2">Sign In Required</h2>
+        <p class="text-gray-600 mb-6">Please sign in to view your orders</p>
+        <button 
+          id="sign-in-button" 
+          class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+        >
+          Sign In
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="orders-loading" class="hidden text-center py-16">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+      <p class="text-gray-600">Loading your orders...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="orders-error" class="hidden text-center py-16">
+      <div class="max-w-md mx-auto">
+        <svg class="w-16 h-16 mx-auto text-red-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <h2 class="text-xl font-semibold text-gray-900 mb-2">Unable to Load Orders</h2>
+        <p class="text-gray-600 mb-6" id="error-message">Something went wrong while loading your orders.</p>
+        <button 
+          id="retry-button" 
+          class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+        >
+          Try Again
+        </button>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div id="orders-empty" class="hidden text-center py-16">
+      <div class="max-w-md mx-auto">
+        <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+        </svg>
+        <h2 class="text-xl font-semibold text-gray-900 mb-2">No Orders Yet</h2>
+        <p class="text-gray-600 mb-6">You haven't placed any orders. Start shopping to see your orders here.</p>
+        <a 
+          href="/products/starter-kit" 
+          class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors inline-block"
+        >
+          Start Shopping
+        </a>
+      </div>
+    </div>
+
+    <!-- Orders List -->
+    <div id="orders-list" class="hidden space-y-6">
+      <!-- Orders will be populated here -->
+    </div>
+
+    <!-- Pagination -->
+    <div id="orders-pagination" class="hidden mt-8 flex justify-center">
+      <nav class="flex items-center space-x-2">
+        <button 
+          id="prev-page" 
+          class="px-3 py-2 text-sm text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled
+        >
+          Previous
+        </button>
+        
+        <div id="page-numbers" class="flex space-x-1">
+          <!-- Page numbers will be populated here -->
+        </div>
+        
+        <button 
+          id="next-page" 
+          class="px-3 py-2 text-sm text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled
+        >
+          Next
+        </button>
+      </nav>
+    </div>
+  </section>
+
+  <!-- Order Details Modal -->
+  <div id="order-modal" class="fixed inset-0 z-50 hidden">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-black bg-opacity-50" id="order-modal-backdrop"></div>
+    
+    <!-- Modal Content -->
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 id="modal-title" class="text-xl font-semibold text-gray-900">
+            Order Details
+          </h2>
+          <button 
+            id="close-order-modal" 
+            class="text-gray-400 hover:text-gray-600 transition-colors"
+            aria-label="Close modal"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div id="modal-content" class="overflow-y-auto max-h-[calc(90vh-8rem)]">
+          <!-- Order details will be populated here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+</PageLayout>
+
+<style>
+  .text-primary {
+    color: rgb(51, 73, 152);
+  }
+  
+  .bg-primary {
+    background-color: rgb(51, 73, 152);
+  }
+  
+  .bg-primary-dark {
+    background-color: rgb(41, 63, 142);
+  }
+  
+  .focus\:ring-primary:focus {
+    --tw-ring-color: rgb(51, 73, 152);
+  }
+
+  /* Order card styles */
+  .order-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    transition: all 0.2s;
+  }
+
+  .order-card:hover {
+    border-color: rgb(51, 73, 152);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .order-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  /* Modal animation */
+  #order-modal.show {
+    display: block;
+  }
+
+  /* Responsive table styles */
+  .order-items-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .order-items-table th,
+  .order-items-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .order-items-table th {
+    background-color: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  @media (max-width: 768px) {
+    .order-items-table {
+      font-size: 0.875rem;
+    }
+    
+    .order-items-table th,
+    .order-items-table td {
+      padding: 0.5rem;
+    }
+  }
+</style>
+
+<script>
+  // Orders page functionality will be handled by orders-handler.js
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('📦 Orders page loaded');
+  });
+</script>

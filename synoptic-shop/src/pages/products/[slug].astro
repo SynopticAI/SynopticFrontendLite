@@ -1,5 +1,5 @@
 ---
-// src/pages/products/[slug].astro - Enhanced version with all fixes
+// src/pages/products/[slug].astro - Fixed version with proper product data exposure
 import Layout from '~/layouts/PageLayout.astro';
 import ProductError from '~/components/ProductError.astro';
 import { 
@@ -31,6 +31,7 @@ let hasError = false;
 
 try {
   product = await getProductBySlug(slug);
+  console.log('Product fetched for', slug, ':', product?.id || 'not found');
 } catch (error) {
   console.error(`Error fetching product ${slug}:`, error);
   hasError = true;
@@ -108,7 +109,7 @@ const pageDescription = showError ? 'The requested product could not be found.' 
         <!-- Product Images with Working Zoom -->
         <div class="space-y-4">
           <!-- Main Image with Modal Trigger -->
-          <div class="aspect-square overflow-hidden rounded-lg bg-gray-100 relative group cursor-pointer zoom-trigger">
+          <div class="aspect-square overflow-hidden rounded-lg bg-gray-100 relative group cursor-pointer" id="main-image-container">
             <img 
               id="main-image"
               src={productImages[0]} 
@@ -400,6 +401,28 @@ const pageDescription = showError ? 'The requested product could not be found.' 
 
 </Layout>
 
+<!-- CRITICAL: Make product data available to JavaScript -->
+{!showError && product && (
+  <script define:vars={{ product, productSlug: slug }}>
+    // Make product data available globally for cart integration
+    console.log('🛍️ Setting product data for cart:', product.id);
+    window.productData = {
+      id: product.id,
+      name: product.name,
+      slug: productSlug,
+      price: product.price,
+      currency: product.currency || 'EUR',
+      images: product.images || [],
+      options: product.options || [],
+      sku: product.sku,
+      stock_level: product.stock_level
+    };
+    
+    // Debug logging
+    console.log('✅ Product data set:', window.productData);
+  </script>
+)}
+
 <style>
   /* Synoptic Brand Colors */
   .text-primary {
@@ -439,267 +462,7 @@ const pageDescription = showError ? 'The requested product could not be found.' 
   }
   
   /* Modal styling */
-  #image-modal {
-    display: none;
+  #image-modal.show {
+    display: flex;
   }
 </style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Get product data from the page
-  const productSlug = window.location.pathname.split('/').pop();
-  let currentProduct = null;
-  
-  // Store product data globally for cart integration
-  if (typeof window.productData !== 'undefined') {
-    currentProduct = window.productData;
-  }
-
-  // Image zoom functionality (existing code)
-  const mainImageContainer = document.getElementById('main-image-container');
-  const mainImage = document.getElementById('main-image');
-  const modal = document.getElementById('image-modal');
-  const modalImage = document.getElementById('modal-image');
-  const closeModal = document.getElementById('close-modal');
-  const galleryThumbs = document.querySelectorAll('.gallery-thumb img');
-  
-  // Open modal on main image click
-  if (mainImageContainer && modal && modalImage) {
-    mainImageContainer.addEventListener('click', function() {
-      const imageSrc = mainImage.src;
-      const imageAlt = mainImage.alt;
-      modalImage.src = imageSrc;
-      modalImage.alt = imageAlt;
-      modal.classList.add('show');
-      document.body.style.overflow = 'hidden';
-    });
-  }
-  
-  // Close modal
-  if (closeModal && modal) {
-    closeModal.addEventListener('click', function() {
-      modal.classList.remove('show');
-      document.body.style.overflow = '';
-    });
-    
-    // Close on backdrop click
-    modal.addEventListener('click', function(e) {
-      if (e.target === modal) {
-        modal.classList.remove('show');
-        document.body.style.overflow = '';
-      }
-    });
-    
-    // Close on escape key
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape' && modal.classList.contains('show')) {
-        modal.classList.remove('show');
-        document.body.style.overflow = '';
-      }
-    });
-  }
-  
-  // Gallery thumbnail clicks
-  galleryThumbs.forEach(thumb => {
-    thumb.addEventListener('click', function() {
-      const fullImageSrc = this.getAttribute('data-full-image');
-      if (fullImageSrc && mainImage) {
-        mainImage.src = fullImageSrc;
-      }
-    });
-  });
-  
-  // Quantity controls
-  const quantityInput = document.getElementById('quantity');
-  const quantityBtns = document.querySelectorAll('.quantity-btn');
-  
-  quantityBtns.forEach(btn => {
-    btn.addEventListener('click', function() {
-      const action = this.getAttribute('data-action');
-      let currentValue = parseInt(quantityInput.value) || 1;
-      
-      if (action === 'increase' && currentValue < 99) {
-        quantityInput.value = currentValue + 1;
-      } else if (action === 'decrease' && currentValue > 1) {
-        quantityInput.value = currentValue - 1;
-      }
-    });
-  });
-  
-  // Product options price updates
-  const optionSelects = document.querySelectorAll('.option-select');
-  const optionRadios = document.querySelectorAll('.option-radio input[type="radio"]');
-  const displayPrice = document.getElementById('display-price');
-  
-  function updatePrice() {
-    // This would calculate price based on selected options
-    // Implementation depends on your exact product structure
-  }
-  
-  // Attach price update listeners
-  optionSelects.forEach(select => {
-    select.addEventListener('change', updatePrice);
-  });
-  
-  optionRadios.forEach(radio => {
-    radio.addEventListener('change', updatePrice);
-  });
-  
-  // =============================================================================
-  // CART INTEGRATION - Enhanced Add to Cart functionality
-  // =============================================================================
-  
-  const addToCartBtn = document.getElementById('add-to-cart-btn');
-  
-  if (addToCartBtn) {
-    addToCartBtn.addEventListener('click', async function(e) {
-      e.preventDefault();
-      
-      // Disable button during processing
-      const originalText = this.innerHTML;
-      this.disabled = true;
-      this.innerHTML = `
-        <span class="flex items-center justify-center">
-          <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          Adding to Cart...
-        </span>
-      `;
-      
-      try {
-        // Get product ID from current product data
-        const productId = currentProduct?.id;
-        
-        if (!productId) {
-          throw new Error('Product ID not found');
-        }
-        
-        // Collect selected options
-        const selectedOptions = {};
-        let hasRequiredOptions = true;
-        let missingOptions = [];
-        
-        // Collect select options
-        optionSelects.forEach(select => {
-          const optionId = select.getAttribute('data-option-id');
-          const isRequired = select.hasAttribute('required');
-          
-          if (select.value) {
-            selectedOptions[optionId] = select.value;
-          } else if (isRequired) {
-            hasRequiredOptions = false;
-            const optionName = select.previousElementSibling?.textContent?.replace('*', '').trim();
-            missingOptions.push(optionName || 'Option');
-          }
-        });
-        
-        // Collect radio options
-        optionRadios.forEach(radio => {
-          if (radio.checked) {
-            const optionId = radio.getAttribute('data-option-id');
-            selectedOptions[optionId] = radio.value;
-          }
-        });
-        
-        // Check for required options
-        const requiredRadioGroups = new Set();
-        optionRadios.forEach(radio => {
-          if (radio.hasAttribute('required')) {
-            requiredRadioGroups.add(radio.getAttribute('data-option-id'));
-          }
-        });
-        
-        requiredRadioGroups.forEach(optionId => {
-          const hasSelection = Array.from(optionRadios).some(radio => 
-            radio.getAttribute('data-option-id') === optionId && radio.checked
-          );
-          
-          if (!hasSelection) {
-            hasRequiredOptions = false;
-            const optionName = document.querySelector(`[data-option-id="${optionId}"]`)
-              ?.closest('.option-group')
-              ?.querySelector('label')?.textContent?.replace('*', '').trim();
-            missingOptions.push(optionName || 'Option');
-          }
-        });
-        
-        // Validate required options
-        if (!hasRequiredOptions) {
-          throw new Error(`Please select: ${missingOptions.join(', ')}`);
-        }
-        
-        // Get quantity
-        const quantity = parseInt(quantityInput?.value) || 1;
-        
-        // Add to cart using cart handler
-        if (window.cartHandler) {
-          const result = await window.cartHandler.addProductToCart(
-            productId, 
-            quantity, 
-            selectedOptions
-          );
-          
-          if (result.success) {
-            // Success feedback
-            this.innerHTML = `
-              <span class="flex items-center justify-center">
-                <svg class="w-5 h-5 mr-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>
-                Added to Cart!
-              </span>
-            `;
-            
-            // Open cart drawer after short delay
-            setTimeout(() => {
-              window.cartHandler.openCartAfterAdd();
-            }, 500);
-            
-            // Reset button after delay
-            setTimeout(() => {
-              this.disabled = false;
-              this.innerHTML = originalText;
-            }, 2000);
-            
-          } else {
-            throw new Error(result.error || 'Failed to add to cart');
-          }
-        } else {
-          throw new Error('Cart system not available');
-        }
-        
-      } catch (error) {
-        console.error('Add to cart error:', error);
-        
-        // Error feedback
-        this.innerHTML = `
-          <span class="flex items-center justify-center text-red-100">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            ${error.message}
-          </span>
-        `;
-        
-        // Reset button after delay
-        setTimeout(() => {
-          this.disabled = false;
-          this.innerHTML = originalText;
-        }, 3000);
-      }
-    });
-  }
-  
-  // Make product data available for cart integration
-  if (currentProduct) {
-    window.productData = currentProduct;
-  }
-});
-
-// Function to make product data available from Astro
-window.setProductData = function(productData) {
-  window.productData = productData;
-};
-</script>

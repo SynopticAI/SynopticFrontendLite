@@ -1,4 +1,4 @@
-// src/lib/swell.js - Enhanced version with options support
+// src/lib/swell.js - Enhanced version with full cart functionality
 import swell from 'swell-js';
 
 // Initialize Swell client
@@ -204,3 +204,317 @@ export async function getAllProducts() {
     return [];
   }
 }
+
+// =============================================================================
+// CART FUNCTIONALITY
+// =============================================================================
+
+/**
+ * Get current cart
+ * @returns {Promise<Object|null>} Cart object or null
+ */
+export async function getCart() {
+  try {
+    const cart = await swell.cart.get();
+    return cart;
+  } catch (error) {
+    console.error('Error fetching cart:', error);
+    return null;
+  }
+}
+
+/**
+ * Add item to cart
+ * @param {string} productId - Product ID
+ * @param {number} quantity - Quantity to add
+ * @param {Object} options - Product options (optional)
+ * @param {string} variantId - Variant ID (optional)
+ * @returns {Promise<Object>} Result object
+ */
+export async function addToCart(productId, quantity = 1, options = {}, variantId = null) {
+  try {
+    const item = {
+      product_id: productId,
+      quantity: quantity
+    };
+
+    // Add variant if specified
+    if (variantId) {
+      item.variant_id = variantId;
+    }
+
+    // Add options if specified
+    if (Object.keys(options).length > 0) {
+      item.options = options;
+    }
+
+    const result = await swell.cart.addItem(item);
+    
+    return {
+      success: true,
+      cart: result,
+      error: null
+    };
+  } catch (error) {
+    console.error('Error adding item to cart:', error);
+    return {
+      success: false,
+      cart: null,
+      error: error.message || 'Failed to add item to cart'
+    };
+  }
+}
+
+/**
+ * Remove item from cart
+ * @param {string} itemId - Cart item ID
+ * @returns {Promise<Object>} Result object
+ */
+export async function removeFromCart(itemId) {
+  try {
+    const result = await swell.cart.removeItem(itemId);
+    
+    return {
+      success: true,
+      cart: result,
+      error: null
+    };
+  } catch (error) {
+    console.error('Error removing item from cart:', error);
+    return {
+      success: false,
+      cart: null,
+      error: error.message || 'Failed to remove item from cart'
+    };
+  }
+}
+
+/**
+ * Update cart item quantity
+ * @param {string} itemId - Cart item ID
+ * @param {number} quantity - New quantity
+ * @returns {Promise<Object>} Result object
+ */
+export async function updateCartItem(itemId, quantity) {
+  try {
+    const result = await swell.cart.updateItem(itemId, {
+      quantity: quantity
+    });
+    
+    return {
+      success: true,
+      cart: result,
+      error: null
+    };
+  } catch (error) {
+    console.error('Error updating cart item:', error);
+    return {
+      success: false,
+      cart: null,
+      error: error.message || 'Failed to update cart item'
+    };
+  }
+}
+
+/**
+ * Clear entire cart
+ * @returns {Promise<Object>} Result object
+ */
+export async function clearCart() {
+  try {
+    const result = await swell.cart.setItems([]);
+    
+    return {
+      success: true,
+      cart: result,
+      error: null
+    };
+  } catch (error) {
+    console.error('Error clearing cart:', error);
+    return {
+      success: false,
+      cart: null,
+      error: error.message || 'Failed to clear cart'
+    };
+  }
+}
+
+/**
+ * Get cart item count
+ * @returns {Promise<number>} Number of items in cart
+ */
+export async function getCartItemCount() {
+  try {
+    const cart = await getCart();
+    if (!cart || !cart.items) return 0;
+    
+    return cart.items.reduce((total, item) => total + (item.quantity || 0), 0);
+  } catch (error) {
+    console.error('Error getting cart item count:', error);
+    return 0;
+  }
+}
+
+/**
+ * Get cart subtotal
+ * @returns {Promise<number>} Cart subtotal
+ */
+export async function getCartSubtotal() {
+  try {
+    const cart = await getCart();
+    return cart?.sub_total || 0;
+  } catch (error) {
+    console.error('Error getting cart subtotal:', error);
+    return 0;
+  }
+}
+
+// =============================================================================
+// CUSTOMER FUNCTIONS
+// =============================================================================
+
+/**
+ * Create or update customer from Firebase user data
+ * @param {Object} firebaseUser - Firebase user object
+ * @returns {Promise<Object>} Result object
+ */
+export async function createOrUpdateCustomer(firebaseUser) {
+  try {
+    const customerData = {
+      email: firebaseUser.email,
+      first_name: firebaseUser.displayName?.split(' ')[0] || '',
+      last_name: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
+      email_verified: firebaseUser.emailVerified,
+      metadata: {
+        firebase_uid: firebaseUser.uid,
+        auth_provider: 'firebase'
+      }
+    };
+
+    // Check if customer already exists
+    const existingCustomers = await swell.customers.list({
+      where: {
+        email: firebaseUser.email
+      },
+      limit: 1
+    });
+
+    let customer;
+    if (existingCustomers.results && existingCustomers.results.length > 0) {
+      // Update existing customer
+      customer = await swell.customers.update(existingCustomers.results[0].id, customerData);
+    } else {
+      // Create new customer
+      customer = await swell.customers.create(customerData);
+    }
+
+    return {
+      success: true,
+      customer: customer,
+      error: null
+    };
+  } catch (error) {
+    console.error('Error creating/updating customer:', error);
+    return {
+      success: false,
+      customer: null,
+      error: error.message || 'Failed to create/update customer'
+    };
+  }
+}
+
+/**
+ * Set customer for cart (authentication)
+ * @param {Object} firebaseUser - Firebase user object
+ * @returns {Promise<Object>} Result object
+ */
+export async function setCartCustomer(firebaseUser) {
+  try {
+    // First create/update customer
+    const customerResult = await createOrUpdateCustomer(firebaseUser);
+    
+    if (!customerResult.success) {
+      return customerResult;
+    }
+
+    // Set customer for current cart
+    const result = await swell.cart.update({
+      account_id: customerResult.customer.id
+    });
+
+    return {
+      success: true,
+      cart: result,
+      customer: customerResult.customer,
+      error: null
+    };
+  } catch (error) {
+    console.error('Error setting cart customer:', error);
+    return {
+      success: false,
+      cart: null,
+      customer: null,
+      error: error.message || 'Failed to set cart customer'
+    };
+  }
+}
+
+// =============================================================================
+// CHECKOUT FUNCTIONS
+// =============================================================================
+
+/**
+ * Get available payment methods
+ * @returns {Promise<Array>} Array of payment methods
+ */
+export async function getPaymentMethods() {
+  try {
+    const settings = await swell.settings.get();
+    return settings.payments?.methods || [];
+  } catch (error) {
+    console.error('Error fetching payment methods:', error);
+    return [];
+  }
+}
+
+/**
+ * Submit order (checkout)
+ * @param {Object} orderData - Order data including shipping, billing, payment
+ * @returns {Promise<Object>} Result object
+ */
+export async function submitOrder(orderData) {
+  try {
+    const order = await swell.cart.submitOrder(orderData);
+    
+    return {
+      success: true,
+      order: order,
+      error: null
+    };
+  } catch (error) {
+    console.error('Error submitting order:', error);
+    return {
+      success: false,
+      order: null,
+      error: error.message || 'Failed to submit order'
+    };
+  }
+}
+
+/**
+ * Calculate shipping rates
+ * @param {Object} shippingAddress - Shipping address
+ * @returns {Promise<Array>} Array of shipping options
+ */
+export async function getShippingRates(shippingAddress) {
+  try {
+    const rates = await swell.cart.getShippingRates(shippingAddress);
+    return rates || [];
+  } catch (error) {
+    console.error('Error getting shipping rates:', error);
+    return [];
+  }
+}
+
+// Export swell instance for advanced usage
+export { swell };

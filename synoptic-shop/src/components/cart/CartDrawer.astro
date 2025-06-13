@@ -1,0 +1,234 @@
+---
+// src/components/cart/CartDrawer.astro - Shopping cart drawer
+---
+
+<!-- Cart Drawer Overlay -->
+<div id="cart-overlay" class="fixed inset-0 z-40 hidden">
+  <!-- Backdrop -->
+  <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" id="cart-backdrop"></div>
+  
+  <!-- Drawer -->
+  <div class="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-xl transform translate-x-full transition-transform duration-300 ease-in-out" id="cart-drawer">
+    
+    <!-- Drawer Header -->
+    <div class="flex items-center justify-between p-6 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">
+        Shopping Cart
+        <span id="cart-header-count" class="ml-2 text-sm text-gray-500">(0 items)</span>
+      </h2>
+      <button 
+        id="close-cart-drawer" 
+        class="text-gray-400 hover:text-gray-600 transition-colors"
+        aria-label="Close cart"
+      >
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Cart Content -->
+    <div class="flex flex-col h-full">
+      
+      <!-- Loading State -->
+      <div id="cart-loading" class="hidden flex items-center justify-center py-8">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <span class="ml-3 text-gray-600">Updating cart...</span>
+      </div>
+
+      <!-- Empty Cart State -->
+      <div id="cart-empty" class="flex flex-col items-center justify-center flex-1 px-6 py-8 text-center">
+        <svg class="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L6 6H2m5 7v1m0 0v5a2 2 0 002 2h6a2 2 0 002-2v-5m-8 0h8"></path>
+        </svg>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">Your cart is empty</h3>
+        <p class="text-gray-600 mb-6">Add some products to get started</p>
+        <button 
+          id="continue-shopping" 
+          class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+        >
+          Continue Shopping
+        </button>
+      </div>
+
+      <!-- Cart Items -->
+      <div id="cart-items" class="flex-1 overflow-y-auto px-6 py-4 hidden">
+        <div id="cart-items-list" class="space-y-4">
+          <!-- Cart items will be populated here -->
+        </div>
+      </div>
+
+      <!-- Cart Footer -->
+      <div id="cart-footer" class="hidden border-t border-gray-200 p-6 space-y-4">
+        
+        <!-- Subtotal -->
+        <div class="flex items-center justify-between text-lg font-semibold">
+          <span>Subtotal:</span>
+          <span id="cart-subtotal" class="text-primary">€0.00</span>
+        </div>
+
+        <!-- Additional Info -->
+        <p class="text-sm text-gray-600">
+          Shipping and taxes calculated at checkout
+        </p>
+
+        <!-- Action Buttons -->
+        <div class="space-y-3">
+          <button 
+            id="view-cart-button" 
+            class="w-full bg-gray-100 text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+          >
+            View Cart
+          </button>
+          
+          <button 
+            id="checkout-button" 
+            class="w-full bg-primary text-white py-3 px-4 rounded-lg hover:bg-primary-dark transition-colors font-medium"
+          >
+            Proceed to Checkout
+          </button>
+        </div>
+
+        <!-- Clear Cart -->
+        <button 
+          id="clear-cart-button" 
+          class="w-full text-sm text-red-600 hover:text-red-800 transition-colors mt-4"
+        >
+          Clear Cart
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .text-primary {
+    color: rgb(51, 73, 152);
+  }
+  
+  .bg-primary {
+    background-color: rgb(51, 73, 152);
+  }
+  
+  .bg-primary-dark {
+    background-color: rgb(41, 63, 142);
+  }
+
+  /* Cart drawer animations */
+  #cart-drawer.open {
+    transform: translateX(0);
+  }
+
+  #cart-overlay.open {
+    display: block;
+  }
+
+  /* Cart item styles */
+  .cart-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: #fff;
+  }
+
+  .cart-item-image {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 0.5rem;
+    object-fit: cover;
+    background: #f3f4f6;
+  }
+
+  .cart-item-details {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .cart-item-title {
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.25rem;
+    line-height: 1.25;
+  }
+
+  .cart-item-options {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+  }
+
+  .cart-item-price {
+    font-weight: 600;
+    color: rgb(51, 73, 152);
+  }
+
+  .cart-item-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .quantity-control {
+    display: flex;
+    align-items: center;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    background: #fff;
+  }
+
+  .quantity-btn {
+    padding: 0.25rem 0.5rem;
+    background: #f9fafb;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .quantity-btn:hover {
+    background: #e5e7eb;
+    color: #374151;
+  }
+
+  .quantity-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .quantity-input {
+    width: 3rem;
+    text-align: center;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .quantity-input:focus {
+    outline: none;
+  }
+
+  .remove-btn {
+    padding: 0.25rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 0.375rem;
+    color: #dc2626;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .remove-btn:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+  }
+</style>
+
+<script>
+  // Cart drawer functionality will be handled by cart-handler.js
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('🛒 Cart drawer component loaded');
+  });
+</script>

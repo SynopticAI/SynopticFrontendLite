@@ -1,9 +1,10 @@
 ---
-// src/layouts/PageLayout.astro - Updated to include Firebase Auth
+// src/layouts/PageLayout.astro - Updated with full cart integration
 import Layout from './Layout.astro';
 import Header from '~/components/widgets/Header.astro';
 import Footer from '~/components/widgets/Footer.astro';
 import AuthModal from '~/components/auth/AuthModal.astro';
+import CartDrawer from '~/components/cart/CartDrawer.astro';
 
 import { headerData, footerData } from '~/navigation';
 import type { MetaData } from '~/types';
@@ -30,57 +31,242 @@ const { metadata } = Astro.props;
 
   <!-- Firebase Auth Modal -->
   <AuthModal />
+  
+  <!-- Shopping Cart Drawer -->
+  <CartDrawer />
 </Layout>
 
-<!-- Firebase and Auth Scripts -->
+<!-- Firebase, Auth, and Cart Scripts -->
 <script>
   // Import Firebase auth handler
   import('../scripts/auth-handler.js');
+  
+  // Import cart handler  
+  import('../scripts/cart-handler.js');
 </script>
 
-<!-- Update Header Component Integration -->
-<style>
-  /* Add this to your Header.astro component where you want the auth section */
-  /*
-  In your Header.astro, add this where you want the auth buttons to appear:
-  
-  ---
-  import AuthHeader from '~/components/auth/AuthHeader.astro';
-  ---
-  
-  // Inside your header navigation:
-  <AuthHeader />
-  
-  */
-</style>
-
-<!-- Example Header Integration Code -->
-<!-- 
-Add this to your existing Header.astro component:
-
-<div class="header-auth-section">
-  <AuthHeader />
-</div>
-
-And update your header styles to accommodate the auth section.
--->
-
+<!-- Product Page Integration Script -->
 <script is:inline>
-  // Initialize auth state management
+  // Enhanced product page integration
   window.addEventListener('load', function() {
-    console.log('🔥 Firebase Auth initialized for Synoptic Shop');
+    console.log('🛒 Cart system initialized');
     
-    // Check for URL parameters for auth redirects
+    // Check for auth redirects
     const urlParams = new URLSearchParams(window.location.search);
     const authAction = urlParams.get('auth');
     
     if (authAction === 'signin' || authAction === 'signup') {
-      // Auto-open auth modal if redirected from Flutter app
       setTimeout(() => {
         if (window.authHandler) {
           window.authHandler.openModal(authAction);
         }
       }, 500);
     }
+    
+    // Initialize cart for product pages
+    if (window.location.pathname.includes('/products/')) {
+      // Product page specific initialization
+      console.log('🛍️ Product page cart integration ready');
+    }
   });
 </script>
+
+<!-- Enhanced Product Page Script -->
+<script>
+  // Enhanced product page functionality
+  document.addEventListener('DOMContentLoaded', function() {
+    // Image zoom functionality
+    const mainImageContainer = document.getElementById('main-image-container');
+    const mainImage = document.getElementById('main-image');
+    const modal = document.getElementById('image-modal');
+    const modalImage = document.getElementById('modal-image');
+    const closeModal = document.getElementById('close-modal');
+    const galleryThumbs = document.querySelectorAll('.gallery-thumb img');
+    
+    // Open modal on main image click
+    if (mainImageContainer && modal && modalImage) {
+      mainImageContainer.addEventListener('click', function() {
+        const imageSrc = mainImage.src;
+        const imageAlt = mainImage.alt;
+        modalImage.src = imageSrc;
+        modalImage.alt = imageAlt;
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      });
+    }
+    
+    // Close modal
+    if (closeModal && modal) {
+      closeModal.addEventListener('click', function() {
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+      });
+      
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          modal.classList.remove('show');
+          document.body.style.overflow = '';
+        }
+      });
+      
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.classList.contains('show')) {
+          modal.classList.remove('show');
+          document.body.style.overflow = '';
+        }
+      });
+    }
+    
+    // Gallery thumbnail clicks
+    galleryThumbs.forEach(thumb => {
+      thumb.addEventListener('click', function() {
+        const fullImageSrc = this.getAttribute('data-full-image');
+        if (fullImageSrc && mainImage) {
+          mainImage.src = fullImageSrc;
+        }
+      });
+    });
+    
+    // Quantity controls
+    const quantityInput = document.getElementById('quantity');
+    const quantityBtns = document.querySelectorAll('.quantity-btn');
+    
+    quantityBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const action = this.getAttribute('data-action');
+        let currentValue = parseInt(quantityInput?.value) || 1;
+        
+        if (action === 'increase' && currentValue < 99) {
+          quantityInput.value = currentValue + 1;
+        } else if (action === 'decrease' && currentValue > 1) {
+          quantityInput.value = currentValue - 1;
+        }
+      });
+    });
+    
+    // Enhanced Add to Cart functionality
+    const addToCartBtn = document.getElementById('add-to-cart-btn');
+    
+    if (addToCartBtn) {
+      addToCartBtn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        
+        // Get product data from page context
+        const productData = window.productData;
+        
+        if (!productData || !productData.id) {
+          console.error('Product data not available');
+          return;
+        }
+        
+        // Disable button and show loading
+        const originalText = this.innerHTML;
+        this.disabled = true;
+        this.innerHTML = `
+          <span class="flex items-center justify-center">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Adding to Cart...
+          </span>
+        `;
+        
+        try {
+          // Collect selected options
+          const selectedOptions = {};
+          const optionSelects = document.querySelectorAll('.option-select');
+          const optionRadios = document.querySelectorAll('.option-radio input[type="radio"]');
+          
+          // Collect select options
+          optionSelects.forEach(select => {
+            const optionId = select.getAttribute('data-option-id');
+            if (select.value) {
+              selectedOptions[optionId] = select.value;
+            }
+          });
+          
+          // Collect radio options
+          optionRadios.forEach(radio => {
+            if (radio.checked) {
+              const optionId = radio.getAttribute('data-option-id');
+              selectedOptions[optionId] = radio.value;
+            }
+          });
+          
+          // Get quantity
+          const quantity = parseInt(quantityInput?.value) || 1;
+          
+          // Add to cart
+          if (window.cartHandler) {
+            const result = await window.cartHandler.addProductToCart(
+              productData.id, 
+              quantity, 
+              selectedOptions
+            );
+            
+            if (result.success) {
+              // Success feedback
+              this.innerHTML = `
+                <span class="flex items-center justify-center">
+                  <svg class="w-5 h-5 mr-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Added to Cart!
+                </span>
+              `;
+              
+              // Open cart drawer
+              setTimeout(() => {
+                if (window.cartHandler) {
+                  window.cartHandler.openCartAfterAdd();
+                }
+              }, 500);
+              
+            } else {
+              throw new Error(result.error || 'Failed to add to cart');
+            }
+          } else {
+            throw new Error('Cart system not ready');
+          }
+          
+        } catch (error) {
+          console.error('Add to cart error:', error);
+          
+          // Error feedback
+          this.innerHTML = `
+            <span class="flex items-center justify-center text-red-100">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Error: ${error.message}
+            </span>
+          `;
+        }
+        
+        // Reset button after delay
+        setTimeout(() => {
+          this.disabled = false;
+          this.innerHTML = originalText;
+        }, 2000);
+      });
+    }
+  });
+</script>
+
+<style>
+  /* Ensure modal and drawer have proper z-index */
+  #auth-modal,
+  #cart-overlay {
+    z-index: 1000;
+  }
+  
+  #image-modal {
+    z-index: 1001;
+  }
+  
+  /* Show modal class for image zoom */
+  #image-modal.show {
+    display: flex;
+  }
+</style>

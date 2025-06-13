@@ -1,0 +1,100 @@
+---
+// src/components/ProductError.astro
+// Component for handling product not found or error states
+
+interface Props {
+  type?: 'not-found' | 'error';
+  productSlug?: string;
+}
+
+const { type = 'not-found', productSlug } = Astro.props;
+---
+
+<div class="min-h-screen flex items-center justify-center px-4 py-16">
+  <div class="max-w-md mx-auto text-center">
+    
+    {type === 'not-found' ? (
+      <>
+        <!-- Product Not Found -->
+        <div class="w-16 h-16 mx-auto mb-6 text-gray-400">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
+            </path>
+          </svg>
+        </div>
+        
+        <h1 class="text-2xl font-bold text-gray-900 mb-4">
+          Product Not Found
+        </h1>
+        
+        <p class="text-gray-600 mb-8">
+          {productSlug 
+            ? `We couldn't find the product "${productSlug}". It may have been moved or is no longer available.`
+            : "The product you're looking for doesn't exist or has been removed."
+          }
+        </p>
+      </>
+    ) : (
+      <>
+        <!-- General Error -->
+        <div class="w-16 h-16 mx-auto mb-6 text-red-400">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z">
+            </path>
+          </svg>
+        </div>
+        
+        <h1 class="text-2xl font-bold text-gray-900 mb-4">
+          Something went wrong
+        </h1>
+        
+        <p class="text-gray-600 mb-8">
+          We're having trouble loading this product. Please try again in a moment.
+        </p>
+      </>
+    )}
+    
+    <!-- Action Buttons -->
+    <div class="space-y-4">
+      <a 
+        href="/products" 
+        class="inline-block w-full bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-dark transition-colors"
+      >
+        Browse All Products
+      </a>
+      
+      <a 
+        href="/" 
+        class="inline-block w-full border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+      >
+        Back to Home
+      </a>
+    </div>
+    
+    <!-- Contact Support -->
+    <div class="mt-8 pt-8 border-t border-gray-200">
+      <p class="text-sm text-gray-500">
+        Need help? 
+        <a href="/contact" class="text-primary hover:underline font-medium">
+          Contact our support team
+        </a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<style>
+  .bg-primary {
+    background-color: rgb(51, 73, 152);
+  }
+  
+  .bg-primary-dark {
+    background-color: rgb(41, 63, 142);
+  }
+  
+  .text-primary {
+    color: rgb(51, 73, 152);
+  }
+</style>

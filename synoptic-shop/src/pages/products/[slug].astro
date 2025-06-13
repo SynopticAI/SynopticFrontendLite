@@ -1,8 +1,15 @@
 ---
-// src/pages/products/[slug].astro - Fixed version with correct Astro syntax
+// src/pages/products/[slug].astro - Enhanced version with all fixes
 import Layout from '~/layouts/PageLayout.astro';
 import ProductError from '~/components/ProductError.astro';
-import { getProductBySlug, formatPrice, getProductImageUrls } from '~/lib/swell.js';
+import { 
+  getProductBySlug, 
+  getProductPricing,
+  getProductImageUrls, 
+  getProductDescription,
+  isProductInStock,
+  getProductOptions
+} from '~/lib/swell.js';
 
 export async function getStaticPaths() {
   const productSlugs = ['starter-kit', 'synopticam', 'inference-credits'];
@@ -35,25 +42,29 @@ const errorType = hasError ? 'error' : 'not-found';
 
 // Only process product data if we have a valid product
 let productImages = ['/placeholder-product.jpg'];
-let formattedPrice = 'Price unavailable';
-let isStockAvailable = false;
+let pricing = { formattedPrice: 'Price unavailable', hasOptions: false };
+let stockAvailable = false;
 let title = `Product ${slug}`;
 let description = 'Product information unavailable';
+let htmlDescription = '';
+let productOptions = [];
 let productSchema = {};
 
 if (product && !hasError) {
   productImages = getProductImageUrls(product);
-  formattedPrice = formatPrice(product.price);
-  isStockAvailable = product.stock_level === null || product.stock_level > 0;
+  pricing = getProductPricing(product);
+  stockAvailable = isProductInStock(product);
   title = product.name || `Product ${slug}`;
-  description = product.description || product.meta_description || `${title} - Premium AI monitoring solution from Synoptic`;
+  description = getProductDescription(product);
+  htmlDescription = description;
+  productOptions = getProductOptions(product);
   
   // Product schema for SEO
   productSchema = {
     "@context": "https://schema.org/",
     "@type": "Product",
     "name": product.name,
-    "description": description,
+    "description": description.replace(/<[^>]*>/g, ''), // Strip HTML for schema
     "sku": product.sku || slug,
     "brand": {
       "@type": "Brand",
@@ -62,9 +73,9 @@ if (product && !hasError) {
     "offers": {
       "@type": "Offer",
       "url": `https://synoptic.vision/products/${slug}`,
-      "priceCurrency": product.currency || "EUR",
-      "price": product.price,
-      "availability": isStockAvailable ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+      "priceCurrency": pricing.currency,
+      "price": pricing.price || pricing.priceRange?.min,
+      "availability": stockAvailable ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
     }
   };
 
@@ -74,7 +85,7 @@ if (product && !hasError) {
 }
 
 const pageTitle = showError ? 'Product Not Found | Synoptic' : `${title} | Synoptic`;
-const pageDescription = showError ? 'The requested product could not be found.' : description;
+const pageDescription = showError ? 'The requested product could not be found.' : description.replace(/<[^>]*>/g, '').substring(0, 160);
 ---
 
 <Layout metadata={{
@@ -94,32 +105,42 @@ const pageDescription = showError ? 'The requested product could not be found.' 
     <section class="px-4 py-16 mx-auto max-w-6xl lg:px-8 lg:py-20">
       <div class="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-16">
         
-        <!-- Product Images -->
+        <!-- Product Images with Working Zoom -->
         <div class="space-y-4">
-          <div class="aspect-square overflow-hidden rounded-lg bg-gray-100 relative group">
+          <!-- Main Image with Modal Trigger -->
+          <div class="aspect-square overflow-hidden rounded-lg bg-gray-100 relative group cursor-pointer" id="main-image-container">
             <img 
+              id="main-image"
               src={productImages[0]} 
               alt={product.name}
               class="w-full h-full object-cover object-center transition-transform group-hover:scale-105"
               loading="eager"
+              onerror="this.src='/placeholder-product.jpg'"
             />
             
-            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <div class="bg-black bg-opacity-50 text-white p-2 rounded-lg text-sm">
+            <!-- Zoom indicator -->
+            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20">
+              <div class="bg-white text-gray-800 p-3 rounded-lg text-sm font-medium shadow-lg">
+                <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
+                </svg>
                 Click to zoom
               </div>
             </div>
           </div>
           
+          <!-- Additional Images Gallery -->
           {productImages.length > 1 && (
             <div class="grid grid-cols-4 gap-2">
               {productImages.slice(1, 5).map((imageUrl, index) => (
-                <div class="aspect-square overflow-hidden rounded-lg bg-gray-100 cursor-pointer hover:opacity-75 transition-opacity">
+                <div class="aspect-square overflow-hidden rounded-lg bg-gray-100 cursor-pointer hover:opacity-75 transition-opacity gallery-thumb">
                   <img 
                     src={imageUrl} 
                     alt={`${product.name} - View ${index + 2}`}
                     class="w-full h-full object-cover object-center"
                     loading="lazy"
+                    onerror="this.style.display='none'"
+                    data-full-image={imageUrl}
                   />
                 </div>
               ))}
@@ -146,43 +167,83 @@ const pageDescription = showError ? 'The requested product could not be found.' 
               {product.name}
             </h1>
             <div class="mt-4 flex items-center space-x-4">
-              <span class="text-3xl font-bold text-primary">
-                {formattedPrice}
+              <span class="text-3xl font-bold text-primary" id="display-price">
+                {pricing.formattedPrice}
               </span>
-              {!isStockAvailable && (
+              {!stockAvailable && (
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                   Out of Stock
+                </span>
+              )}
+              {product.sale && (
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  On Sale
                 </span>
               )}
             </div>
           </div>
 
           <!-- Product Description -->
-          {product.description && (
+          {htmlDescription && (
             <div class="prose prose-sm text-gray-600 max-w-none">
-              <p>{product.description}</p>
+              <div set:html={htmlDescription} />
             </div>
           )}
 
-          <!-- Key Features -->
-          {product.meta_description && product.meta_description !== product.description && (
+          <!-- Product Options -->
+          {productOptions.length > 0 && (
             <div class="border-t border-gray-200 pt-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-3">Key Features</h3>
-              <p class="text-gray-600">{product.meta_description}</p>
-            </div>
-          )}
-
-          <!-- Product Variants -->
-          {product.variants && product.variants.length > 0 && (
-            <div class="border-t border-gray-200 pt-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-3">Available Options</h3>
-              <div class="space-y-2">
-                {product.variants.map((variant) => (
-                  <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                    <span class="font-medium">{variant.name}</span>
-                    <span class="text-primary font-semibold">
-                      {formatPrice(variant.price)}
-                    </span>
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Choose Options</h3>
+              <div class="space-y-4" id="product-options">
+                {productOptions.map((option) => (
+                  <div class="option-group" data-option-id={option.id}>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      {option.name}
+                      {option.required && <span class="text-red-500 ml-1">*</span>}
+                    </label>
+                    
+                    {option.type === 'select' && (
+                      <select 
+                        name={`option-${option.id}`}
+                        class="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary option-select"
+                        data-option-id={option.id}
+                        required={option.required}
+                      >
+                        <option value="">Choose {option.name}</option>
+                        {option.values.map((value) => (
+                          <option value={value.id} data-price={value.price}>
+                            {value.name}
+                            {value.formattedPrice && ` (+${value.formattedPrice})`}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    
+                    {option.type === 'radio' && (
+                      <div class="space-y-2">
+                        {option.values.map((value) => (
+                          <label class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors option-radio">
+                            <div class="flex items-center">
+                              <input 
+                                type="radio" 
+                                name={`option-${option.id}`} 
+                                value={value.id}
+                                data-price={value.price}
+                                data-option-id={option.id}
+                                class="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                                required={option.required}
+                              />
+                              <span class="ml-3 font-medium">{value.name}</span>
+                            </div>
+                            {value.formattedPrice && (
+                              <span class="text-primary font-semibold">
+                                +{value.formattedPrice}
+                              </span>
+                            )}
+                          </label>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -191,36 +252,55 @@ const pageDescription = showError ? 'The requested product could not be found.' 
 
           <!-- Add to Cart Section -->
           <div class="border-t border-gray-200 pt-6">
-            <div class="space-y-4">
-              <!-- Quantity Selector -->
+            <form class="space-y-4" id="add-to-cart-form">
+              <!-- Quantity Input (Number Field) -->
               <div class="flex items-center space-x-3">
                 <label for="quantity" class="text-sm font-medium text-gray-700">
                   Quantity:
                 </label>
-                <select 
-                  id="quantity" 
-                  name="quantity"
-                  class="rounded-md border border-gray-300 py-2 px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                  <option value="4">4</option>
-                  <option value="5">5</option>
-                </select>
+                <div class="flex items-center">
+                  <button 
+                    type="button" 
+                    class="quantity-btn minus bg-gray-100 hover:bg-gray-200 text-gray-600 w-8 h-8 rounded-l-md flex items-center justify-center border border-r-0 border-gray-300"
+                    data-action="decrease"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                    </svg>
+                  </button>
+                  <input 
+                    type="number" 
+                    id="quantity" 
+                    name="quantity"
+                    min="1" 
+                    max="99" 
+                    value="1"
+                    class="w-16 h-8 text-center border-t border-b border-gray-300 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-sm"
+                  />
+                  <button 
+                    type="button" 
+                    class="quantity-btn plus bg-gray-100 hover:bg-gray-200 text-gray-600 w-8 h-8 rounded-r-md flex items-center justify-center border border-l-0 border-gray-300"
+                    data-action="increase"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               <!-- Add to Cart Button -->
               <button 
                 type="button"
-                disabled={!isStockAvailable}
+                disabled={!stockAvailable}
                 class={`w-full py-3 px-6 rounded-lg text-white font-medium transition-all duration-200 ${
-                  isStockAvailable 
+                  stockAvailable 
                     ? 'bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 active:transform active:scale-95' 
                     : 'bg-gray-300 cursor-not-allowed'
                 }`}
+                id="add-to-cart-btn"
               >
-                {isStockAvailable ? (
+                {stockAvailable ? (
                   <span class="flex items-center justify-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L6 6H2m5 7v1m0 0v5a2 2 0 002 2h6a2 2 0 002-2v-5m-8 0h8"></path>
@@ -231,7 +311,7 @@ const pageDescription = showError ? 'The requested product could not be found.' 
                   'Out of Stock'
                 )}
               </button>
-            </div>
+            </form>
           </div>
 
           <!-- Product Details -->
@@ -247,7 +327,7 @@ const pageDescription = showError ? 'The requested product could not be found.' 
               <div class="flex">
                 <dt class="text-sm font-medium text-gray-500 w-1/3">Availability:</dt>
                 <dd class="text-sm text-gray-900">
-                  {isStockAvailable ? (
+                  {stockAvailable ? (
                     <span class="text-green-600 font-medium">✓ In Stock</span>
                   ) : (
                     <span class="text-red-600 font-medium">✗ Out of Stock</span>
@@ -257,7 +337,7 @@ const pageDescription = showError ? 'The requested product could not be found.' 
               {product.weight && (
                 <div class="flex">
                   <dt class="text-sm font-medium text-gray-500 w-1/3">Weight:</dt>
-                  <dd class="text-sm text-gray-900">{product.weight} lbs</dd>
+                  <dd class="text-sm text-gray-900">{product.weight} kg</dd>
                 </div>
               )}
             </dl>
@@ -295,11 +375,33 @@ const pageDescription = showError ? 'The requested product could not be found.' 
         </div>
       </div>
     </section>
+
+    <!-- Image Zoom Modal -->
+    <div id="image-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden items-center justify-center p-4">
+      <div class="relative max-w-4xl max-h-full">
+        <button 
+          id="close-modal" 
+          class="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
+          aria-label="Close zoom"
+        >
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+        <img 
+          id="modal-image" 
+          src="" 
+          alt=""
+          class="max-w-full max-h-full object-contain"
+        />
+      </div>
+    </div>
   )}
 
 </Layout>
 
 <style>
+  /* Synoptic Brand Colors */
   .text-primary {
     color: rgb(51, 73, 152);
   }
@@ -323,4 +425,163 @@ const pageDescription = showError ? 'The requested product could not be found.' 
   .focus\:ring-primary:focus {
     --tw-ring-color: rgb(51, 73, 152);
   }
+  
+  /* Radio button styling */
+  .option-radio input[type="radio"]:checked {
+    background-color: rgb(51, 73, 152);
+    border-color: rgb(51, 73, 152);
+  }
+  
+  /* Quantity input styling */
+  .quantity-btn:hover {
+    background-color: rgb(51, 73, 152);
+    color: white;
+  }
+  
+  /* Modal styling */
+  #image-modal.show {
+    display: flex;
+  }
 </style>
+
+<script>
+  // Image zoom functionality
+  document.addEventListener('DOMContentLoaded', function() {
+    const mainImageContainer = document.getElementById('main-image-container');
+    const mainImage = document.getElementById('main-image');
+    const modal = document.getElementById('image-modal');
+    const modalImage = document.getElementById('modal-image');
+    const closeModal = document.getElementById('close-modal');
+    const galleryThumbs = document.querySelectorAll('.gallery-thumb img');
+    
+    // Open modal on main image click
+    if (mainImageContainer && modal && modalImage) {
+      mainImageContainer.addEventListener('click', function() {
+        const imageSrc = mainImage.src;
+        const imageAlt = mainImage.alt;
+        modalImage.src = imageSrc;
+        modalImage.alt = imageAlt;
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      });
+    }
+    
+    // Close modal
+    if (closeModal && modal) {
+      closeModal.addEventListener('click', function() {
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+      });
+      
+      // Close on backdrop click
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          modal.classList.remove('show');
+          document.body.style.overflow = '';
+        }
+      });
+      
+      // Close on escape key
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.classList.contains('show')) {
+          modal.classList.remove('show');
+          document.body.style.overflow = '';
+        }
+      });
+    }
+    
+    // Gallery thumbnail clicks
+    galleryThumbs.forEach(thumb => {
+      thumb.addEventListener('click', function() {
+        const fullImageSrc = this.getAttribute('data-full-image');
+        if (fullImageSrc && mainImage) {
+          mainImage.src = fullImageSrc;
+        }
+      });
+    });
+    
+    // Quantity controls
+    const quantityInput = document.getElementById('quantity');
+    const quantityBtns = document.querySelectorAll('.quantity-btn');
+    
+    quantityBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const action = this.getAttribute('data-action');
+        let currentValue = parseInt(quantityInput.value) || 1;
+        
+        if (action === 'increase' && currentValue < 99) {
+          quantityInput.value = currentValue + 1;
+        } else if (action === 'decrease' && currentValue > 1) {
+          quantityInput.value = currentValue - 1;
+        }
+      });
+    });
+    
+    // Product options price updates
+    const optionSelects = document.querySelectorAll('.option-select');
+    const optionRadios = document.querySelectorAll('.option-radio input[type="radio"]');
+    const displayPrice = document.getElementById('display-price');
+    
+    function updatePrice() {
+      let basePrice = parseFloat(document.querySelector('[data-base-price]')?.getAttribute('data-base-price')) || 0;
+      let additionalPrice = 0;
+      
+      // Calculate additional price from selected options
+      optionSelects.forEach(select => {
+        const selectedOption = select.options[select.selectedIndex];
+        if (selectedOption && selectedOption.getAttribute('data-price')) {
+          additionalPrice += parseFloat(selectedOption.getAttribute('data-price')) || 0;
+        }
+      });
+      
+      optionRadios.forEach(radio => {
+        if (radio.checked && radio.getAttribute('data-price')) {
+          additionalPrice += parseFloat(radio.getAttribute('data-price')) || 0;
+        }
+      });
+      
+      // Update display price if we have price calculation logic
+      // This would need to be enhanced based on your exact Swell pricing structure
+    }
+    
+    // Attach price update listeners
+    optionSelects.forEach(select => {
+      select.addEventListener('change', updatePrice);
+    });
+    
+    optionRadios.forEach(radio => {
+      radio.addEventListener('change', updatePrice);
+    });
+    
+    // Add to cart functionality (placeholder)
+    const addToCartBtn = document.getElementById('add-to-cart-btn');
+    if (addToCartBtn) {
+      addToCartBtn.addEventListener('click', function() {
+        // Placeholder for add to cart functionality
+        console.log('Add to cart clicked');
+        
+        // Collect selected options
+        const selectedOptions = {};
+        optionSelects.forEach(select => {
+          if (select.value) {
+            selectedOptions[select.getAttribute('data-option-id')] = select.value;
+          }
+        });
+        
+        optionRadios.forEach(radio => {
+          if (radio.checked) {
+            selectedOptions[radio.getAttribute('data-option-id')] = radio.value;
+          }
+        });
+        
+        const quantity = parseInt(quantityInput.value) || 1;
+        
+        console.log('Selected options:', selectedOptions);
+        console.log('Quantity:', quantity);
+        
+        // Here you would integrate with Swell cart functionality
+        // Example: swell.cart.addItem({ product_id: productId, options: selectedOptions, quantity: quantity })
+      });
+    }
+  });
+</script>

@@ -13,7 +13,7 @@ import Stats from '~/components/widgets/Stats.astro';
 import CallToAction from '~/components/widgets/CallToAction.astro';
 
 const metadata = {
-  title: 'AstroWind — Free template for creating websites with Astro + Tailwind CSS',
+  title: 'Synoptic — Automate Anything with AI-Powered Smart Cameras',
   ignoreTitleTemplate: true,
 };
 ---
@@ -25,78 +25,79 @@ const metadata = {
     actions={[
       {
         variant: 'primary',
-        text: 'Get template',
-        href: 'https://github.com/onwidget/astrowind',
+        text: 'App',
+        href: 'https://app.synoptic.vision',
         target: '_blank',
-        icon: 'tabler:download',
+        icon: 'tabler:external-link',
       },
       { text: 'Learn more', href: '#features' },
     ]}
-    image={{ src: '~/assets/images/hero-image.png', alt: 'AstroWind Hero Image' }}
+    image={{ src: '~/assets/images/hero-image.png', alt: 'Synoptic AI Camera' }}
   >
+    <Fragment slot="bg">
+      <div class="absolute inset-0 hero-bg"></div>
+    </Fragment>
     <Fragment slot="title">
-      Free template for <span class="hidden xl:inline">creating websites with</span>
-      <span class="text-accent dark:text-white"> Astro 5.0</span> + Tailwind CSS
+      Automate anything <span class="hidden xl:inline">with</span>
+      <span class="text-accent dark:text-white"> AI cameras</span> in 5 minutes
     </Fragment>
 
     <Fragment slot="subtitle">
       <span class="hidden sm:inline">
-        <span class="font-semibold">AstroWind</span> is a free, customizable and production-ready template for Astro 5.0
-        + Tailwind CSS.</span
+        <span class="font-semibold">Just tell your camera what to watch.</span> Set up intelligent monitoring in minutes, not hours.</span
       >
-      <span class="block mb-1 sm:hidden font-bold text-blue-600">AstroWind: Production-ready.</span>
-      Suitable for Startups, Small Business, SaaS websites, Professional Portfolios, Marketing websites, Landing Pages &
-      Blogs.
+      <span class="block mb-1 sm:hidden font-bold text-blue-600">Synoptic: Smart automation made simple.</span>
+      Monitor machines, prevent downtime, ensure safety - all with natural language setup.
     </Fragment>
   </Hero>
 
   <!-- Note Widget ******************* -->
 
-  <Note title="Philosophy:" description="Simplicity, Best Practices and High Performance" />
+  <Note title="Game Changer:" description="From idea to automated monitoring in under 5 minutes" />
 
   <!-- Features Widget *************** -->
 
   <Features
     id="features"
-    tagline="Features"
-    title="What you get with AstroWind"
-    subtitle="One of the most professional and comprehensive templates currently on the market. Most starred & forked Astro theme in 2022, 2023 and 2024."
+    tagline="Why Synoptic"
+    title="Automate Things You Never Thought Possible"
+    subtitle="Our AI cameras are so easy to set up and configure, you'll discover automation opportunities everywhere. No technical expertise required."
     items={[
       {
-        title: 'Astro + Tailwind CSS Integration',
+        title: 'Natural Language Setup',
         description:
-          'A seamless integration between two great frameworks that offer high productivity, performance and versatility.',
-        icon: 'tabler:brand-tailwind',
+          'Simply tell the camera what you want it to monitor. "Watch this machine for unusual vibrations" or "Alert me when this area gets too crowded."',
+        icon: 'tabler:message-circle',
       },
       {
-        title: 'Ready-to-use Components',
+        title: '5-Minute Deployment',
         description:
-          'Widgets made with Tailwind CSS ready to be used in Marketing Websites, SaaS, Blogs, Personal Profiles, Small Business...',
-        icon: 'tabler:components',
+          'Mount the camera, connect to WiFi, and describe your monitoring task. That\'s it. Your automation is live and working.',
+        icon: 'tabler:clock',
       },
       {
-        title: 'Best Practices',
+        title: 'Prevent Machine Downtime',
         description:
-          'Creating secure, efficient, and user-friendly websites that deliver exceptional experiences and lasting value.',
-        icon: 'tabler:list-check',
+          'Catch critical status changes before they become problems. Monitor machine indicators, unusual sounds, or operational patterns.',
+        icon: 'tabler:shield-check',
       },
       {
-        title: 'Excellent Page Speed',
+        title: 'Cloud-Powered AI',
         description:
-          'Having a good page speed impacts organic search ranking, improves user experience (UI/UX) and increase conversion rates.',
-        icon: 'tabler:rocket',
+          'Advanced computer vision processing in the cloud ensures accurate detection with continuous learning and model improvements.',
+        icon: 'tabler:cloud-computing',
       },
       {
-        title: 'Search Engine Optimization (SEO)',
+        title: 'Discover New Automations',
         description:
-          "SEO lies in its ability to enhance a website's visibility, driving organic traffic and enabling it to reach a wider audience.",
-        icon: 'tabler:arrows-right-left',
-      },
-      {
-        title: 'Open to new ideas and contributions',
-        description:
-          'Embracing a culture that is open to new ideas and contributions is integral fostering innovation, collaboration, and a dynamic user experience.',
+          'Once you see how easy it is, you\'ll find monitoring opportunities everywhere - from safety compliance to workflow optimization.',
         icon: 'tabler:bulb',
+      },
+      {
+        title: 'Industrial Reliability',
+        description:
+          'Rugged cameras designed for harsh industrial environments with dependable performance and flexible mounting options.',
+        icon: 'tabler:settings',
       },
     ]}
   />
@@ -105,109 +106,32 @@ const metadata = {
 
   <Content
     isReversed
-    tagline="Inside template"
-    title="AstroWind's Blueprint: Fun Meets Functionality!"
+    tagline="How It Works"
+    title="Automation Has Never Been This Simple"
     items={[
       {
-        title: 'Built on top of Astro 5.0',
-        description:
-          'Benefiting from the performance and developer-friendly features of this modern static site generator.',
+        title: 'Mount Your Camera',
+        description: 'Install the camera where you want to monitor - anywhere with WiFi connectivity.',
       },
       {
-        title: 'Styled using Tailwind CSS',
-        description:
-          'Facilitating rapid design and consistent styling with this highly popular utility-first CSS framework.',
+        title: 'Tell It What To Do',
+        description: 'Use natural language to describe what you want monitored: "Watch for people without hard hats."',
       },
       {
-        title: 'Cross-browser compatibility',
-        description:
-          'Ensure your website looks and functions consistently across various web browsers, delivering a seamless experience to all users.',
+        title: 'Get Instant Alerts',
+        description: 'Receive notifications the moment something important happens, preventing issues before they escalate.',
       },
     ]}
     image={{
-      src: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80',
-      alt: 'Colorful Image',
+      src: 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80',
+      alt: 'Simple camera setup',
     }}
   >
     <Fragment slot="content">
-      <h3 class="text-2xl font-bold tracking-tight dark:text-white sm:text-3xl mb-2">Building on modern foundations</h3>
-      Gain a competitive advantage by incorporating industry leading practices
+      <h3 class="text-2xl font-bold tracking-tight dark:text-white sm:text-3xl mb-2">
+        No Programming, <br /><span class="text-2xl">No Complex Setup</span>
+      </h3>
     </Fragment>
-
-    <Fragment slot="bg">
-      <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
-    </Fragment>
-  </Content>
-
-  <!-- Content Widget **************** -->
-
-  <Content
-    isAfterContent
-    items={[
-      {
-        title: 'High level of customization',
-        description: `Tailor the template effortlessly to match your brand's identity and requirements, making your website distinct and saving you time.`,
-      },
-      {
-        title: 'Multiple layout possibilities',
-        description:
-          'Explore various layout options to find the structure that best presents your content, enhancing user engagement and navigation.',
-      },
-      {
-        title: 'Fully responsive design',
-        description:
-          "Ensure your website's optimal performance on various devices and screen sizes, providing a consistent and enjoyable user experience.",
-      },
-      {
-        title: 'Integration of media',
-        description:
-          'Seamlessly incorporate images, videos, and multimedia elements that enhance your content and engage visitors effectively.',
-      },
-    ]}
-    image={{
-      src: 'https://images.unsplash.com/photo-1600132806370-bf17e65e942f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2194&q=80',
-      alt: 'Blueprint Image',
-    }}
-  >
-    <Fragment slot="content">Ensure your online presence truly represents you.</Fragment>
-
-    <Fragment slot="bg">
-      <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
-    </Fragment>
-  </Content>
-
-  <!-- Content Widget **************** -->
-
-  <Content
-    isReversed
-    isAfterContent
-    items={[
-      {
-        title: 'Enhanced user engagement',
-        description:
-          'Captivate your audience with interactive elements, intuitive navigation, and visually appealing layouts, encouraging longer visits.',
-      },
-      {
-        title: 'Continuous improvement',
-        description:
-          'Ensure your website stays aligned with the latest trends and technologies through regular updates and enhancements.',
-      },
-      {
-        title: 'Time and resource efficiency',
-        description:
-          'Skip the time-consuming process of building a website from scratch and launch your online presence sooner with AstroWind.',
-      },
-      {
-        title: 'Community support',
-        description: `Join the growing AstroWind community for insights, resources, and assistance, ensuring you're never alone on your web development journey.`,
-      },
-    ]}
-    image={{
-      src: 'https://images.unsplash.com/photo-1611462985358-60d3498e0364?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80',
-      alt: 'Astronauts Image',
-    }}
-  >
-    <Fragment slot="content">Designed to foster growth and success.</Fragment>
 
     <Fragment slot="bg">
       <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
@@ -217,92 +141,88 @@ const metadata = {
   <!-- Steps Widget ****************** -->
 
   <Steps
-    title="Get your dream website up and running in no time with AstroWind."
+    title="Real Examples of What You Can Automate"
     items={[
       {
-        title: 'Step 1: <span class="font-medium">Download</span>',
+        title: 'Machine Status Monitoring',
         description:
-          "Kickstart with GitHub! Either fork the AstroWind template or simply click 'Use this template'. Your canvas awaits, ready for your digital masterpiece. In just a few clicks, you've already set the foundation.",
-        icon: 'tabler:package',
+          '"Alert me when this CNC machine indicator light turns red" - Catch equipment issues before costly downtime occurs.',
+        icon: 'tabler:settings',
       },
       {
-        title: 'Step 2: <span class="font-medium">Add content</span>',
+        title: 'Safety Compliance',
         description:
-          "Pour your vision into it. Add images, text, and all that jazz to breathe life into your digital space. Remember, it's the content that tells your story, so make it captivating.",
-        icon: 'tabler:letter-case',
+          '"Notify me when someone enters this area without a hard hat" - Ensure safety protocols are followed automatically.',
+        icon: 'tabler:shield',
       },
       {
-        title: 'Step 3: <span class="font-medium">Customize styles</span>',
+        title: 'Quality Control',
         description:
-          'Give it your personal touch. Tailor colors, fonts, and layouts until it feels just right. Your unique flair, amplified by AstroWind! Precision in design ensures a seamless user experience.',
-        icon: 'tabler:paint',
+          '"Watch for defects on this assembly line" - Spot quality issues immediately and prevent bad products from shipping.',
+        icon: 'tabler:eye-check',
       },
       {
-        title: 'Ready!',
-        icon: 'tabler:check',
+        title: 'Process Optimization',
+        description:
+          '"Count how many pallets pass through here daily" - Gather data to optimize workflows and identify bottlenecks.',
+        icon: 'tabler:chart-line',
       },
     ]}
     image={{
-      src: 'https://images.unsplash.com/photo-1616198814651-e71f960c3180?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80',
-      alt: 'Steps image',
+      src: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80',
+      alt: 'Industrial monitoring examples',
     }}
   />
 
   <!-- Features2 Widget ************** -->
 
   <Features2
-    title="Most used widgets"
-    subtitle="Provides frequently used components for building websites using Tailwind CSS"
-    tagline="Components"
+    title="Common Use Cases"
+    subtitle="Discover what others are automating with Synoptic cameras"
+    tagline="Applications"
     items={[
       {
-        title: 'Headers',
-        description: "Ever tried driving without GPS? Boom! That's why websites need headers for direction.",
-        icon: 'flat-color-icons:template',
-      },
-      {
-        title: 'Heros',
-        description:
-          "Picture a superhero landing – epic, right? That's the job of a Hero section, making grand entrances!",
-        icon: 'flat-color-icons:gallery',
-      },
-      {
-        title: 'Features',
-        description:
-          'Where websites strut their stuff and show off superpowers. No holding back on the bragging rights here!',
+        title: 'Equipment Health Monitoring',
+        description: "Monitor vibration patterns, indicator lights, gauge readings, or any visual cue that signals equipment status.",
         icon: 'flat-color-icons:approval',
       },
       {
-        title: 'Content',
+        title: 'Safety & PPE Compliance',
         description:
-          "Dive into the meat and potatoes of a site; without it, you'd just be window shopping. Content is king.",
+          "Automatically detect missing protective equipment, unsafe behaviors, or unauthorized access to restricted areas.",
+        icon: 'flat-color-icons:gallery',
+      },
+      {
+        title: 'Production Line Quality',
+        description:
+          'Spot defects, verify assembly steps, check proper packaging, or ensure products meet visual quality standards.',
         icon: 'flat-color-icons:document',
       },
       {
-        title: 'Call-to-Action',
+        title: 'Inventory & Logistics',
         description:
-          'That enthusiastic friend who\'s always urging, "Do it! Do it!"? Yeah, that\'s this button nudging you towards adventure.',
+          'Count items, track movement patterns, monitor loading/unloading, or verify shipment completeness.',
         icon: 'flat-color-icons:advertising',
       },
       {
-        title: 'Pricing',
-        description: 'Behold the dessert menu of the website world. Tempting choices await, can you resist?',
+        title: 'Environmental Monitoring',
+        description: 'Watch for spills, smoke, unusual activity, or changes in environmental conditions.',
         icon: 'flat-color-icons:currency-exchange',
       },
       {
-        title: 'Testimonial',
-        description: 'Step into the gossip corner! Here, other visitors spill the beans and share the juicy details.',
+        title: 'Workflow Analytics',
+        description: 'Analyze movement patterns, identify bottlenecks, measure cycle times, or optimize resource allocation.',
         icon: 'flat-color-icons:voice-presentation',
       },
       {
-        title: 'Contact',
+        title: 'Custom Automation',
         description:
-          'Like a digital mailbox, but faster! Drop a line, ask a question, or send a virtual high-five. Ding! Message in.',
+          'Whatever you can describe in plain language, our AI can learn to monitor. The possibilities are endless.',
         icon: 'flat-color-icons:business-contact',
       },
       {
-        title: 'Footers',
-        description: "The footer's like the credits of a movie but sprinkled with easter eggs. Time to hunt!",
+        title: 'Multi-Site Management',
+        description: "Monitor multiple locations from a single dashboard with cloud-based management and reporting.",
         icon: 'flat-color-icons:database',
       },
     ]}
@@ -312,67 +232,69 @@ const metadata = {
     </Fragment>
   </Features2>
 
-  <!-- HighlightedPosts Widget ******* -->
-
+  <!-- Blog section commented out for now -->
+  <!--
   <BlogLatestPosts
-    title="Find out more content in our Blog"
-    information={`The blog is used to display AstroWind documentation.
-                        Each new article will be an important step that you will need to know to be an expert in creating a website using Astro + Tailwind CSS.
-                        Astro is a very interesting technology. Thanks.
+    title="Learn About Industrial Automation"
+    information={`Discover how simple automation is changing industrial operations.
+                        Read case studies, setup guides, and tips for maximizing 
+                        the value of AI-powered monitoring in your facility.
                 `}
   />
+  -->
 
   <!-- FAQs Widget ******************* -->
 
   <FAQs
     title="Frequently Asked Questions"
-    subtitle="Dive into the following questions to gain insights into the powerful features that AstroWind offers and how it can elevate your web development journey."
+    subtitle="Everything you need to know about setting up and using Synoptic's ultra-simple automation platform."
     tagline="FAQs"
     classes={{ container: 'max-w-6xl' }}
     items={[
       {
-        title: 'Why AstroWind?',
+        title: 'How quickly can I really set up a monitoring task?',
         description:
-          "Michael Knight a young loner on a crusade to champion the cause of the innocent. The helpless. The powerless in a world of criminals who operate above the law. Here he comes Here comes Speed Racer. He's a demon on wheels.",
+          "Seriously, under 5 minutes. Mount the camera, connect to WiFi, and tell it what to watch using natural language. The AI starts monitoring immediately.",
       },
       {
-        title: 'What do I need to start?',
+        title: 'What if I\'m not technical - can I still use this?',
         description:
-          'Space, the final frontier. These are the voyages of the Starship Enterprise. Its five-year mission: to explore strange new worlds. Many say exploration is part of our destiny, but it’s actually our duty to future generations.',
+          'That\'s exactly who we built this for! If you can describe what you want monitored in plain English, you can set up Synoptic cameras. No programming or technical knowledge required.',
       },
       {
-        title: 'How to install the Astro + Tailwind CSS template?',
+        title: 'Does the camera need internet connectivity?',
         description:
-          "Well, the way they make shows is, they make one show. That show's called a pilot. Then they show that show to the people who make shows, and on the strength of that one show they decide if they're going to make more shows.",
+          "Yes, Synoptic cameras require internet connection for cloud-based AI processing. This ensures you get the most advanced computer vision capabilities and continuous improvements.",
       },
       {
-        title: "What's something that you don't understand?",
+        title: 'What kinds of things can I monitor that I might not have thought of?',
         description:
-          "A flower in my garden, a mystery in my panties. Heart attack never stopped old Big Bear. I didn't even know we were calling him Big Bear.",
+          'Customers are amazed at what they end up monitoring: coffee machine usage patterns, parking lot capacity, how often employees wash hands, unusual noise patterns, even monitoring if plants need watering!',
       },
       {
-        title: 'What is something that you would like to try again?',
+        title: 'How accurate is the monitoring?',
         description:
-          "A business big enough that it could be listed on the NASDAQ goes belly up. Disappears! It ceases to exist without me. No, you clearly don't know who you're talking to, so let me clue you in.",
+          'Our cloud-based AI achieves high accuracy for most visual monitoring tasks, and continuously improves through machine learning. You can fine-tune detection sensitivity to match your needs.',
       },
       {
-        title: 'If you could only ask one question to each person you meet, what would that question be?',
+        title: 'Can I try it risk-free?',
         description:
-          "This is not about revenge. This is about justice. A lot of things can change in twelve years, Admiral. Well, that's certainly good to know. About four years. I got tired of hearing how young I looked.",
+          'We offer AI inference credits so you only pay for what you use. Start small with a single camera and expand as you discover more automation opportunities.',
       },
     ]}
   />
 
-  <!-- Stats Widget ****************** -->
-
+  <!-- Stats Widget - Commented out until we have real numbers -->
+  <!--
   <Stats
     stats={[
-      { title: 'Downloads', amount: '132K' },
-      { title: 'Stars', amount: '24.8K' },
-      { title: 'Forks', amount: '10.3K' },
-      { title: 'Users', amount: '48.4K' },
+      { title: 'Industries Served', amount: '15+' },
+      { title: 'Cameras Deployed', amount: '500+' },
+      { title: 'Monitoring Hours', amount: '50K+' },
+      { title: 'Incidents Prevented', amount: '1,200+' },
     ]}
   />
+  -->
 
   <!-- CallToAction Widget *********** -->
 
@@ -380,20 +302,18 @@ const metadata = {
     actions={[
       {
         variant: 'primary',
-        text: 'Get template',
-        href: 'https://github.com/onwidget/astrowind',
-        target: '_blank',
-        icon: 'tabler:download',
+        text: 'Start Automating Today',
+        href: '/products',
+        icon: 'tabler:shopping-cart',
       },
     ]}
   >
     <Fragment slot="title">
-      Astro&nbsp;+&nbsp;<br class="block sm:hidden" /><span class="sm:whitespace-nowrap">Tailwind CSS</span>
+      Ready to Discover What You Can <br class="block sm:hidden" /><span class="sm:whitespace-nowrap">Automate in 5 Minutes?</span>
     </Fragment>
 
     <Fragment slot="subtitle">
-      Be very surprised by these huge fake numbers you are seeing on this page. <br class="hidden md:inline" />Don't
-      waste more time! :P
+      Join the automation revolution. Set up your first smart monitoring task today and see how easy industrial automation can be.
     </Fragment>
   </CallToAction>
 </Layout>

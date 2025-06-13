@@ -3,23 +3,39 @@
 ---
 
 <div
-  class="text-white text-sm hidden md:flex gap-1 overflow-hidden px-3 py-2 relative text-ellipsis whitespace-nowrap"
-  style="background-color: rgb(51, 73, 152);"
+  class="text-default bg-white dark:text-white text-sm hidden md:flex gap-1 overflow-hidden px-3 py-2 relative text-ellipsis whitespace-nowrap z-50"
+  style="background: white;"
 >
   <span
-    class="bg-white/20 text-white font-semibold px-1 py-0.5 text-xs mr-0.5 rtl:mr-0 rtl:ml-0.5 inline-block"
+    class="bg-primary/10 dark:bg-white/20 text-primary dark:text-white font-semibold px-1 py-0.5 text-xs mr-0.5 rtl:mr-0 rtl:ml-0.5 inline-block"
     >NEW</span
   >
-  <a href="https://app.synoptic.vision" class="text-white/90 hover:text-white hover:underline font-medium"
+  <a href="https://app.synoptic.vision" class="text-muted dark:text-white/90 hover:text-primary dark:hover:text-white hover:underline font-medium"
     >Try our AI monitoring platform - Set up automation in under 5 minutes! »</a
   >
   <a
     target="_blank"
     rel="noopener"
-    class="ltr:ml-auto rtl:mr-auto text-white/80 hover:text-white font-medium"
+    class="ltr:ml-auto rtl:mr-auto text-muted dark:text-white/80 hover:text-primary dark:hover:text-white font-medium"
     title="Get Started with Synoptic"
     href="https://app.synoptic.vision"
   >
     Get Started →
   </a>
 </div>
+
+<style>
+  /* Light mode: white background */
+  div {
+    background: white !important;
+    color: rgb(16, 16, 16);
+    position: relative;
+    z-index: 50;
+  }
+  
+  /* Dark mode: dark blue background to match header */
+  .dark div {
+    background: rgb(51, 73, 152) !important;
+    color: white;
+  }
+</style>

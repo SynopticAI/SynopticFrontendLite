@@ -1,9 +1,10 @@
 ---
-import { getAsset } from '~/utils/permalinks';
+// For assets in src/assets/images/, we need to import them
+import headerLogo from '~/assets/images/header-logo.png';
 ---
 
 <img 
-  src={getAsset('/assets/images/header-logo.png')} 
+  src={headerLogo.src} 
   alt="Synoptic Logo" 
   class="h-8 w-auto" 
   loading="lazy"

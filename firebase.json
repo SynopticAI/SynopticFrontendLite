@@ -40,7 +40,7 @@
     },
     {
       "site": "synoptic-shop",
-      "public": "synoptic-shop/out",
+      "public": "synoptic-shop/dist",
       "ignore": [
         "firebase.json",
         "**/.*",

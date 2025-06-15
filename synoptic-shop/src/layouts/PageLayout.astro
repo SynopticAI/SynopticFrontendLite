@@ -1,5 +1,5 @@
 ---
-// src/layouts/PageLayout.astro - Updated with full cart integration
+// src/layouts/PageLayout.astro - Updated with orders integration
 import Layout from './Layout.astro';
 import Header from '~/components/widgets/Header.astro';
 import Footer from '~/components/widgets/Footer.astro';
@@ -36,20 +36,24 @@ const { metadata } = Astro.props;
   <CartDrawer />
 </Layout>
 
-<!-- Firebase, Auth, and Cart Scripts -->
+<!-- Firebase, Auth, Cart, and Orders Scripts -->
 <script>
   // Import Firebase auth handler
   import('../scripts/auth-handler.js');
   
   // Import cart handler  
   import('../scripts/cart-handler.js');
+  
+  // Import orders handler (conditional loading for performance)
+  if (window.location.pathname.includes('/orders') || window.location.pathname.includes('/account')) {
+    import('../scripts/orders-handler.js');
+  }
 </script>
 
-<!-- Product Page Integration Script -->
+<!-- Page Integration Script -->
 <script is:inline>
-  // Enhanced product page integration
   window.addEventListener('load', function() {
-    console.log('🛒 Cart system initialized');
+    console.log('🛒 E-commerce system initialized');
     
     // Check for auth redirects
     const urlParams = new URLSearchParams(window.location.search);
@@ -63,18 +67,27 @@ const { metadata } = Astro.props;
       }, 500);
     }
     
-    // Initialize cart for product pages
-    if (window.location.pathname.includes('/products/')) {
-      // Product page specific initialization
+    // Page-specific initialization
+    const pathname = window.location.pathname;
+    
+    if (pathname.includes('/products/')) {
       console.log('🛍️ Product page cart integration ready');
+    } else if (pathname.includes('/orders')) {
+      console.log('📦 Orders page integration ready');
+    } else if (pathname.includes('/account')) {
+      console.log('👤 Account page integration ready');
     }
   });
 </script>
 
-<!-- Enhanced Product Page Script -->
+<!-- Enhanced Product Page Script (only for product pages) -->
 <script>
-  // Enhanced product page functionality
   document.addEventListener('DOMContentLoaded', function() {
+    // Only run on product pages
+    if (!window.location.pathname.includes('/products/')) {
+      return;
+    }
+    
     // Image zoom functionality
     const mainImageContainer = document.getElementById('main-image-container');
     const mainImage = document.getElementById('main-image');
@@ -255,18 +268,20 @@ const { metadata } = Astro.props;
 </script>
 
 <style>
-  /* Ensure modal and drawer have proper z-index */
+  /* Ensure all modals and drawers have proper z-index */
   #auth-modal,
   #cart-overlay {
     z-index: 1000;
   }
   
+  #order-modal,
   #image-modal {
     z-index: 1001;
   }
   
-  /* Show modal class for image zoom */
-  #image-modal.show {
+  /* Show modal classes */
+  #image-modal.show,
+  #order-modal.show {
     display: flex;
   }
 </style>

@@ -1,11 +1,30 @@
 ---
-// src/components/auth/AuthHeader.astro - Authentication header component
+// src/components/auth/AuthHeader.astro - Updated with centralized auth state integration
 ---
 
 <!-- Auth Section for Header -->
 <div class="auth-section flex items-center space-x-4">
   
-  <!-- Loading State -->
+  <!-- Shopping Cart Button -->
+  <button 
+    id="cart-button" 
+    class="relative p-2 text-gray-700 hover:text-gray-900 transition-colors"
+    aria-label="Shopping cart"
+  >
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L6 6H2m5 7v1m0 0v5a2 2 0 002 2h6a2 2 0 002-2v-5m-8 0h8"></path>
+    </svg>
+    
+    <!-- Cart Count Badge -->
+    <span 
+      id="cart-count" 
+      class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
+    >
+      0
+    </span>
+  </button>
+  
+  <!-- Loading State (shown while auth is initializing) -->
   <div id="auth-loading" class="flex items-center">
     <div class="animate-pulse flex space-x-2">
       <div class="w-8 h-8 bg-gray-200 rounded-full"></div>
@@ -101,12 +120,12 @@
           <svg class="w-4 h-4 inline mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
           </svg>
-          Open Synoptic App
+          Synoptic App
         </a>
 
         <div class="border-t border-gray-100 mt-1">
           <button 
-            id="signout-button" 
+            id="sign-out-btn" 
             class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
             role="menuitem"
           >
@@ -118,25 +137,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Cart Icon (if not already in header) -->
-    <button 
-      id="cart-button" 
-      class="relative p-2 text-gray-700 hover:text-gray-900 transition-colors"
-      aria-label="Shopping cart"
-    >
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L6 6H2m5 7v1m0 0v5a2 2 0 002 2h6a2 2 0 002-2v-5m-8 0h8"></path>
-      </svg>
-      
-      <!-- Cart Count Badge -->
-      <span 
-        id="cart-count" 
-        class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
-      >
-        0
-      </span>
-    </button>
   </div>
 </div>
 
@@ -164,12 +164,209 @@
     opacity: 1;
     transform: translateY(0);
   }
+
+  /* Loading animation */
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+  
+  .animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Hover states */
+  .hover\:bg-primary-dark:hover {
+    background-color: rgb(41, 63, 142);
+  }
 </style>
 
 <script>
-  // This script will be enhanced by the main auth handler
+  // Integration with centralized auth state manager
   document.addEventListener('DOMContentLoaded', function() {
-    // User menu dropdown functionality
+    console.log('🔐 AuthHeader: Initializing with centralized auth state...');
+    
+    // DOM elements
+    const authLoading = document.getElementById('auth-loading');
+    const authNotAuthenticated = document.getElementById('auth-not-authenticated');
+    const authAuthenticated = document.getElementById('auth-authenticated');
+    const userAvatarText = document.getElementById('user-avatar-text');
+    const userDisplayName = document.getElementById('user-display-name');
+    const dropdownUserName = document.getElementById('dropdown-user-name');
+    const dropdownUserEmail = document.getElementById('dropdown-user-email');
+    const openAuthModalBtn = document.getElementById('open-auth-modal');
+    const signOutBtn = document.getElementById('sign-out-btn');
+
+    // Wait for centralized auth state to be available
+    const waitForAuthState = () => {
+      if (window.authState) {
+        console.log('🔐 AuthHeader: Centralized auth state available');
+        initializeAuthHeader();
+      } else {
+        console.log('🔐 AuthHeader: Waiting for auth state...');
+        setTimeout(waitForAuthState, 100);
+      }
+    };
+
+    const initializeAuthHeader = () => {
+      // Subscribe to auth state changes
+      window.authState.subscribe((user) => {
+        console.log('🔐 AuthHeader: Auth state changed:', user ? '✅ Authenticated' : '❌ Not authenticated');
+        updateAuthUI(user);
+      });
+
+      // Get current auth state immediately if available
+      window.authState.getAuthState().then((authState) => {
+        console.log('🔐 AuthHeader: Initial auth state:', authState);
+        updateAuthUI(authState.user);
+      }).catch((error) => {
+        console.error('🔐 AuthHeader: Error getting initial auth state:', error);
+        showNotAuthenticated();
+      });
+    };
+
+    const updateAuthUI = (user) => {
+      if (user) {
+        showAuthenticated(user);
+      } else {
+        showNotAuthenticated();
+      }
+    };
+
+    const showAuthenticated = (user) => {
+      console.log('🔐 AuthHeader: Showing authenticated UI for:', user.email);
+      
+      // Hide loading and not-authenticated states
+      if (authLoading) authLoading.classList.add('hidden');
+      if (authNotAuthenticated) authNotAuthenticated.classList.add('hidden');
+      
+      // Show authenticated state
+      if (authAuthenticated) authAuthenticated.classList.remove('hidden');
+
+      // Update user info
+      const displayName = user.displayName || user.email.split('@')[0];
+      const initials = getInitials(displayName);
+
+      if (userAvatarText) userAvatarText.textContent = initials;
+      if (userDisplayName) userDisplayName.textContent = displayName;
+      if (dropdownUserName) dropdownUserName.textContent = displayName;
+      if (dropdownUserEmail) dropdownUserEmail.textContent = user.email;
+    };
+
+    const showNotAuthenticated = () => {
+      console.log('🔐 AuthHeader: Showing not authenticated UI');
+      
+      // Hide loading and authenticated states
+      if (authLoading) authLoading.classList.add('hidden');
+      if (authAuthenticated) authAuthenticated.classList.add('hidden');
+      
+      // Show not authenticated state
+      if (authNotAuthenticated) authNotAuthenticated.classList.remove('hidden');
+    };
+
+    const getInitials = (name) => {
+      return name
+        .split(' ')
+        .map(word => word.charAt(0))
+        .join('')
+        .toUpperCase()
+        .substring(0, 2);
+    };
+
+    // Event listeners
+    if (openAuthModalBtn) {
+      openAuthModalBtn.addEventListener('click', () => {
+        console.log('🔐 AuthHeader: Opening auth modal');
+        if (window.authHandler) {
+          window.authHandler.openModal('signin');
+        } else {
+          // Fallback - dispatch custom event
+          window.dispatchEvent(new CustomEvent('openAuthModal', { 
+            detail: { mode: 'signin' } 
+          }));
+        }
+      });
+    }
+
+    // Cart button event listener
+    const cartButton = document.getElementById('cart-button');
+    if (cartButton) {
+      cartButton.addEventListener('click', () => {
+        console.log('🛒 AuthHeader: Opening cart drawer');
+        if (window.cartHandler) {
+          window.cartHandler.openDrawer();
+        } else {
+          // Fallback - dispatch custom event
+          window.dispatchEvent(new CustomEvent('openCartDrawer'));
+        }
+      });
+    }
+
+    // Subscribe to cart state changes for count updates
+    const updateCartCount = () => {
+      const cartCount = document.getElementById('cart-count');
+      if (cartCount && window.cartManager) {
+        const itemCount = window.cartManager.getItemCount();
+        if (itemCount > 0) {
+          cartCount.textContent = itemCount;
+          cartCount.classList.remove('hidden');
+        } else {
+          cartCount.classList.add('hidden');
+        }
+      }
+    };
+
+    // Check for cart manager and subscribe to updates
+    const initCartIntegration = () => {
+      if (window.cartManager) {
+        console.log('🛒 AuthHeader: Cart manager available, subscribing to updates');
+        window.cartManager.subscribe(() => {
+          updateCartCount();
+        });
+        updateCartCount(); // Initial update
+      } else {
+        console.log('🛒 AuthHeader: Waiting for cart manager...');
+        setTimeout(initCartIntegration, 100);
+      }
+    };
+
+    // Initialize cart integration
+    initCartIntegration();
+
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', () => {
+        console.log('🔐 AuthHeader: Sign out clicked');
+        if (window.authHandler) {
+          window.authHandler.handleSignOut();
+        } else {
+          // Fallback - try direct Firebase sign out
+          import('../../lib/firebase.js').then(({ signOutUser }) => {
+            signOutUser().then(() => {
+              console.log('🔐 AuthHeader: Sign out successful');
+              // Redirect to home page if on protected page
+              const protectedPaths = ['/orders', '/account'];
+              if (protectedPaths.some(path => window.location.pathname.includes(path))) {
+                window.location.href = '/';
+              }
+            });
+          });
+        }
+      });
+    }
+
+    // Dropdown functionality
+    setupDropdown();
+
+    // Start the auth state initialization
+    waitForAuthState();
+  });
+
+  // Dropdown menu functionality
+  function setupDropdown() {
     const userMenuButton = document.getElementById('user-menu-button');
     const userDropdown = document.getElementById('user-dropdown');
     
@@ -197,6 +394,15 @@
           userMenuButton.setAttribute('aria-expanded', 'false');
         }
       });
+
+      // Close dropdown when pressing escape
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !userDropdown.classList.contains('hidden')) {
+          userDropdown.classList.remove('show');
+          setTimeout(() => userDropdown.classList.add('hidden'), 200);
+          userMenuButton.setAttribute('aria-expanded', 'false');
+        }
+      });
     }
-  });
+  }
 </script>

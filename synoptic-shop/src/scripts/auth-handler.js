@@ -1,22 +1,25 @@
-// src/scripts/auth-handler.js - Main authentication handler
+// src/scripts/auth-handler.js - Main authentication handler with centralized state
 import { 
   signIn, 
   signUp, 
   signOutUser, 
   resetPassword, 
-  onAuthStateChange, 
   getUserDataForSwell
 } from '../lib/firebase.js';
+import authStateManager from '../lib/auth-state-manager.js';
 
 class AuthHandler {
   constructor() {
     this.currentUser = null;
     this.authModal = null;
     this.currentForm = 'signin';
+    this.authUnsubscribe = null;
     this.init();
   }
 
   init() {
+    console.log('🔐 Initializing auth handler...');
+    
     // Wait for DOM to be ready
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => this.setupDOM());
@@ -24,10 +27,15 @@ class AuthHandler {
       this.setupDOM();
     }
 
-    // Listen to auth state changes
-    onAuthStateChange((user) => {
+    // Subscribe to centralized auth state changes
+    this.authUnsubscribe = authStateManager.subscribe((user) => {
       this.currentUser = user;
       this.updateAuthUI(user);
+    });
+
+    // Listen for custom events to open auth modal
+    window.addEventListener('openAuthModal', (e) => {
+      this.openModal(e.detail?.mode || 'signin');
     });
   }
 
@@ -82,9 +90,9 @@ class AuthHandler {
       backToSigninBtn.addEventListener('click', () => this.switchForm('signin'));
     }
 
-    // ESC key to close modal
+    // Escape key to close modal
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !this.authModal.classList.contains('hidden')) {
+      if (e.key === 'Escape' && this.isModalOpen()) {
         this.closeModal();
       }
     });
@@ -103,184 +111,180 @@ class AuthHandler {
       signupForm.addEventListener('submit', (e) => this.handleSignUp(e));
     }
 
-    // Reset form
+    // Password reset form
     const resetForm = document.getElementById('reset-form');
     if (resetForm) {
-      resetForm.addEventListener('submit', (e) => this.handleResetPassword(e));
+      resetForm.addEventListener('submit', (e) => this.handlePasswordReset(e));
     }
   }
 
   setupHeaderEventListeners() {
     // Sign out button
-    const signoutBtn = document.getElementById('signout-button');
-    if (signoutBtn) {
-      signoutBtn.addEventListener('click', () => this.handleSignOut());
+    const signOutBtn = document.getElementById('sign-out-btn');
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', () => this.handleSignOut());
     }
 
-    // Cart button (placeholder for future cart integration)
-    const cartBtn = document.getElementById('cart-button');
-    if (cartBtn) {
-      cartBtn.addEventListener('click', () => {
-        console.log('Cart clicked - integration coming soon');
-        // Future cart functionality
+    // User menu toggle
+    const userMenuBtn = document.getElementById('user-menu-btn');
+    const userMenu = document.getElementById('user-menu');
+    
+    if (userMenuBtn && userMenu) {
+      userMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        userMenu.classList.toggle('hidden');
+      });
+
+      // Close menu when clicking outside
+      document.addEventListener('click', () => {
+        userMenu.classList.add('hidden');
       });
     }
   }
 
-  openModal(formType = 'signin') {
-    if (!this.authModal) return;
+  async handleSignIn(e) {
+    e.preventDefault();
     
-    this.currentForm = formType;
-    this.switchForm(formType);
-    this.clearMessages();
-    this.authModal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-    
-    // Focus first input
-    setTimeout(() => {
-      const firstInput = this.authModal.querySelector(`#${formType}-form input`);
-      if (firstInput) firstInput.focus();
-    }, 100);
-  }
+    const form = e.target;
+    const email = form.email.value.trim();
+    const password = form.password.value;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const errorDiv = document.getElementById('signin-error');
 
-  closeModal() {
-    if (!this.authModal) return;
-    
-    this.authModal.classList.add('hidden');
-    document.body.style.overflow = '';
-    this.clearForms();
-    this.clearMessages();
-  }
-
-  switchForm(formType) {
-    this.currentForm = formType;
-    
-    // Hide all forms
-    const forms = ['signin', 'signup', 'reset'];
-    forms.forEach(form => {
-      const formEl = document.getElementById(`${form}-form`);
-      const footerEl = document.getElementById(`${form}-footer`);
-      
-      if (formEl) formEl.classList.add('hidden');
-      if (footerEl) footerEl.classList.add('hidden');
-    });
-
-    // Show current form
-    const currentFormEl = document.getElementById(`${formType}-form`);
-    const currentFooterEl = document.getElementById(`${formType}-footer`);
-    
-    if (currentFormEl) currentFormEl.classList.remove('hidden');
-    if (currentFooterEl) currentFooterEl.classList.remove('hidden');
-
-    // Update modal title
-    const modalTitle = document.getElementById('auth-modal-title');
-    if (modalTitle) {
-      const titles = {
-        signin: 'Sign In',
-        signup: 'Create Account',
-        reset: 'Reset Password'
-      };
-      modalTitle.textContent = titles[formType] || 'Authentication';
+    if (!email || !password) {
+      this.showError(errorDiv, 'Please fill in all fields');
+      return;
     }
 
-    this.clearMessages();
-  }
-
-  async handleSignIn(event) {
-    event.preventDefault();
-    
-    const form = event.target;
-    const formData = new FormData(form);
-    const email = formData.get('email');
-    const password = formData.get('password');
-
-    this.setFormLoading('signin', true);
-    this.clearMessages();
+    this.setLoading(submitBtn, true);
+    this.showError(errorDiv, '');
 
     try {
       const result = await signIn(email, password);
       
       if (result.success) {
-        this.showSuccess('Successfully signed in!');
-        setTimeout(() => this.closeModal(), 1500);
+        console.log('✅ Sign in successful');
+        this.closeModal();
+        form.reset();
+        
+        // Emit custom event for successful sign in
+        window.dispatchEvent(new CustomEvent('userSignedIn', { 
+          detail: { user: result.user } 
+        }));
       } else {
-        this.showError(result.error);
+        this.showError(errorDiv, result.error);
       }
     } catch (error) {
-      this.showError(error);
+      console.error('Sign in error:', error);
+      this.showError(errorDiv, 'An unexpected error occurred');
     } finally {
-      this.setFormLoading('signin', false);
+      this.setLoading(submitBtn, false);
     }
   }
 
-  async handleSignUp(event) {
-    event.preventDefault();
+  async handleSignUp(e) {
+    e.preventDefault();
     
-    const form = event.target;
-    const formData = new FormData(form);
-    const name = formData.get('name');
-    const email = formData.get('email');
-    const password = formData.get('password');
-    const confirmPassword = formData.get('confirmPassword');
+    const form = e.target;
+    const email = form.email.value.trim();
+    const password = form.password.value;
+    const confirmPassword = form.confirmPassword.value;
+    const displayName = form.displayName?.value.trim() || '';
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const errorDiv = document.getElementById('signup-error');
 
-    // Validate passwords match
-    if (password !== confirmPassword) {
-      this.showError('Passwords do not match.');
+    if (!email || !password || !confirmPassword) {
+      this.showError(errorDiv, 'Please fill in all fields');
       return;
     }
 
-    this.setFormLoading('signup', true);
-    this.clearMessages();
+    if (password !== confirmPassword) {
+      this.showError(errorDiv, 'Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      this.showError(errorDiv, 'Password must be at least 6 characters long');
+      return;
+    }
+
+    this.setLoading(submitBtn, true);
+    this.showError(errorDiv, '');
 
     try {
-      const result = await signUp(email, password, name);
+      const result = await signUp(email, password, displayName);
       
       if (result.success) {
-        this.showSuccess('Account created successfully!');
-        setTimeout(() => this.closeModal(), 1500);
+        console.log('✅ Sign up successful');
+        this.closeModal();
+        form.reset();
+        
+        // Emit custom event for successful sign up
+        window.dispatchEvent(new CustomEvent('userSignedUp', { 
+          detail: { user: result.user } 
+        }));
       } else {
-        this.showError(result.error);
+        this.showError(errorDiv, result.error);
       }
     } catch (error) {
-      this.showError(error);
+      console.error('Sign up error:', error);
+      this.showError(errorDiv, 'An unexpected error occurred');
     } finally {
-      this.setFormLoading('signup', false);
+      this.setLoading(submitBtn, false);
     }
   }
 
-  async handleResetPassword(event) {
-    event.preventDefault();
+  async handlePasswordReset(e) {
+    e.preventDefault();
     
-    const form = event.target;
-    const formData = new FormData(form);
-    const email = formData.get('email');
+    const form = e.target;
+    const email = form.email.value.trim();
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const errorDiv = document.getElementById('reset-error');
+    const successDiv = document.getElementById('reset-success');
 
-    this.setFormLoading('reset', true);
-    this.clearMessages();
+    if (!email) {
+      this.showError(errorDiv, 'Please enter your email address');
+      return;
+    }
+
+    this.setLoading(submitBtn, true);
+    this.showError(errorDiv, '');
+    this.showError(successDiv, '');
 
     try {
       const result = await resetPassword(email);
       
       if (result.success) {
-        this.showSuccess('Password reset email sent! Check your inbox.');
-        setTimeout(() => this.switchForm('signin'), 2000);
+        this.showError(successDiv, 'Password reset email sent! Check your inbox.');
+        form.reset();
       } else {
-        this.showError(result.error);
+        this.showError(errorDiv, result.error);
       }
     } catch (error) {
-      this.showError(error);
+      console.error('Password reset error:', error);
+      this.showError(errorDiv, 'An unexpected error occurred');
     } finally {
-      this.setFormLoading('reset', false);
+      this.setLoading(submitBtn, false);
     }
   }
 
   async handleSignOut() {
     try {
+      console.log('🔐 Signing out...');
       const result = await signOutUser();
       
       if (result.success) {
-        // Redirect to home page after sign out
-        window.location.href = '/';
+        console.log('✅ Sign out successful');
+        
+        // Emit custom event for successful sign out
+        window.dispatchEvent(new CustomEvent('userSignedOut'));
+        
+        // Redirect to home page if on protected page
+        const protectedPaths = ['/orders', '/account'];
+        if (protectedPaths.some(path => window.location.pathname.includes(path))) {
+          window.location.href = '/';
+        }
       } else {
         console.error('Sign out error:', result.error);
       }
@@ -290,131 +294,123 @@ class AuthHandler {
   }
 
   updateAuthUI(user) {
-    // Update loading state
-    this.hideElement('auth-loading');
-    
+    // Update user menu
+    const authButtons = document.getElementById('auth-buttons');
+    const userMenu = document.getElementById('user-menu-container');
+    const userNameDisplay = document.getElementById('user-name-display');
+
     if (user) {
-      // User is authenticated
-      this.showElement('auth-authenticated');
-      this.hideElement('auth-not-authenticated');
+      // User is signed in
+      if (authButtons) authButtons.classList.add('hidden');
+      if (userMenu) userMenu.classList.remove('hidden');
       
-      // Update user info
-      this.updateUserInfo(user);
+      if (userNameDisplay) {
+        userNameDisplay.textContent = user.displayName || user.email.split('@')[0];
+      }
+      
+      console.log('🔐 UI updated for authenticated user:', user.email);
     } else {
-      // User is not authenticated
-      this.showElement('auth-not-authenticated');
-      this.hideElement('auth-authenticated');
+      // User is signed out
+      if (authButtons) authButtons.classList.remove('hidden');
+      if (userMenu) userMenu.classList.add('hidden');
+      
+      console.log('🔐 UI updated for non-authenticated state');
     }
   }
 
-  updateUserInfo(user) {
-    // User avatar and name
-    const avatarText = document.getElementById('user-avatar-text');
-    const displayName = document.getElementById('user-display-name');
-    const dropdownName = document.getElementById('dropdown-user-name');
-    const dropdownEmail = document.getElementById('dropdown-user-email');
-
-    const name = user.displayName || user.email.split('@')[0];
-    const initials = this.getInitials(name);
-
-    if (avatarText) avatarText.textContent = initials;
-    if (displayName) displayName.textContent = name;
-    if (dropdownName) dropdownName.textContent = name;
-    if (dropdownEmail) dropdownEmail.textContent = user.email;
+  openModal(formType = 'signin') {
+    if (!this.authModal) return;
+    
+    this.currentForm = formType;
+    this.switchForm(formType);
+    
+    this.authModal.classList.remove('hidden');
+    this.authModal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    
+    // Focus on first input
+    setTimeout(() => {
+      const firstInput = this.authModal.querySelector(`#${formType}-form input[type="email"]`);
+      if (firstInput) firstInput.focus();
+    }, 100);
   }
 
-  getInitials(name) {
-    return name
-      .split(' ')
-      .map(part => part.charAt(0).toUpperCase())
-      .slice(0, 2)
-      .join('');
+  closeModal() {
+    if (!this.authModal) return;
+    
+    this.authModal.classList.remove('show');
+    this.authModal.classList.add('hidden');
+    document.body.style.overflow = '';
+    
+    // Clear all error messages
+    const errorDivs = this.authModal.querySelectorAll('.error-message');
+    errorDivs.forEach(div => div.textContent = '');
+    
+    // Reset all forms
+    const forms = this.authModal.querySelectorAll('form');
+    forms.forEach(form => form.reset());
   }
 
-  setFormLoading(formType, loading) {
-    const submitBtn = document.getElementById(`${formType}-submit`);
-    const textSpan = submitBtn?.querySelector(`.${formType}-text`);
-    const loadingSpan = submitBtn?.querySelector(`.${formType}-loading`);
+  switchForm(formType) {
+    const forms = ['signin', 'signup', 'reset'];
+    
+    forms.forEach(type => {
+      const form = document.getElementById(`${type}-form`);
+      if (form) {
+        if (type === formType) {
+          form.classList.remove('hidden');
+        } else {
+          form.classList.add('hidden');
+        }
+      }
+    });
+    
+    this.currentForm = formType;
+  }
 
-    if (submitBtn) {
-      submitBtn.disabled = loading;
-      
-      if (loading) {
-        textSpan?.classList.add('hidden');
-        loadingSpan?.classList.remove('hidden');
-      } else {
-        textSpan?.classList.remove('hidden');
-        loadingSpan?.classList.add('hidden');
+  isModalOpen() {
+    return this.authModal && !this.authModal.classList.contains('hidden');
+  }
+
+  showError(errorDiv, message) {
+    if (errorDiv) {
+      errorDiv.textContent = message;
+      errorDiv.style.display = message ? 'block' : 'none';
+    }
+  }
+
+  setLoading(button, isLoading) {
+    if (!button) return;
+    
+    if (isLoading) {
+      button.disabled = true;
+      button.dataset.originalText = button.textContent;
+      button.textContent = 'Loading...';
+    } else {
+      button.disabled = false;
+      if (button.dataset.originalText) {
+        button.textContent = button.dataset.originalText;
       }
     }
   }
 
-  showError(message) {
-    const errorEl = document.getElementById('auth-error');
-    const errorMessageEl = document.getElementById('auth-error-message');
-    
-    if (errorEl && errorMessageEl) {
-      errorMessageEl.textContent = message;
-      errorEl.classList.remove('hidden');
-    }
-    
-    this.hideElement('auth-success');
-  }
-
-  showSuccess(message) {
-    const successEl = document.getElementById('auth-success');
-    const successMessageEl = document.getElementById('auth-success-message');
-    
-    if (successEl && successMessageEl) {
-      successMessageEl.textContent = message;
-      successEl.classList.remove('hidden');
-    }
-    
-    this.hideElement('auth-error');
-  }
-
-  clearMessages() {
-    this.hideElement('auth-error');
-    this.hideElement('auth-success');
-  }
-
-  clearForms() {
-    const forms = document.querySelectorAll('#auth-modal form');
-    forms.forEach(form => form.reset());
-  }
-
-  showElement(id) {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('hidden');
-  }
-
-  hideElement(id) {
-    const el = document.getElementById(id);
-    if (el) el.classList.add('hidden');
-  }
-
-  // Public methods for cart integration
+  // Public methods for external access
   getCurrentUser() {
     return this.currentUser;
   }
 
-  getUserDataForSwell() {
-    return getUserDataForSwell();
+  isAuthenticated() {
+    return !!this.currentUser;
   }
 
-  requireAuth(callback) {
-    if (this.currentUser) {
-      callback(this.currentUser);
-    } else {
-      this.openModal('signin');
-      
-      // Listen for successful auth
-      const unsubscribe = onAuthStateChange((user) => {
-        if (user) {
-          callback(user);
-          unsubscribe();
-        }
-      });
+  async getAuthState() {
+    return authStateManager.getAuthState();
+  }
+
+  // Cleanup method
+  destroy() {
+    if (this.authUnsubscribe) {
+      this.authUnsubscribe();
     }
   }
 }
@@ -422,7 +418,9 @@ class AuthHandler {
 // Initialize auth handler
 const authHandler = new AuthHandler();
 
-// Export for use by other scripts
-window.authHandler = authHandler;
+// Make available globally for backward compatibility
+if (typeof window !== 'undefined') {
+  window.authHandler = authHandler;
+}
 
 export default authHandler;

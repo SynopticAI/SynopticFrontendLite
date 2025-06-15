@@ -1,5 +1,5 @@
 ---
-// src/layouts/PageLayout.astro - Updated with orders integration
+// src/layouts/PageLayout.astro - Updated with centralized auth state manager
 import Layout from './Layout.astro';
 import Header from '~/components/widgets/Header.astro';
 import Footer from '~/components/widgets/Footer.astro';
@@ -36,252 +36,180 @@ const { metadata } = Astro.props;
   <CartDrawer />
 </Layout>
 
-<!-- Firebase, Auth, Cart, and Orders Scripts -->
+<!-- Firebase, Auth, Cart, and Orders Scripts with Centralized Auth State -->
 <script>
-  // Import Firebase auth handler
+  // 🔐 CRITICAL: Import centralized auth state manager FIRST
+  // This ensures auth state is available before other modules load
+  import('../lib/auth-state-manager.js');
+  
+  // Import Firebase auth handler (now uses centralized auth)
   import('../scripts/auth-handler.js');
   
   // Import cart handler  
   import('../scripts/cart-handler.js');
   
-  // Import orders handler (conditional loading for performance)
-  if (window.location.pathname.includes('/orders') || window.location.pathname.includes('/account')) {
+  // Conditional imports for performance optimization
+  const pathname = window.location.pathname;
+  
+  // Import orders handler for orders and account pages
+  if (pathname.includes('/orders') || pathname.includes('/account')) {
     import('../scripts/orders-handler.js');
+  }
+  
+  // Import checkout handler for checkout and cart pages
+  if (pathname.includes('/checkout') || pathname.includes('/cart')) {
+    import('../scripts/checkout-handler.js');
+  }
+  
+  // Import product-specific handlers for product pages
+  if (pathname.includes('/products/')) {
+    // Enhanced product page functionality if needed
+    console.log('🛍️ Product page enhanced features ready');
   }
 </script>
 
-<!-- Page Integration Script -->
+<!-- Page Integration and Initialization Script -->
 <script is:inline>
+  // Global initialization when page loads
   window.addEventListener('load', function() {
-    console.log('🛒 E-commerce system initialized');
+    console.log('🛒 Synoptic E-commerce system initialized');
     
-    // Check for auth redirects
+    // Check for auth redirects from Flutter app
     const urlParams = new URLSearchParams(window.location.search);
     const authAction = urlParams.get('auth');
     
     if (authAction === 'signin' || authAction === 'signup') {
+      // Delay to ensure auth handler is loaded
       setTimeout(() => {
         if (window.authHandler) {
+          console.log('🔐 Opening auth modal from URL redirect:', authAction);
           window.authHandler.openModal(authAction);
+          
+          // Clean up URL without refreshing page
+          const cleanUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+        } else {
+          console.warn('🔐 Auth handler not ready for URL redirect');
         }
-      }, 500);
+      }, 750); // Increased delay for reliability
     }
     
-    // Page-specific initialization
+    // Page-specific initialization logging
     const pathname = window.location.pathname;
     
     if (pathname.includes('/products/')) {
       console.log('🛍️ Product page cart integration ready');
     } else if (pathname.includes('/orders')) {
-      console.log('📦 Orders page integration ready');
+      console.log('📦 Orders page with centralized auth ready');
     } else if (pathname.includes('/account')) {
       console.log('👤 Account page integration ready');
+    } else if (pathname.includes('/checkout') || pathname.includes('/cart')) {
+      console.log('🛒 Checkout page with auth integration ready');
     }
+    
+    // Debug helper for development
+    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+      console.log('🔧 Development mode: Auth state debug available via window.authState.debug()');
+    }
+  });
+  
+  // Global error handler for auth-related issues
+  window.addEventListener('error', function(e) {
+    if (e.message && e.message.includes('auth')) {
+      console.error('🚨 Auth-related error detected:', e.message);
+      // Could add user-friendly error handling here
+    }
+  });
+  
+  // Listen for auth state changes globally (for debugging and logging)
+  window.addEventListener('authStateChanged', function(e) {
+    const { user, isAuthenticated } = e.detail;
+    console.log('🔐 Global auth state change detected:', {
+      isAuthenticated,
+      userEmail: user?.email || 'Not authenticated',
+      timestamp: new Date().toLocaleTimeString(),
+      page: window.location.pathname
+    });
+    
+    // You can add global auth state reaction logic here if needed
+    // For example, updating global UI elements or redirecting
   });
 </script>
 
 <!-- Enhanced Product Page Script (only for product pages) -->
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Only run on product pages
-    if (!window.location.pathname.includes('/products/')) {
+<script is:inline>
+  // Enhanced product page functionality
+  if (window.location.pathname.includes('/products/')) {
+    window.addEventListener('load', function() {
+      // Ensure cart integration works with auth state
+      setTimeout(() => {
+        if (window.authState && window.cartHandler) {
+          console.log('🛍️ Product page: Auth and cart integration verified');
+          
+          // Example: Auto-associate cart with user when they sign in
+          window.authState.subscribe((user) => {
+            if (user && window.cartHandler) {
+              console.log('🛍️ Product page: Associating cart with authenticated user');
+              // Add any product-specific auth logic here
+            }
+          });
+        }
+      }, 500);
+    });
+  }
+</script>
+
+<!-- SSO Integration Script for Flutter App -->
+<script is:inline>
+  // Handle SSO (Single Sign-On) integration with Flutter app
+  window.addEventListener('message', function(event) {
+    // Verify origin for security (adjust domain as needed)
+    if (event.origin !== 'https://app.synoptic.vision') {
       return;
     }
     
-    // Image zoom functionality
-    const mainImageContainer = document.getElementById('main-image-container');
-    const mainImage = document.getElementById('main-image');
-    const modal = document.getElementById('image-modal');
-    const modalImage = document.getElementById('modal-image');
-    const closeModal = document.getElementById('close-modal');
-    const galleryThumbs = document.querySelectorAll('.gallery-thumb img');
+    const { type, data } = event.data;
     
-    // Open modal on main image click
-    if (mainImageContainer && modal && modalImage) {
-      mainImageContainer.addEventListener('click', function() {
-        const imageSrc = mainImage.src;
-        const imageAlt = mainImage.alt;
-        modalImage.src = imageSrc;
-        modalImage.alt = imageAlt;
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-      });
-    }
-    
-    // Close modal
-    if (closeModal && modal) {
-      closeModal.addEventListener('click', function() {
-        modal.classList.remove('show');
-        document.body.style.overflow = '';
-      });
+    if (type === 'SSO_AUTH_REQUEST') {
+      console.log('🔐 SSO auth request received from Flutter app');
       
-      modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-          modal.classList.remove('show');
-          document.body.style.overflow = '';
-        }
-      });
-      
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && modal.classList.contains('show')) {
-          modal.classList.remove('show');
-          document.body.style.overflow = '';
-        }
-      });
-    }
-    
-    // Gallery thumbnail clicks
-    galleryThumbs.forEach(thumb => {
-      thumb.addEventListener('click', function() {
-        const fullImageSrc = this.getAttribute('data-full-image');
-        if (fullImageSrc && mainImage) {
-          mainImage.src = fullImageSrc;
-        }
-      });
-    });
-    
-    // Quantity controls
-    const quantityInput = document.getElementById('quantity');
-    const quantityBtns = document.querySelectorAll('.quantity-btn');
-    
-    quantityBtns.forEach(btn => {
-      btn.addEventListener('click', function() {
-        const action = this.getAttribute('data-action');
-        let currentValue = parseInt(quantityInput?.value) || 1;
-        
-        if (action === 'increase' && currentValue < 99) {
-          quantityInput.value = currentValue + 1;
-        } else if (action === 'decrease' && currentValue > 1) {
-          quantityInput.value = currentValue - 1;
-        }
-      });
-    });
-    
-    // Enhanced Add to Cart functionality
-    const addToCartBtn = document.getElementById('add-to-cart-btn');
-    
-    if (addToCartBtn) {
-      addToCartBtn.addEventListener('click', async function(e) {
-        e.preventDefault();
-        
-        // Get product data from page context
-        const productData = window.productData;
-        
-        if (!productData || !productData.id) {
-          console.error('Product data not available');
-          return;
-        }
-        
-        // Disable button and show loading
-        const originalText = this.innerHTML;
-        this.disabled = true;
-        this.innerHTML = `
-          <span class="flex items-center justify-center">
-            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Adding to Cart...
-          </span>
-        `;
-        
-        try {
-          // Collect selected options
-          const selectedOptions = {};
-          const optionSelects = document.querySelectorAll('.option-select');
-          const optionRadios = document.querySelectorAll('.option-radio input[type="radio"]');
-          
-          // Collect select options
-          optionSelects.forEach(select => {
-            const optionId = select.getAttribute('data-option-id');
-            if (select.value) {
-              selectedOptions[optionId] = select.value;
+      // Wait for auth state to be ready
+      if (window.authState) {
+        window.authState.getAuthState().then((authState) => {
+          event.source.postMessage({
+            type: 'SSO_AUTH_RESPONSE',
+            data: {
+              isAuthenticated: authState.isAuthenticated,
+              user: authState.user
             }
-          });
-          
-          // Collect radio options
-          optionRadios.forEach(radio => {
-            if (radio.checked) {
-              const optionId = radio.getAttribute('data-option-id');
-              selectedOptions[optionId] = radio.value;
-            }
-          });
-          
-          // Get quantity
-          const quantity = parseInt(quantityInput?.value) || 1;
-          
-          // Add to cart
-          if (window.cartHandler) {
-            const result = await window.cartHandler.addProductToCart(
-              productData.id, 
-              quantity, 
-              selectedOptions
-            );
-            
-            if (result.success) {
-              // Success feedback
-              this.innerHTML = `
-                <span class="flex items-center justify-center">
-                  <svg class="w-5 h-5 mr-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  Added to Cart!
-                </span>
-              `;
-              
-              // Open cart drawer
-              setTimeout(() => {
-                if (window.cartHandler) {
-                  window.cartHandler.openCartAfterAdd();
-                }
-              }, 500);
-              
-            } else {
-              throw new Error(result.error || 'Failed to add to cart');
-            }
-          } else {
-            throw new Error('Cart system not ready');
-          }
-          
-        } catch (error) {
-          console.error('Add to cart error:', error);
-          
-          // Error feedback
-          this.innerHTML = `
-            <span class="flex items-center justify-center text-red-100">
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              Error: ${error.message}
-            </span>
-          `;
-        }
-        
-        // Reset button after delay
-        setTimeout(() => {
-          this.disabled = false;
-          this.innerHTML = originalText;
-        }, 2000);
-      });
+          }, event.origin);
+        });
+      }
     }
   });
 </script>
 
-<style>
-  /* Ensure all modals and drawers have proper z-index */
-  #auth-modal,
-  #cart-overlay {
-    z-index: 1000;
+<!-- Performance and Analytics -->
+<script is:inline>
+  // Performance monitoring for auth initialization
+  if (window.performance && window.performance.mark) {
+    window.performance.mark('auth-init-start');
+    
+    window.addEventListener('load', function() {
+      // Monitor auth initialization performance
+      setTimeout(() => {
+        if (window.authState && window.authState.isReady) {
+          window.performance.mark('auth-init-end');
+          
+          try {
+            window.performance.measure('auth-init-duration', 'auth-init-start', 'auth-init-end');
+            const measure = window.performance.getEntriesByName('auth-init-duration')[0];
+            console.log(`🔐 Auth initialization completed in ${Math.round(measure.duration)}ms`);
+          } catch (e) {
+            // Performance API not fully supported, ignore
+          }
+        }
+      }, 1000);
+    });
   }
-  
-  #order-modal,
-  #image-modal {
-    z-index: 1001;
-  }
-  
-  /* Show modal classes */
-  #image-modal.show,
-  #order-modal.show {
-    display: flex;
-  }
-</style>
+</script>

@@ -1,4 +1,4 @@
-// src/scripts/cart-handler.js - Cart UI management and interactions
+// src/scripts/cart-handler.js - Cart UI management with updated cart manager integration
 import cartManager from '../lib/cart-manager.js';
 import { formatPrice, getProductImageUrl } from '../lib/swell.js';
 
@@ -10,6 +10,8 @@ class CartHandler {
   }
 
   init() {
+    console.log('🛒 Initializing cart handler...');
+    
     // Wait for DOM to be ready
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => this.setupDOM());
@@ -22,6 +24,7 @@ class CartHandler {
     this.setupDrawerEventListeners();
     this.setupCartSubscription();
     this.setupHeaderIntegration();
+    this.setupProductPageIntegration();
   }
 
   setupDrawerEventListeners() {
@@ -55,7 +58,7 @@ class CartHandler {
       clearCartBtn.addEventListener('click', () => this.handleClearCart());
     }
 
-    // View cart (future enhancement)
+    // View cart
     const viewCartBtn = document.getElementById('view-cart-button');
     if (viewCartBtn) {
       viewCartBtn.addEventListener('click', () => {
@@ -86,23 +89,48 @@ class CartHandler {
   }
 
   setupHeaderIntegration() {
-    // Update cart button in header with count
-    const updateCartButton = (itemCount) => {
-      const cartButton = document.getElementById('cart-button');
-      const cartCount = document.getElementById('cart-count');
-      
-      if (cartCount) {
-        if (itemCount > 0) {
-          cartCount.textContent = itemCount;
-          cartCount.classList.remove('hidden');
-        } else {
-          cartCount.classList.add('hidden');
-        }
-      }
-    };
+    // Cart header integration is handled in updateCartUI
+    console.log('🛒 Cart header integration ready');
+  }
 
-    // Initial update
-    updateCartButton(cartManager.getItemCount());
+  setupProductPageIntegration() {
+    // Setup add to cart buttons on product pages
+    const addToCartBtns = document.querySelectorAll('[data-product-id]');
+    
+    addToCartBtns.forEach(btn => {
+      if (btn.dataset.cartHandlerAttached) return; // Avoid duplicate listeners
+      
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        const productId = btn.dataset.productId;
+        const variantId = btn.dataset.variantId || null;
+        const quantity = parseInt(btn.dataset.quantity) || 1;
+        
+        // Get options from form if exists
+        const options = this.getProductOptions(productId);
+        
+        await this.addProductToCart(productId, quantity, options, variantId);
+      });
+      
+      btn.dataset.cartHandlerAttached = 'true';
+    });
+  }
+
+  getProductOptions(productId) {
+    const form = document.getElementById(`product-form-${productId}`);
+    if (!form) return {};
+    
+    const options = {};
+    const selects = form.querySelectorAll('select[data-option]');
+    
+    selects.forEach(select => {
+      if (select.value && select.dataset.option) {
+        options[select.dataset.option] = select.value;
+      }
+    });
+    
+    return options;
   }
 
   openDrawer() {
@@ -121,6 +149,8 @@ class CartHandler {
       
       // Prevent body scroll
       document.body.style.overflow = 'hidden';
+      
+      console.log('🛒 Cart drawer opened');
     }
   }
 
@@ -139,6 +169,8 @@ class CartHandler {
       
       // Restore body scroll
       document.body.style.overflow = '';
+      
+      console.log('🛒 Cart drawer closed');
     }
   }
 
@@ -235,7 +267,7 @@ class CartHandler {
 
   createCartItemElement(item) {
     const itemDiv = document.createElement('div');
-    itemDiv.className = 'cart-item';
+    itemDiv.className = 'cart-item border-b border-gray-200 py-4';
     itemDiv.dataset.itemId = item.id;
 
     // Product image
@@ -248,87 +280,102 @@ class CartHandler {
         .join(', ') : '';
 
     itemDiv.innerHTML = `
-      <img 
-        src="${imageUrl}" 
-        alt="${item.product?.name || 'Product'}"
-        class="cart-item-image"
-        onerror="this.src='/placeholder-product.jpg'"
-      />
-      
-      <div class="cart-item-details">
-        <h4 class="cart-item-title">${item.product?.name || 'Product'}</h4>
-        ${optionsText ? `<div class="cart-item-options">${optionsText}</div>` : ''}
-        <div class="cart-item-price">${formatPrice(item.price, item.currency || 'EUR')}</div>
+      <div class="flex items-start space-x-4">
+        <img 
+          src="${imageUrl}" 
+          alt="${item.product?.name || 'Product'}"
+          class="w-16 h-16 object-cover rounded-lg"
+          onerror="this.src='/placeholder-product.jpg'"
+        />
         
-        <div class="cart-item-controls">
-          <div class="quantity-control">
-            <button class="quantity-btn decrease" data-action="decrease" data-item-id="${item.id}">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
-              </svg>
-            </button>
-            <input 
-              type="number" 
-              class="quantity-input" 
-              value="${item.quantity}" 
-              min="1" 
-              max="99"
-              data-item-id="${item.id}"
-            />
-            <button class="quantity-btn increase" data-action="increase" data-item-id="${item.id}">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-              </svg>
-            </button>
-          </div>
+        <div class="flex-1 min-w-0">
+          <h4 class="text-sm font-medium text-gray-900 truncate">
+            ${item.product?.name || 'Product'}
+          </h4>
           
-          <button class="remove-btn" data-item-id="${item.id}" title="Remove item">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-            </svg>
-          </button>
+          ${optionsText ? `
+            <p class="text-xs text-gray-500 mt-1">${optionsText}</p>
+          ` : ''}
+          
+          <div class="flex items-center justify-between mt-2">
+            <div class="flex items-center space-x-2">
+              <button 
+                class="quantity-decrease w-8 h-8 flex items-center justify-center border border-gray-300 rounded text-gray-500 hover:text-gray-700"
+                data-item-id="${item.id}"
+              >
+                -
+              </button>
+              
+              <input 
+                type="number" 
+                value="${item.quantity}" 
+                min="1" 
+                max="99"
+                class="quantity-input w-12 text-center border border-gray-300 rounded text-sm"
+                data-item-id="${item.id}"
+              />
+              
+              <button 
+                class="quantity-increase w-8 h-8 flex items-center justify-center border border-gray-300 rounded text-gray-500 hover:text-gray-700"
+                data-item-id="${item.id}"
+              >
+                +
+              </button>
+            </div>
+            
+            <div class="text-right">
+              <p class="text-sm font-medium text-gray-900">
+                ${formatPrice(item.price_total, item.currency || 'EUR')}
+              </p>
+              <button 
+                class="remove-item text-xs text-red-600 hover:text-red-800 mt-1"
+                data-item-id="${item.id}"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     `;
 
     // Add event listeners
-    this.setupCartItemEventListeners(itemDiv, item);
+    this.attachItemEventListeners(itemDiv, item);
 
     return itemDiv;
   }
 
-  setupCartItemEventListeners(itemElement, item) {
-    // Quantity controls
-    const decreaseBtn = itemElement.querySelector('.quantity-btn.decrease');
-    const increaseBtn = itemElement.querySelector('.quantity-btn.increase');
-    const quantityInput = itemElement.querySelector('.quantity-input');
-    const removeBtn = itemElement.querySelector('.remove-btn');
+  attachItemEventListeners(itemEl, item) {
+    const decreaseBtn = itemEl.querySelector('.quantity-decrease');
+    const increaseBtn = itemEl.querySelector('.quantity-increase');
+    const quantityInput = itemEl.querySelector('.quantity-input');
+    const removeBtn = itemEl.querySelector('.remove-item');
 
     if (decreaseBtn) {
-      decreaseBtn.addEventListener('click', () => {
+      decreaseBtn.addEventListener('click', async () => {
         const newQuantity = Math.max(1, item.quantity - 1);
         if (newQuantity !== item.quantity) {
-          cartManager.updateItemQuantity(item.id, newQuantity);
+          await cartManager.updateItemQuantity(item.id, newQuantity);
         }
       });
     }
 
     if (increaseBtn) {
-      increaseBtn.addEventListener('click', () => {
+      increaseBtn.addEventListener('click', async () => {
         const newQuantity = Math.min(99, item.quantity + 1);
         if (newQuantity !== item.quantity) {
-          cartManager.updateItemQuantity(item.id, newQuantity);
+          await cartManager.updateItemQuantity(item.id, newQuantity);
         }
       });
     }
 
     if (quantityInput) {
-      quantityInput.addEventListener('change', (e) => {
+      quantityInput.addEventListener('change', async (e) => {
         const newQuantity = parseInt(e.target.value) || 1;
         const clampedQuantity = Math.max(1, Math.min(99, newQuantity));
         
         if (clampedQuantity !== item.quantity) {
-          cartManager.updateItemQuantity(item.id, clampedQuantity);
+          await cartManager.updateItemQuantity(item.id, clampedQuantity);
         }
         
         // Reset input to valid value
@@ -343,9 +390,9 @@ class CartHandler {
     }
 
     if (removeBtn) {
-      removeBtn.addEventListener('click', () => {
+      removeBtn.addEventListener('click', async () => {
         if (confirm('Remove this item from your cart?')) {
-          cartManager.removeItem(item.id);
+          await cartManager.removeItemFromCart(item.id);
         }
       });
     }
@@ -353,25 +400,96 @@ class CartHandler {
 
   async handleClearCart() {
     if (confirm('Are you sure you want to clear your cart? This cannot be undone.')) {
-      await cartManager.clearCart();
+      await cartManager.clearCartItems();
     }
   }
 
   handleCheckout() {
-    // For now, require authentication
-    cartManager.requireAuth(() => {
-      // Redirect to checkout page (to be implemented)
-      window.location.href = '/checkout';
-    });
+    // Close drawer and redirect to checkout
+    this.closeDrawer();
+    window.location.href = '/checkout';
   }
 
   // Public methods for product page integration
   async addProductToCart(productId, quantity = 1, options = {}, variantId = null) {
-    return await cartManager.addItem(productId, quantity, options, variantId);
+    console.log('🛒 Adding product to cart:', { productId, quantity, options, variantId });
+    
+    try {
+      const result = await cartManager.addItemToCart(productId, quantity, options, variantId);
+      
+      if (result.success) {
+        console.log('✅ Product added to cart successfully');
+        
+        // Show success feedback
+        this.showAddToCartSuccess();
+        
+        // Open cart drawer after a short delay
+        setTimeout(() => {
+          this.openDrawer();
+        }, 500);
+        
+        return result;
+      } else {
+        console.error('❌ Failed to add product to cart:', result.error);
+        this.showAddToCartError(result.error);
+        return result;
+      }
+    } catch (error) {
+      console.error('🛒 Error adding product to cart:', error);
+      this.showAddToCartError('Failed to add item to cart');
+      return {
+        success: false,
+        error: error.message
+      };
+    }
   }
 
+  showAddToCartSuccess() {
+    // Create temporary success notification
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300';
+    notification.textContent = 'Item added to cart!';
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+      notification.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Animate out and remove
+    setTimeout(() => {
+      notification.classList.add('translate-x-full');
+      setTimeout(() => {
+        document.body.removeChild(notification);
+      }, 300);
+    }, 2000);
+  }
+
+  showAddToCartError(message) {
+    // Create temporary error notification
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300';
+    notification.textContent = message || 'Failed to add item to cart';
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+      notification.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Animate out and remove
+    setTimeout(() => {
+      notification.classList.add('translate-x-full');
+      setTimeout(() => {
+        document.body.removeChild(notification);
+      }, 300);
+    }, 3000);
+  }
+
+  // Method to be called from product pages
   openCartAfterAdd() {
-    // Open drawer after a short delay to show the add animation
     setTimeout(() => {
       this.openDrawer();
     }, 500);

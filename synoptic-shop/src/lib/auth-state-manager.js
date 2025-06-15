@@ -1,4 +1,4 @@
-// src/lib/auth-state-manager.js - Centralized Authentication State Manager
+// src/lib/auth-state-manager.js - Centralized Authentication State Manager with Swell Integration
 import { onAuthStateChange, getCurrentUser, isAuthenticated } from './firebase.js';
 
 class AuthStateManager {
@@ -40,6 +40,21 @@ class AuthStateManager {
         detail: { user, isAuthenticated: !!user } 
       }));
     });
+
+    // Import and initialize Swell authentication integration
+    // We do this dynamically to avoid circular dependencies
+    this.initializeSwellIntegration();
+  }
+
+  async initializeSwellIntegration() {
+    try {
+      // Dynamic import to avoid circular dependencies
+      const { default: swellAuthIntegration } = await import('./swell-auth-integration.js');
+      console.log('🔗 Swell authentication integration loaded');
+    } catch (error) {
+      console.warn('🔗 Failed to load Swell authentication integration:', error);
+      // Continue without Swell integration if it fails
+    }
   }
 
   /**

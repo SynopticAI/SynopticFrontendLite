@@ -1,29 +1,99 @@
-// src/lib/swell.js - Enhanced version with full cart functionality
+// src/lib/swell.js - Fixed Swell integration with correct initialization
 import swell from 'swell-js';
 
-// Initialize Swell client
+// Initialize Swell client with correct pattern
 swell.init('synoptic', 'pk_DUjtNbQywQglujuOK1Ykiqp6vcoSc7Kt');
 
+// =============================================================================
+// PRODUCT FUNCTIONS
+// =============================================================================
+
 /**
- * Fetch a single product by slug with expanded options
- * @param {string} slug - Product slug
- * @returns {Promise<Object|null>} Product data or null if not found
+ * Get product by ID
+ * @param {string} productId - Product ID
+ * @returns {Promise<Object|null>} Product object or null
  */
-export async function getProductBySlug(slug) {
+export async function getProductById(productId) {
   try {
-    const products = await swell.products.list({
-      where: {
-        slug: slug
-      },
-      limit: 1,
-      expand: ['variants', 'options', 'images'] // Expand related data
+    const product = await swell.products.get(productId, {
+      expand: ['variants', 'options', 'images']
     });
-    
-    return products.results && products.results.length > 0 ? products.results[0] : null;
+    return product;
   } catch (error) {
     console.error('Error fetching product:', error);
     return null;
   }
+}
+
+/**
+ * Get product by slug
+ * @param {string} slug - Product slug
+ * @returns {Promise<Object|null>} Product object or null
+ */
+export async function getProductBySlug(slug) {
+  try {
+    const products = await swell.products.list({
+      where: { slug: slug },
+      limit: 1,
+      expand: ['variants', 'options', 'images']
+    });
+    
+    return products.results?.[0] || null;
+  } catch (error) {
+    console.error('Error fetching product by slug:', error);
+    return null;
+  }
+}
+
+/**
+ * Format price with currency
+ * @param {number} price - Price amount
+ * @param {string} currency - Currency code (default: EUR)
+ * @returns {string} Formatted price string
+ */
+export function formatPrice(price, currency = 'EUR') {
+  if (typeof price !== 'number') return 'N/A';
+  
+  try {
+    return new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: currency
+    }).format(price);
+  } catch (error) {
+    return `${currency} ${price.toFixed(2)}`;
+  }
+}
+
+/**
+ * Get product image URL with fallback
+ * @param {Object} product - Product object
+ * @param {number} index - Image index (default: 0)
+ * @returns {string} Image URL or placeholder
+ */
+export function getProductImageUrl(product, index = 0) {
+  if (!product) return '/placeholder-product.jpg';
+  
+  if (product.images && product.images.length > 0) {
+    const image = product.images[index] || product.images[0];
+    return image.url || image.file?.url || '/placeholder-product.jpg';
+  }
+  
+  return '/placeholder-product.jpg';
+}
+
+/**
+ * Get all product image URLs
+ * @param {Object} product - Product object
+ * @returns {Array<string>} Array of image URLs
+ */
+export function getProductImageUrls(product) {
+  if (!product) return ['/placeholder-product.jpg'];
+  
+  if (product.images && product.images.length > 0) {
+    return product.images.map(img => img.url || img.file?.url).filter(Boolean);
+  }
+  
+  return ['/placeholder-product.jpg'];
 }
 
 /**
@@ -102,45 +172,6 @@ export function getProductPricing(product) {
 }
 
 /**
- * Format price for display
- * @param {number} price - Price in cents or currency units
- * @param {string} currency - Currency code (default: 'EUR')
- * @returns {string} Formatted price string
- */
-export function formatPrice(price, currency = 'EUR') {
-  if (typeof price !== 'number') return 'Price unavailable';
-  
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency: currency,
-  }).format(price);
-}
-
-/**
- * Get the main product image URL
- * @param {Object} product - Product object from Swell
- * @returns {string} Image URL or placeholder
- */
-export function getProductImageUrl(product) {
-  if (product?.images && product.images.length > 0) {
-    return product.images[0].file?.url || '/placeholder-product.jpg';
-  }
-  return '/placeholder-product.jpg';
-}
-
-/**
- * Get all product image URLs
- * @param {Object} product - Product object from Swell
- * @returns {Array<string>} Array of image URLs
- */
-export function getProductImageUrls(product) {
-  if (product?.images && product.images.length > 0) {
-    return product.images.map(img => img.file?.url).filter(Boolean);
-  }
-  return ['/placeholder-product.jpg'];
-}
-
-/**
  * Get product description with proper HTML handling
  * @param {Object} product - Product object from Swell
  * @returns {string} HTML description or plain text
@@ -179,6 +210,79 @@ export function getProductOptions(product) {
     type: option.input_type || 'select',
     required: option.required || false,
     values: (option.values || []).map(value => ({
+      id: value.id,
+      name: value.name,
+      price: value.price || 0,
+      formattedPrice: value.price ? formatPrice(value.price, product.currency || 'EUR') : null
+    }))
+  }));
+}
+
+/**
+ * Get product variant by options
+ * @param {Object} product - Product object
+ * @param {Object} selectedOptions - Selected options object
+ * @returns {Object|null} Matching variant or null
+ */
+export function getProductVariant(product, selectedOptions = {}) {
+  if (!product.variants || product.variants.length === 0) {
+    return null;
+  }
+
+  const optionKeys = Object.keys(selectedOptions);
+  
+  if (optionKeys.length === 0) {
+    return product.variants[0]; // Return first variant if no options selected
+  }
+
+  return product.variants.find(variant => {
+    if (!variant.option_value_ids) return false;
+    
+    return optionKeys.every(optionName => {
+      const option = product.options?.find(opt => opt.name === optionName);
+      if (!option) return false;
+      
+      const selectedValue = selectedOptions[optionName];
+      const valueObj = option.values?.find(val => val.name === selectedValue);
+      if (!valueObj) return false;
+      
+      return variant.option_value_ids.includes(valueObj.id);
+    });
+  }) || null;
+}
+
+/**
+ * Get product variants with formatted data
+ * @param {Object} product - Product object
+ * @returns {Array} Array of formatted variants
+ */
+export function getFormattedVariants(product) {
+  if (!product.variants) return [];
+  
+  return product.variants.map(variant => ({
+    id: variant.id,
+    name: variant.name || 'Default',
+    price: variant.price,
+    formattedPrice: formatPrice(variant.price, product.currency || 'EUR'),
+    stock: variant.stock_level,
+    options: variant.option_value_ids || []
+  }));
+}
+
+/**
+ * Get product options with formatted data
+ * @param {Object} product - Product object
+ * @returns {Array} Array of formatted options
+ */
+export function getFormattedOptions(product) {
+  if (!product.options) return [];
+  
+  return product.options.map(option => ({
+    id: option.id,
+    name: option.name,
+    type: option.input_type || 'select',
+    required: option.required || false,
+    values: option.values?.map(value => ({
       id: value.id,
       name: value.name,
       price: value.price || 0,
@@ -233,6 +337,8 @@ export async function getCart() {
  */
 export async function addToCart(productId, quantity = 1, options = {}, variantId = null) {
   try {
+    console.log('🛒 Swell: Adding item to cart:', { productId, quantity, options, variantId });
+    
     const item = {
       product_id: productId,
       quantity: quantity
@@ -250,13 +356,14 @@ export async function addToCart(productId, quantity = 1, options = {}, variantId
 
     const result = await swell.cart.addItem(item);
     
+    console.log('✅ Swell: Item added to cart successfully');
     return {
       success: true,
       cart: result,
       error: null
     };
   } catch (error) {
-    console.error('Error adding item to cart:', error);
+    console.error('❌ Swell: Error adding item to cart:', error);
     return {
       success: false,
       cart: null,
@@ -290,16 +397,14 @@ export async function removeFromCart(itemId) {
 }
 
 /**
- * Update cart item quantity
+ * Update cart item
  * @param {string} itemId - Cart item ID
- * @param {number} quantity - New quantity
+ * @param {Object} updates - Updates object (quantity, options, etc.)
  * @returns {Promise<Object>} Result object
  */
-export async function updateCartItem(itemId, quantity) {
+export async function updateCartItem(itemId, updates) {
   try {
-    const result = await swell.cart.updateItem(itemId, {
-      quantity: quantity
-    });
+    const result = await swell.cart.updateItem(itemId, updates);
     
     return {
       success: true,
@@ -317,7 +422,7 @@ export async function updateCartItem(itemId, quantity) {
 }
 
 /**
- * Clear entire cart
+ * Clear all items from cart
  * @returns {Promise<Object>} Result object
  */
 export async function clearCart() {
@@ -341,11 +446,15 @@ export async function clearCart() {
 
 /**
  * Get cart item count
- * @returns {Promise<number>} Number of items in cart
+ * @param {Object} cart - Cart object (optional, will fetch if not provided)
+ * @returns {Promise<number>} Total item count
  */
-export async function getCartItemCount() {
+export async function getCartItemCount(cart = null) {
   try {
-    const cart = await getCart();
+    if (!cart) {
+      cart = await getCart();
+    }
+    
     if (!cart || !cart.items) return 0;
     
     return cart.items.reduce((total, item) => total + (item.quantity || 0), 0);
@@ -357,11 +466,15 @@ export async function getCartItemCount() {
 
 /**
  * Get cart subtotal
+ * @param {Object} cart - Cart object (optional, will fetch if not provided)
  * @returns {Promise<number>} Cart subtotal
  */
-export async function getCartSubtotal() {
+export async function getCartSubtotal(cart = null) {
   try {
-    const cart = await getCart();
+    if (!cart) {
+      cart = await getCart();
+    }
+    
     return cart?.sub_total || 0;
   } catch (error) {
     console.error('Error getting cart subtotal:', error);
@@ -370,90 +483,83 @@ export async function getCartSubtotal() {
 }
 
 // =============================================================================
-// CUSTOMER FUNCTIONS
+// ACCOUNT & AUTHENTICATION FUNCTIONS
 // =============================================================================
 
 /**
- * Create or update customer from Firebase user data
- * @param {Object} firebaseUser - Firebase user object
+ * Associate cart with current logged-in account
  * @returns {Promise<Object>} Result object
  */
-export async function createOrUpdateCustomer(firebaseUser) {
+export async function associateCartWithAccount() {
   try {
-    const customerData = {
-      email: firebaseUser.email,
-      first_name: firebaseUser.displayName?.split(' ')[0] || '',
-      last_name: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
-      email_verified: firebaseUser.emailVerified,
-      metadata: {
-        firebase_uid: firebaseUser.uid,
-        auth_provider: 'firebase'
-      }
-    };
-
-    // Check if customer already exists
-    const existingCustomers = await swell.customers.list({
-      where: {
-        email: firebaseUser.email
-      },
-      limit: 1
-    });
-
-    let customer;
-    if (existingCustomers.results && existingCustomers.results.length > 0) {
-      // Update existing customer
-      customer = await swell.customers.update(existingCustomers.results[0].id, customerData);
-    } else {
-      // Create new customer
-      customer = await swell.customers.create(customerData);
+    console.log('🔗 Associating cart with authenticated account...');
+    
+    // Get current account to verify authentication
+    const account = await swell.account.get();
+    if (!account) {
+      return {
+        success: false,
+        cart: null,
+        account: null,
+        error: 'No authenticated account found'
+      };
     }
 
+    // Get current cart and associate with account
+    const cart = await swell.cart.get();
+    
+    console.log('✅ Cart successfully associated with account:', account.email);
     return {
       success: true,
-      customer: customer,
+      cart: cart,
+      account: account,
       error: null
     };
   } catch (error) {
-    console.error('Error creating/updating customer:', error);
+    console.error('❌ Error associating cart with account:', error);
     return {
       success: false,
-      customer: null,
-      error: error.message || 'Failed to create/update customer'
+      cart: null,
+      account: null,
+      error: error.message || 'Failed to associate cart with account'
     };
   }
 }
 
 /**
- * Set customer for cart (authentication)
+ * Set cart customer using Firebase user (deprecated - use associateCartWithAccount)
  * @param {Object} firebaseUser - Firebase user object
  * @returns {Promise<Object>} Result object
  */
 export async function setCartCustomer(firebaseUser) {
+  console.warn('🔗 setCartCustomer is deprecated, cart association happens automatically when account is logged in');
+  
   try {
-    // First create/update customer
-    const customerResult = await createOrUpdateCustomer(firebaseUser);
-    
-    if (!customerResult.success) {
-      return customerResult;
+    // Just verify that user is authenticated with Swell
+    const account = await swell.account.get();
+    if (!account) {
+      return {
+        success: false,
+        cart: null,
+        account: null,
+        error: 'User not authenticated with Swell'
+      };
     }
 
-    // Set customer for current cart
-    const result = await swell.cart.update({
-      account_id: customerResult.customer.id
-    });
-
+    const cart = await swell.cart.get();
+    
     return {
       success: true,
-      cart: result,
-      customer: customerResult.customer,
+      cart: cart,
+      account: account,
       error: null
     };
   } catch (error) {
-    console.error('Error setting cart customer:', error);
+    console.error('❌ Error in setCartCustomer:', error);
     return {
       success: false,
       cart: null,
-      customer: null,
+      account: null,
       error: error.message || 'Failed to set cart customer'
     };
   }
@@ -518,3 +624,4 @@ export async function getShippingRates(shippingAddress) {
 
 // Export swell instance for advanced usage
 export { swell };
+export default swell;

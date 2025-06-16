@@ -1,5 +1,5 @@
 ---
-// src/layouts/PageLayout.astro - Updated with centralized auth state manager
+// src/layouts/PageLayout.astro - Complete Fixed Version with Emergency Patch and Centralized Auth
 import Layout from './Layout.astro';
 import Header from '~/components/widgets/Header.astro';
 import Footer from '~/components/widgets/Footer.astro';
@@ -36,46 +36,200 @@ const { metadata } = Astro.props;
   <CartDrawer />
 </Layout>
 
-<!-- Firebase, Auth, Cart, and Orders Scripts with Centralized Auth State -->
+<!-- 🚨 EMERGENCY SWELL API PATCH - Fixes se.customers undefined error -->
+<script is:inline>
+(function() {
+  console.log('🚨 Emergency Swell API patch loading...');
+  
+  // Wait for Swell to load and apply patch
+  function waitForSwellAndPatch() {
+    const swell = window.swell || window.se;
+    
+    if (swell) {
+      console.log('🔧 Patching Swell customers API...');
+      
+      // Create customers polyfill that redirects to account API
+      if (!swell.customers && swell.account) {
+        swell.customers = {
+          create: async function(customerData) {
+            console.log('🔄 Redirecting customers.create to account.create');
+            try {
+              return await swell.account.create(customerData);
+            } catch (error) {
+              console.error('❌ Account creation failed:', error);
+              throw error;
+            }
+          },
+          
+          update: async function(customerId, customerData) {
+            console.log('🔄 Redirecting customers.update to account.update');
+            try {
+              return await swell.account.update(customerData);
+            } catch (error) {
+              console.error('❌ Account update failed:', error);
+              throw error;
+            }
+          },
+          
+          get: async function(customerId) {
+            console.log('🔄 Redirecting customers.get to account.get');
+            try {
+              return await swell.account.get();
+            } catch (error) {
+              console.error('❌ Account get failed:', error);
+              return null;
+            }
+          }
+        };
+        
+        console.log('✅ Emergency customers API patch applied');
+      } else if (swell.customers) {
+        console.log('⚠️ Original customers API still present - cache not cleared');
+      } else {
+        console.log('❌ No Swell account API found');
+      }
+    } else {
+      // Swell not loaded yet, try again
+      setTimeout(waitForSwellAndPatch, 100);
+    }
+  }
+  
+  // Start checking for Swell immediately
+  waitForSwellAndPatch();
+  
+  // Also try after DOM loads and window loads
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', waitForSwellAndPatch);
+  }
+  window.addEventListener('load', waitForSwellAndPatch);
+})();
+</script>
+
+<!-- Firebase, Auth, Cart, and Orders Scripts with Cache Busting -->
 <script>
   // 🔐 CRITICAL: Import centralized auth state manager FIRST
   // This ensures auth state is available before other modules load
-  import('../lib/auth-state-manager.js');
+  const timestamp = Date.now();
   
-  // Import Firebase auth handler (now uses centralized auth)
-  import('../scripts/auth-handler.js');
+  console.log('🔐 Loading centralized auth state manager...');
   
-  // Import cart handler  
-  import('../scripts/cart-handler.js');
-  
-  // Conditional imports for performance optimization
-  const pathname = window.location.pathname;
-  
-  // Import orders handler for orders and account pages
-  if (pathname.includes('/orders') || pathname.includes('/account')) {
-    import('../scripts/orders-handler.js');
-  }
-  
-  // Import checkout handler for checkout and cart pages
-  if (pathname.includes('/checkout') || pathname.includes('/cart')) {
-    import('../scripts/checkout-handler.js');
-  }
-  
-  // Import product-specific handlers for product pages
-  if (pathname.includes('/products/')) {
-    // Enhanced product page functionality if needed
-    console.log('🛍️ Product page enhanced features ready');
-  }
+  // Sequential loading with cache busting to ensure proper order
+  import(`../lib/auth-state-manager.js?v=${timestamp}`)
+    .then(() => {
+      console.log('✅ Auth state manager loaded');
+      
+      // Load Swell auth integration
+      return import(`../lib/swell-auth-integration.js?v=${timestamp}`);
+    })
+    .then(() => {
+      console.log('✅ Swell auth integration loaded');
+      
+      // Load main auth handler
+      return import(`../scripts/auth-handler.js?v=${timestamp}`);
+    })
+    .then(() => {
+      console.log('✅ Auth handler loaded');
+      
+      // Load cart handler
+      return import(`../scripts/cart-handler.js?v=${timestamp}`);
+    })
+    .then(() => {
+      console.log('✅ Cart handler loaded');
+      
+      // Conditional imports for performance optimization
+      const pathname = window.location.pathname;
+      const conditionalImports = [];
+      
+      // Import orders handler for orders and account pages
+      if (pathname.includes('/orders') || pathname.includes('/account')) {
+        conditionalImports.push(
+          import(`../scripts/orders-handler.js?v=${timestamp}`)
+            .then(() => console.log('✅ Orders handler loaded'))
+        );
+      }
+      
+      // Import checkout handler for checkout and cart pages
+      if (pathname.includes('/checkout') || pathname.includes('/cart')) {
+        conditionalImports.push(
+          import(`../scripts/checkout-handler.js?v=${timestamp}`)
+            .then(() => console.log('✅ Checkout handler loaded'))
+        );
+      }
+      
+      return Promise.all(conditionalImports);
+    })
+    .then(() => {
+      console.log('🎉 All modules loaded successfully');
+      
+      // Dispatch event that everything is ready
+      window.dispatchEvent(new CustomEvent('synopticSystemReady', {
+        detail: { timestamp: new Date().toISOString() }
+      }));
+    })
+    .catch(error => {
+      console.error('❌ Module loading failed:', error);
+      
+      // Fallback: try loading without cache busting
+      console.log('🔄 Attempting fallback loading...');
+      Promise.all([
+        import('../lib/auth-state-manager.js'),
+        import('../scripts/auth-handler.js'),
+        import('../scripts/cart-handler.js')
+      ]).then(() => {
+        console.log('✅ Fallback loading successful');
+      }).catch(fallbackError => {
+        console.error('❌ Fallback loading also failed:', fallbackError);
+      });
+    });
 </script>
 
 <!-- Page Integration and Initialization Script -->
 <script is:inline>
+  // Cache clearing utilities
+  function clearAllCaches() {
+    try {
+      // Clear localStorage
+      if (typeof Storage !== 'undefined' && localStorage) {
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.includes('swell') || key.includes('cart') || key.includes('auth'))) {
+            keys.push(key);
+          }
+        }
+        keys.forEach(key => localStorage.removeItem(key));
+        console.log('🧹 Cleared localStorage cache');
+      }
+      
+      // Clear sessionStorage
+      if (typeof Storage !== 'undefined' && sessionStorage) {
+        const keys = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i);
+          if (key && (key.includes('swell') || key.includes('cart') || key.includes('auth'))) {
+            keys.push(key);
+          }
+        }
+        keys.forEach(key => sessionStorage.removeItem(key));
+        console.log('🧹 Cleared sessionStorage cache');
+      }
+    } catch (e) {
+      console.log('🧹 Cache clearing skipped:', e.message);
+    }
+  }
+
   // Global initialization when page loads
   window.addEventListener('load', function() {
-    console.log('🛒 Synoptic E-commerce system initialized');
+    console.log('🛒 Synoptic E-commerce system initializing...');
+    
+    // Clear caches if debug mode
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('clearcache') === 'true') {
+      clearAllCaches();
+      console.log('🧹 Cache clearing requested via URL parameter');
+    }
     
     // Check for auth redirects from Flutter app
-    const urlParams = new URLSearchParams(window.location.search);
     const authAction = urlParams.get('auth');
     
     if (authAction === 'signin' || authAction === 'signup') {
@@ -90,8 +244,14 @@ const { metadata } = Astro.props;
           window.history.replaceState({}, document.title, cleanUrl);
         } else {
           console.warn('🔐 Auth handler not ready for URL redirect');
+          // Retry after more time
+          setTimeout(() => {
+            if (window.authHandler) {
+              window.authHandler.openModal(authAction);
+            }
+          }, 2000);
         }
-      }, 750); // Increased delay for reliability
+      }, 1000); // Increased delay for reliability
     }
     
     // Page-specific initialization logging
@@ -108,16 +268,41 @@ const { metadata } = Astro.props;
     }
     
     // Debug helper for development
-    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-      console.log('🔧 Development mode: Auth state debug available via window.authState.debug()');
+    if (window.location.hostname === 'localhost' || window.location.hostname.includes('localhost')) {
+      console.log('🔧 Development mode: Debug commands available:');
+      console.log('   window.authState.debug() - Check auth state');
+      console.log('   window.cartManager.debug() - Check cart state');
+      console.log('   window.swellAuthIntegration.debug() - Check Swell integration');
+      
+      // Make cache clearing available globally in dev
+      window.clearSynopticCaches = clearAllCaches;
     }
+    
+    console.log('✅ Synoptic E-commerce system initialization complete');
   });
   
   // Global error handler for auth-related issues
   window.addEventListener('error', function(e) {
-    if (e.message && e.message.includes('auth')) {
-      console.error('🚨 Auth-related error detected:', e.message);
-      // Could add user-friendly error handling here
+    if (e.message && (e.message.includes('auth') || e.message.includes('customers') || e.message.includes('swell'))) {
+      console.error('🚨 System error detected:', e.message);
+      
+      // Special handling for the customers error
+      if (e.message.includes('customers') && e.message.includes('undefined')) {
+        console.error('🚨 CUSTOMERS API ERROR - Applying emergency patch...');
+        
+        // Force reapply the patch
+        setTimeout(() => {
+          const swell = window.swell || window.se;
+          if (swell && !swell.customers && swell.account) {
+            swell.customers = {
+              create: swell.account.create.bind(swell.account),
+              update: swell.account.update.bind(swell.account),
+              get: swell.account.get.bind(swell.account)
+            };
+            console.log('🔧 Emergency patch reapplied');
+          }
+        }, 100);
+      }
     }
   });
   
@@ -130,9 +315,29 @@ const { metadata } = Astro.props;
       timestamp: new Date().toLocaleTimeString(),
       page: window.location.pathname
     });
+  });
+  
+  // Listen for system ready event
+  window.addEventListener('synopticSystemReady', function(e) {
+    console.log('🎉 Synoptic system fully ready at:', e.detail.timestamp);
     
-    // You can add global auth state reaction logic here if needed
-    // For example, updating global UI elements or redirecting
+    // Run final verification
+    setTimeout(() => {
+      const swell = window.swell || window.se;
+      const hasOldAPI = !!(swell?.customers);
+      const hasNewAPI = !!(swell?.account);
+      
+      console.log('🔍 Final API verification:', {
+        hasOldCustomersAPI: hasOldAPI,
+        hasNewAccountAPI: hasNewAPI,
+        authReady: !!window.authState,
+        cartReady: !!window.cartManager
+      });
+      
+      if (hasOldAPI) {
+        console.warn('⚠️ Old customers API still detected - emergency patch should handle this');
+      }
+    }, 500);
   });
 </script>
 
@@ -143,73 +348,100 @@ const { metadata } = Astro.props;
     window.addEventListener('load', function() {
       // Ensure cart integration works with auth state
       setTimeout(() => {
-        if (window.authState && window.cartHandler) {
+        if (window.authState && window.cartManager) {
           console.log('🛍️ Product page: Auth and cart integration verified');
           
-          // Example: Auto-associate cart with user when they sign in
+          // Auto-associate cart with user when they sign in
           window.authState.subscribe((user) => {
-            if (user && window.cartHandler) {
+            if (user && window.cartManager) {
               console.log('🛍️ Product page: Associating cart with authenticated user');
-              // Add any product-specific auth logic here
+              // Cart association happens automatically via Swell auth integration
             }
           });
+        } else {
+          console.warn('🛍️ Product page: Auth or cart manager not ready');
         }
-      }, 500);
+      }, 750);
     });
   }
 </script>
 
 <!-- SSO Integration Script for Flutter App -->
 <script is:inline>
-  // Handle SSO (Single Sign-On) integration with Flutter app
-  window.addEventListener('message', function(event) {
-    // Verify origin for security (adjust domain as needed)
-    if (event.origin !== 'https://app.synoptic.vision') {
-      return;
-    }
+  // Handle SSO (Single Sign-On) between Flutter app and web shop
+  window.addEventListener('load', function() {
+    // Check if this is an SSO redirect from the Flutter app
+    const urlParams = new URLSearchParams(window.location.search);
+    const ssoToken = urlParams.get('sso_token');
+    const ssoAction = urlParams.get('sso_action');
     
-    const { type, data } = event.data;
-    
-    if (type === 'SSO_AUTH_REQUEST') {
-      console.log('🔐 SSO auth request received from Flutter app');
+    if (ssoToken) {
+      console.log('🔗 SSO token detected from Flutter app');
       
-      // Wait for auth state to be ready
-      if (window.authState) {
-        window.authState.getAuthState().then((authState) => {
-          event.source.postMessage({
-            type: 'SSO_AUTH_RESPONSE',
-            data: {
-              isAuthenticated: authState.isAuthenticated,
-              user: authState.user
-            }
-          }, event.origin);
-        });
-      }
+      // Handle SSO authentication
+      setTimeout(() => {
+        if (window.swellAuthIntegration) {
+          console.log('🔗 Processing SSO authentication...');
+          // Add SSO token handling logic here if needed
+        }
+      }, 1000);
     }
+    
+    // Listen for messages from Flutter app (if in webview)
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'flutter_auth') {
+        console.log('🔗 Auth message from Flutter app:', event.data);
+        
+        if (event.data.action === 'signin' && window.authHandler) {
+          window.authHandler.openModal('signin');
+        } else if (event.data.action === 'signup' && window.authHandler) {
+          window.authHandler.openModal('signup');
+        }
+      }
+    });
   });
 </script>
 
-<!-- Performance and Analytics -->
+<!-- Debug Mode Helpers -->
 <script is:inline>
-  // Performance monitoring for auth initialization
-  if (window.performance && window.performance.mark) {
-    window.performance.mark('auth-init-start');
-    
+  // Debug mode helpers (only in development)
+  if (window.location.hostname === 'localhost' || window.location.search.includes('debug=true')) {
+    // Add debug panel
     window.addEventListener('load', function() {
-      // Monitor auth initialization performance
-      setTimeout(() => {
-        if (window.authState && window.authState.isReady) {
-          window.performance.mark('auth-init-end');
-          
-          try {
-            window.performance.measure('auth-init-duration', 'auth-init-start', 'auth-init-end');
-            const measure = window.performance.getEntriesByName('auth-init-duration')[0];
-            console.log(`🔐 Auth initialization completed in ${Math.round(measure.duration)}ms`);
-          } catch (e) {
-            // Performance API not fully supported, ignore
-          }
+      // Create debug info panel (only if explicitly requested)
+      if (window.location.search.includes('showdebug=true')) {
+        const debugPanel = document.createElement('div');
+        debugPanel.style.cssText = `
+          position: fixed; 
+          top: 10px; 
+          right: 10px; 
+          background: rgba(0,0,0,0.8); 
+          color: white; 
+          padding: 10px; 
+          border-radius: 5px; 
+          font-family: monospace; 
+          font-size: 12px; 
+          z-index: 9999;
+          max-width: 300px;
+        `;
+        
+        function updateDebugInfo() {
+          const swell = window.swell || window.se;
+          debugPanel.innerHTML = `
+            <strong>Synoptic Debug</strong><br>
+            Auth: ${window.authState ? '✅' : '❌'}<br>
+            Cart: ${window.cartManager ? '✅' : '❌'}<br>
+            Swell: ${swell ? '✅' : '❌'}<br>
+            Old API: ${swell?.customers ? '⚠️' : '✅'}<br>
+            New API: ${swell?.account ? '✅' : '❌'}<br>
+            User: ${window.authState?.isAuthenticated() ? '✅' : '❌'}
+          `;
         }
-      }, 1000);
+        
+        document.body.appendChild(debugPanel);
+        updateDebugInfo();
+        setInterval(updateDebugInfo, 2000);
+      }
     });
   }
 </script>

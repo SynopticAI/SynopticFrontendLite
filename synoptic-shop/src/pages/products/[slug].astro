@@ -1,5 +1,5 @@
 ---
-// src/pages/products/[slug].astro - Fixed version with proper product data exposure
+// src/pages/products/[slug].astro - Complete fixed version with working add to cart
 import Layout from '~/layouts/PageLayout.astro';
 import ProductError from '~/components/ProductError.astro';
 import { 
@@ -87,311 +87,268 @@ if (product && !hasError) {
 
 const pageTitle = showError ? 'Product Not Found | Synoptic' : `${title} | Synoptic`;
 const pageDescription = showError ? 'The requested product could not be found.' : description.replace(/<[^>]*>/g, '').substring(0, 160);
----
 
-<Layout metadata={{
+const metadata = {
   title: pageTitle,
   description: pageDescription,
   canonical: `https://synoptic.vision/products/${slug}`,
-}}>
-  
-  {!showError && (
-    <script type="application/ld+json" set:html={JSON.stringify(productSchema)} />
-  )}
-  
+  openGraph: {
+    type: 'product',
+    title: pageTitle,
+    description: pageDescription,
+    images: productImages[0] !== '/placeholder-product.jpg' ? [{ url: productImages[0] }] : undefined,
+  }
+};
+---
+
+<Layout metadata={metadata}>
   {showError ? (
-    <ProductError type={errorType} productSlug={slug} />
+    <ProductError type={errorType} slug={slug} />
   ) : (
     <!-- Product Page Content -->
-    <section class="px-4 py-16 mx-auto max-w-6xl lg:px-8 lg:py-20">
-      <div class="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-16">
+    <div class="bg-white">
+      <div class="max-w-2xl mx-auto py-16 px-4 sm:py-24 sm:px-6 lg:max-w-7xl lg:px-8">
         
-        <!-- Product Images with Working Zoom -->
-        <div class="space-y-4">
-          <!-- Main Image with Modal Trigger -->
-          <div class="aspect-square overflow-hidden rounded-lg bg-gray-100 relative group cursor-pointer" id="main-image-container">
-            <img 
-              id="main-image"
-              src={productImages[0]} 
-              alt={product.name}
-              class="w-full h-full object-cover object-center transition-transform group-hover:scale-105"
-              loading="eager"
-              onerror="this.src='/placeholder-product.jpg'"
-            />
-            
-            <!-- Zoom indicator -->
-            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-20">
-              <div class="bg-white text-gray-800 p-3 rounded-lg text-sm font-medium shadow-lg">
-                <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
-                </svg>
-                Click to zoom
-              </div>
-            </div>
-          </div>
+        <!-- Back to Products -->
+        <nav class="mb-8">
+          <a 
+            href="/products" 
+            class="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            Back to Products
+          </a>
+        </nav>
+
+        <div class="lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start">
           
-          <!-- Additional Images Gallery -->
-          {productImages.length > 1 && (
-            <div class="grid grid-cols-4 gap-2">
-              {productImages.slice(1, 5).map((imageUrl, index) => (
-                <div class="aspect-square overflow-hidden rounded-lg bg-gray-100 cursor-pointer hover:opacity-75 transition-opacity gallery-thumb">
-                  <img 
-                    src={imageUrl} 
-                    alt={`${product.name} - View ${index + 2}`}
-                    class="w-full h-full object-cover object-center"
-                    loading="lazy"
-                    onerror="this.style.display='none'"
-                    data-full-image={imageUrl}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <!-- Product Information -->
-        <div class="space-y-6">
-          <!-- Breadcrumb -->
-          <nav class="text-sm" aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2">
-              <li><a href="/" class="text-gray-500 hover:text-gray-700">Home</a></li>
-              <li><span class="text-gray-400">/</span></li>
-              <li><a href="/products" class="text-gray-500 hover:text-gray-700">Products</a></li>
-              <li><span class="text-gray-400">/</span></li>
-              <li><span class="text-gray-900">{product.name}</span></li>
-            </ol>
-          </nav>
-
-          <!-- Product Title & Price -->
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900 lg:text-4xl">
-              {product.name}
-            </h1>
-            <div class="mt-4 flex items-center space-x-4">
-              <span class="text-3xl font-bold text-primary" id="display-price">
-                {pricing.formattedPrice}
-              </span>
-              {!stockAvailable && (
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                  Out of Stock
-                </span>
-              )}
-              {product.sale && (
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  On Sale
-                </span>
-              )}
-            </div>
-          </div>
-
-          <!-- Product Description -->
-          {htmlDescription && (
-            <div class="prose prose-sm text-gray-600 max-w-none">
-              <div set:html={htmlDescription} />
-            </div>
-          )}
-
-          <!-- Product Options -->
-          {productOptions.length > 0 && (
-            <div class="border-t border-gray-200 pt-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Choose Options</h3>
-              <div class="space-y-4" id="product-options">
-                {productOptions.map((option) => (
-                  <div class="option-group" data-option-id={option.id}>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                      {option.name}
-                      {option.required && <span class="text-red-500 ml-1">*</span>}
-                    </label>
-                    
-                    {option.type === 'select' && (
-                      <select 
-                        name={`option-${option.id}`}
-                        class="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary option-select"
-                        data-option-id={option.id}
-                        required={option.required}
-                      >
-                        <option value="">Choose {option.name}</option>
-                        {option.values.map((value) => (
-                          <option value={value.id} data-price={value.price}>
-                            {value.name}
-                            {value.formattedPrice && ` (+${value.formattedPrice})`}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    
-                    {option.type === 'radio' && (
-                      <div class="space-y-2">
-                        {option.values.map((value) => (
-                          <label class="flex items-center justify-between p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors option-radio">
-                            <div class="flex items-center">
-                              <input 
-                                type="radio" 
-                                name={`option-${option.id}`} 
-                                value={value.id}
-                                data-price={value.price}
-                                data-option-id={option.id}
-                                class="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
-                                required={option.required}
-                              />
-                              <span class="ml-3 font-medium">{value.name}</span>
-                            </div>
-                            {value.formattedPrice && (
-                              <span class="text-primary font-semibold">
-                                +{value.formattedPrice}
-                              </span>
-                            )}
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+          <!-- Image Gallery -->
+          <div class="flex flex-col-reverse">
+            <!-- Image Gallery Grid -->
+            <div class="mx-auto mt-6 w-full max-w-2xl sm:block lg:max-w-none">
+              <div class="grid grid-cols-4 gap-6" aria-orientation="horizontal" role="tablist">
+                {productImages.map((image, index) => (
+                  <button
+                    key={index}
+                    class="relative h-24 bg-white rounded-md flex items-center justify-center text-sm font-medium uppercase text-gray-900 cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring focus:ring-offset-4 focus:ring-opacity-50"
+                    aria-controls={`tabs-${index}-panel`}
+                    role="tab"
+                    type="button"
+                  >
+                    <span class="sr-only">Product image {index + 1}</span>
+                    <span class="absolute inset-0 rounded-md overflow-hidden">
+                      <img 
+                        src={image} 
+                        alt={`${title} - Image ${index + 1}`}
+                        class="w-full h-full object-center object-cover"
+                        loading="lazy"
+                      />
+                    </span>
+                  </button>
                 ))}
               </div>
             </div>
-          )}
 
-          <!-- Add to Cart Section -->
-          <div class="border-t border-gray-200 pt-6">
-            <form class="space-y-4" id="add-to-cart-form">
-              <!-- Quantity Input (Number Field) -->
-              <div class="flex items-center space-x-3">
-                <label for="quantity" class="text-sm font-medium text-gray-700">
-                  Quantity:
-                </label>
+            <!-- Main Product Image -->
+            <div class="w-full aspect-w-1 aspect-h-1">
+              <div id="main-image-container" class="relative">
+                <img 
+                  id="main-product-image"
+                  src={productImages[0]} 
+                  alt={title}
+                  class="w-full h-full object-center object-cover sm:rounded-lg cursor-zoom-in"
+                  loading="eager"
+                />
+                <button 
+                  id="zoom-trigger"
+                  class="absolute inset-0 w-full h-full bg-transparent cursor-zoom-in"
+                  aria-label="Zoom image"
+                >
+                  <span class="sr-only">Click to zoom</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product Info -->
+          <div class="mt-10 px-4 sm:px-0 sm:mt-16 lg:mt-0">
+            <h1 class="text-3xl font-bold tracking-tight text-gray-900">{title}</h1>
+
+            <div class="mt-3">
+              <h2 class="sr-only">Product information</h2>
+              <p class="text-3xl tracking-tight text-gray-900">{pricing.formattedPrice}</p>
+            </div>
+
+            <!-- Stock Status -->
+            <div class="mt-6">
+              {stockAvailable ? (
                 <div class="flex items-center">
-                  <button 
-                    type="button" 
-                    class="quantity-btn minus bg-gray-100 hover:bg-gray-200 text-gray-600 w-8 h-8 rounded-l-md flex items-center justify-center border border-r-0 border-gray-300"
-                    data-action="decrease"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
-                    </svg>
-                  </button>
-                  <input 
-                    type="number" 
-                    id="quantity" 
-                    name="quantity"
-                    min="1" 
-                    max="99" 
-                    value="1"
-                    class="w-16 h-8 text-center border-t border-b border-gray-300 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-sm"
-                  />
-                  <button 
-                    type="button" 
-                    class="quantity-btn plus bg-gray-100 hover:bg-gray-200 text-gray-600 w-8 h-8 rounded-r-md flex items-center justify-center border border-l-0 border-gray-300"
-                    data-action="increase"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                  </button>
+                  <svg class="w-5 h-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                  </svg>
+                  <span class="text-green-600 font-medium">In Stock</span>
                 </div>
-              </div>
-
-              <!-- Add to Cart Button -->
-              <button 
-                type="button"
-                disabled={!stockAvailable}
-                class={`w-full py-3 px-6 rounded-lg text-white font-medium transition-all duration-200 ${
-                  stockAvailable 
-                    ? 'bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 active:transform active:scale-95' 
-                    : 'bg-gray-300 cursor-not-allowed'
-                }`}
-                id="add-to-cart-btn"
-              >
-                {stockAvailable ? (
-                  <span class="flex items-center justify-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L6 6H2m5 7v1m0 0v5a2 2 0 002 2h6a2 2 0 002-2v-5m-8 0h8"></path>
-                    </svg>
-                    Add to Cart
-                  </span>
-                ) : (
-                  'Out of Stock'
-                )}
-              </button>
-            </form>
-          </div>
-
-          <!-- Product Details -->
-          <div class="border-t border-gray-200 pt-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-3">Product Details</h3>
-            <dl class="space-y-2">
-              {product.sku && (
-                <div class="flex">
-                  <dt class="text-sm font-medium text-gray-500 w-1/3">SKU:</dt>
-                  <dd class="text-sm text-gray-900">{product.sku}</dd>
+              ) : (
+                <div class="flex items-center">
+                  <svg class="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                  </svg>
+                  <span class="text-red-600 font-medium">Out of Stock</span>
                 </div>
               )}
-              <div class="flex">
-                <dt class="text-sm font-medium text-gray-500 w-1/3">Availability:</dt>
-                <dd class="text-sm text-gray-900">
-                  {stockAvailable ? (
-                    <span class="text-green-600 font-medium">✓ In Stock</span>
-                  ) : (
-                    <span class="text-red-600 font-medium">✗ Out of Stock</span>
+            </div>
+
+            <!-- Product Description -->
+            <div class="mt-6">
+              <h3 class="sr-only">Description</h3>
+              <div class="text-base text-gray-700 space-y-6" set:html={htmlDescription} />
+            </div>
+
+            <!-- Add to Cart Section -->
+            {stockAvailable && (
+              <div class="border-t border-gray-200 pt-6 mt-6">
+                <form id={`product-form-${product.id}`} class="space-y-6">
+                  
+                  <!-- Quantity Selector -->
+                  <div>
+                    <label for="quantity" class="block text-sm font-medium text-gray-900 mb-2">
+                      Quantity
+                    </label>
+                    <div class="flex items-center space-x-3">
+                      <button 
+                        type="button" 
+                        id="decrease-quantity" 
+                        class="flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary quantity-btn"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                        </svg>
+                      </button>
+                      
+                      <input 
+                        type="number" 
+                        id="quantity" 
+                        name="quantity"
+                        min="1" 
+                        max="10" 
+                        value="1"
+                        class="w-16 text-center border border-gray-300 rounded-lg py-2 focus:border-primary focus:ring-primary"
+                      />
+                      
+                      <button 
+                        type="button" 
+                        id="increase-quantity"
+                        class="flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary quantity-btn"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Product Options (if any) -->
+                  {productOptions && productOptions.length > 0 && (
+                    <div class="space-y-4">
+                      {productOptions.map(option => (
+                        <div key={option.id}>
+                          <label for={`option-${option.id}`} class="block text-sm font-medium text-gray-900 mb-2">
+                            {option.name}
+                          </label>
+                          <select 
+                            id={`option-${option.id}`}
+                            name={`option-${option.id}`}
+                            data-option={option.name}
+                            class="w-full border border-gray-300 rounded-lg py-2 px-3 focus:border-primary focus:ring-primary"
+                          >
+                            {option.values && option.values.map(value => (
+                              <option key={value.id} value={value.name}>
+                                {value.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                </dd>
-              </div>
-              {product.weight && (
-                <div class="flex">
-                  <dt class="text-sm font-medium text-gray-500 w-1/3">Weight:</dt>
-                  <dd class="text-sm text-gray-900">{product.weight} kg</dd>
-                </div>
-              )}
-            </dl>
-          </div>
 
-          <!-- Trust Signals -->
-          <div class="border-t border-gray-200 pt-6">
-            <div class="grid grid-cols-2 gap-4 text-sm text-gray-600">
-              <div class="flex items-center">
-                <svg class="w-5 h-5 mr-2 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>
-                <span>Free shipping</span>
+                  <!-- FIXED: Add to Cart Button with Data Attributes -->
+                  <button 
+                    type="button"
+                    disabled={!stockAvailable}
+                    class={`w-full py-4 px-8 rounded-lg text-white font-medium text-lg transition-all duration-200 flex items-center justify-center ${
+                      stockAvailable 
+                        ? 'bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 active:transform active:scale-95' 
+                        : 'bg-gray-300 cursor-not-allowed'
+                    }`}
+                    id="add-to-cart-btn"
+                    data-product-id={product.id}
+                    data-quantity="1"
+                  >
+                    {stockAvailable ? (
+                      <span class="flex items-center justify-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L6 6H2m5 7v1m0 0v5a2 2 0 002 2h6a2 2 0 002-2v-5m-8 0h8"></path>
+                        </svg>
+                        Add to Cart
+                      </span>
+                    ) : (
+                      'Out of Stock'
+                    )}
+                  </button>
+                </form>
               </div>
-              <div class="flex items-center">
-                <svg class="w-5 h-5 mr-2 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <span>30-day returns</span>
-              </div>
-              <div class="flex items-center">
-                <svg class="w-5 h-5 mr-2 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                </svg>
-                <span>Secure checkout</span>
-              </div>
-              <div class="flex items-center">
-                <svg class="w-5 h-5 mr-2 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                </svg>
-                <span>Expert support</span>
-              </div>
+            )}
+
+            <!-- Product Details -->
+            <div class="border-t border-gray-200 pt-6 mt-6">
+              <h3 class="text-lg font-medium text-gray-900 mb-3">Product Details</h3>
+              <dl class="space-y-2">
+                {product.sku && (
+                  <div class="flex">
+                    <dt class="text-sm font-medium text-gray-500 w-1/3">SKU:</dt>
+                    <dd class="text-sm text-gray-900">{product.sku}</dd>
+                  </div>
+                )}
+                <div class="flex">
+                  <dt class="text-sm font-medium text-gray-500 w-1/3">Availability:</dt>
+                  <dd class="text-sm text-gray-900">
+                    {stockAvailable ? 'In Stock' : 'Out of Stock'}
+                  </dd>
+                </div>
+                {product.stock_level && (
+                  <div class="flex">
+                    <dt class="text-sm font-medium text-gray-500 w-1/3">Stock Level:</dt>
+                    <dd class="text-sm text-gray-900">{product.stock_level} units</dd>
+                  </div>
+                )}
+              </dl>
             </div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
 
     <!-- Image Zoom Modal -->
-    <div id="image-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden items-center justify-center p-4">
+    <div 
+      id="image-modal" 
+      class="hidden fixed inset-0 z-50 bg-black bg-opacity-75 items-center justify-center p-4"
+    >
       <div class="relative max-w-4xl max-h-full">
         <button 
-          id="close-modal" 
+          id="close-modal"
           class="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
-          aria-label="Close zoom"
+          aria-label="Close"
         >
           <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
         </button>
         <img 
-          id="modal-image" 
-          src="" 
+          id="modal-image"
+          src=""
           alt=""
           class="max-w-full max-h-full object-contain"
         />
@@ -422,6 +379,109 @@ const pageDescription = showError ? 'The requested product could not be found.' 
     console.log('✅ Product data set:', window.productData);
   </script>
 )}
+
+<!-- Enhanced Product Page Script -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Get quantity controls
+    const decreaseBtn = document.getElementById('decrease-quantity');
+    const increaseBtn = document.getElementById('increase-quantity');
+    const quantityInput = document.getElementById('quantity');
+    const addToCartBtn = document.getElementById('add-to-cart-btn');
+
+    // Quantity controls
+    if (decreaseBtn && quantityInput) {
+      decreaseBtn.addEventListener('click', () => {
+        const current = parseInt(quantityInput.value) || 1;
+        const newValue = Math.max(1, current - 1);
+        quantityInput.value = newValue;
+        
+        // Update button data attribute
+        if (addToCartBtn) {
+          addToCartBtn.setAttribute('data-quantity', newValue);
+        }
+      });
+    }
+
+    if (increaseBtn && quantityInput) {
+      increaseBtn.addEventListener('click', () => {
+        const current = parseInt(quantityInput.value) || 1;
+        const newValue = Math.min(10, current + 1);
+        quantityInput.value = newValue;
+        
+        // Update button data attribute
+        if (addToCartBtn) {
+          addToCartBtn.setAttribute('data-quantity', newValue);
+        }
+      });
+    }
+
+    if (quantityInput && addToCartBtn) {
+      quantityInput.addEventListener('change', (e) => {
+        const value = Math.max(1, Math.min(10, parseInt(e.target.value) || 1));
+        e.target.value = value;
+        addToCartBtn.setAttribute('data-quantity', value);
+      });
+    }
+
+    // Image gallery functionality
+    const thumbnails = document.querySelectorAll('[role="tab"]');
+    const mainImage = document.getElementById('main-product-image');
+    
+    thumbnails.forEach((thumbnail, index) => {
+      thumbnail.addEventListener('click', () => {
+        const imageSrc = thumbnail.querySelector('img').src;
+        if (mainImage) {
+          mainImage.src = imageSrc;
+        }
+      });
+    });
+
+    // Image zoom modal
+    const zoomTrigger = document.getElementById('zoom-trigger');
+    const imageModal = document.getElementById('image-modal');
+    const modalImage = document.getElementById('modal-image');
+    const closeModal = document.getElementById('close-modal');
+
+    if (zoomTrigger && imageModal && modalImage) {
+      zoomTrigger.addEventListener('click', () => {
+        modalImage.src = mainImage.src;
+        modalImage.alt = mainImage.alt;
+        imageModal.classList.remove('hidden');
+        imageModal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      });
+    }
+
+    if (closeModal && imageModal) {
+      closeModal.addEventListener('click', () => {
+        imageModal.classList.remove('show');
+        imageModal.classList.add('hidden');
+        document.body.style.overflow = '';
+      });
+    }
+
+    // Close modal on backdrop click
+    if (imageModal) {
+      imageModal.addEventListener('click', (e) => {
+        if (e.target === imageModal) {
+          imageModal.classList.remove('show');
+          imageModal.classList.add('hidden');
+          document.body.style.overflow = '';
+        }
+      });
+    }
+
+    // Debug: Check if button has required attributes
+    if (addToCartBtn) {
+      console.log('🛍️ Add to cart button ready with attributes:', {
+        productId: addToCartBtn.getAttribute('data-product-id'),
+        quantity: addToCartBtn.getAttribute('data-quantity'),
+        hasCartHandler: !!window.cartHandler
+      });
+    }
+  });
+</script>
 
 <style>
   /* Synoptic Brand Colors */
@@ -465,4 +525,15 @@ const pageDescription = showError ? 'The requested product could not be found.' 
   #image-modal.show {
     display: flex;
   }
+
+  /* Loading states */
+  .loading {
+    opacity: 0.6;
+    pointer-events: none;
+  }
 </style>
+
+<!-- Product Schema for SEO -->
+{!showError && (
+  <script type="application/ld+json" set:html={JSON.stringify(productSchema)} />
+)}

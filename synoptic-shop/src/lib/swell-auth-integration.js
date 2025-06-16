@@ -1,114 +1,282 @@
-// src/lib/swell-auth-integration.js - Fixed Firebase to Swell Authentication Bridge
-import { swell } from './swell.js';
+// src/lib/swell-auth-integration.js - Enhanced with cart association
+import swell from 'swell-js';
 import authStateManager from './auth-state-manager.js';
 
 class SwellAuthIntegration {
   constructor() {
     this.isAuthenticating = false;
-    this.authPromise = null;
+    this.currentSwellAccount = null;
+    this.authRetryCount = 0;
+    this.maxRetries = 3;
     this.init();
   }
 
   init() {
-    console.log('🔗 Initializing Swell authentication integration...');
+    console.log('🔗 Initializing Swell auth integration...');
     
-    // Subscribe to centralized auth state changes
-    authStateManager.subscribe((user) => {
-      this.handleFirebaseAuthChange(user);
+    // Subscribe to Firebase auth state changes
+    authStateManager.subscribe((firebaseUser) => {
+      if (firebaseUser && !this.isAuthenticating) {
+        console.log('🔗 Firebase user authenticated, starting Swell integration...');
+        this.authenticateWithSwell(firebaseUser);
+      } else if (!firebaseUser) {
+        console.log('🔗 Firebase user signed out, clearing Swell auth...');
+        this.signOutFromSwell();
+      }
     });
-  }
-
-  async handleFirebaseAuthChange(firebaseUser) {
-    if (firebaseUser && !this.isAuthenticating) {
-      // User signed in with Firebase - authenticate with Swell
-      console.log('🔗 Firebase user signed in, authenticating with Swell...');
-      await this.authenticateWithSwell(firebaseUser);
-    } else if (!firebaseUser) {
-      // User signed out - sign out from Swell
-      console.log('🔗 Firebase user signed out, signing out from Swell...');
-      await this.signOutFromSwell();
-    }
   }
 
   async authenticateWithSwell(firebaseUser) {
     if (this.isAuthenticating) {
-      return this.authPromise;
+      console.log('🔗 Already authenticating, skipping...');
+      return;
     }
 
     this.isAuthenticating = true;
-    
-    this.authPromise = this._performSwellAuth(firebaseUser);
+    console.log('🔗 Starting Swell authentication for:', firebaseUser.email);
     
     try {
-      const result = await this.authPromise;
+      // Step 1: Verify Swell is properly initialized
+      await this.ensureSwellInitialized();
+      
+      // Step 2: Check current Swell auth state
+      const currentAccount = await this.getCurrentSwellAccount();
+      if (currentAccount && currentAccount.email === firebaseUser.email) {
+        console.log('✅ Already authenticated with matching Swell account');
+        this.currentSwellAccount = currentAccount;
+        
+        // Still ensure cart is associated
+        await this.ensureCartAssociation();
+        return { success: true, account: currentAccount, error: null };
+      }
+
+      // Step 3: Try to authenticate or create account
+      const result = await this.performSwellAuthentication(firebaseUser);
+      
+      if (result.success) {
+        this.currentSwellAccount = result.account;
+        this.authRetryCount = 0;
+        console.log('✅ Swell authentication successful');
+        
+        // Step 4: CRITICAL - Associate cart with the authenticated account
+        await this.ensureCartAssociation();
+        
+        // Step 5: Notify cart manager that auth is complete
+        window.dispatchEvent(new CustomEvent('swellAuthComplete', { 
+          detail: { account: result.account } 
+        }));
+        
+      } else {
+        console.error('❌ Swell authentication failed:', result.error);
+        
+        // Retry logic
+        if (this.authRetryCount < this.maxRetries) {
+          this.authRetryCount++;
+          console.log(`🔄 Retrying Swell auth (${this.authRetryCount}/${this.maxRetries})...`);
+          setTimeout(() => {
+            this.isAuthenticating = false;
+            this.authenticateWithSwell(firebaseUser);
+          }, 2000 * this.authRetryCount);
+          return;
+        }
+      }
+      
       return result;
+      
+    } catch (error) {
+      console.error('❌ Swell authentication error:', error);
+      return { success: false, account: null, error: error.message };
     } finally {
       this.isAuthenticating = false;
-      this.authPromise = null;
     }
   }
 
-  async _performSwellAuth(firebaseUser) {
+  async ensureCartAssociation() {
     try {
-      console.log('🔗 Authenticating with Swell for:', firebaseUser.email);
+      console.log('🛒 Ensuring cart is associated with authenticated account...');
       
-      // Create a consistent password using Firebase UID
-      const password = `firebase_${firebaseUser.uid}`;
+      // Get current cart
+      let cart = await swell.cart.get();
       
-      // Step 1: Try to login with existing account
-      try {
-        const loginResult = await swell.account.login({
-          email: firebaseUser.email,
-          password: password
-        });
-
-        if (loginResult) {
-          console.log('✅ Successfully logged into existing Swell account');
-          return { success: true, account: loginResult, error: null };
-        }
-      } catch (loginError) {
-        console.log('🔗 No existing account found, creating new one...');
+      if (!cart) {
+        console.log('🛒 No cart found, creating new one...');
+        cart = await swell.cart.create();
       }
-
-      // Step 2: Create new account if login failed
-      try {
-        const createResult = await swell.account.create({
-          email: firebaseUser.email,
-          password: password,
-          first_name: firebaseUser.displayName?.split(' ')[0] || '',
-          last_name: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
-          email_verified: firebaseUser.emailVerified
-        });
-
-        if (createResult) {
-          console.log('✅ Successfully created and logged into new Swell account');
-          return { success: true, account: createResult, error: null };
-        }
-      } catch (createError) {
-        console.log('🔗 Account creation failed, trying alternative login...');
-        
-        // Step 3: Try alternative authentication methods
-        try {
-          // Try login with just email (in case account exists with different password)
-          const account = await swell.account.login({
-            email: firebaseUser.email,
-            password: firebaseUser.email // Fallback password
-          });
-
-          if (account) {
-            console.log('✅ Successfully logged in with alternative method');
-            return { success: true, account, error: null };
-          }
-        } catch (altError) {
-          console.log('🔗 All authentication methods failed');
-        }
+      
+      // Check if cart is already associated with account
+      const currentAccount = await this.getCurrentSwellAccount();
+      if (cart.account_id === currentAccount?.id) {
+        console.log('✅ Cart already associated with account');
+        return { success: true, cart };
       }
-
-      throw new Error('Failed to authenticate with Swell using any method');
+      
+      console.log('🛒 Associating cart with authenticated account...');
+      
+      // Force cart to be associated with the authenticated account
+      // This is the key step that was missing!
+      const updatedCart = await swell.cart.update({
+        account_id: currentAccount?.id
+      });
+      
+      if (updatedCart && updatedCart.account_id) {
+        console.log('✅ Cart successfully associated with account:', updatedCart.account_id);
+        return { success: true, cart: updatedCart };
+      } else {
+        console.warn('⚠️ Cart association may not have worked as expected');
+        return { success: false, cart: updatedCart };
+      }
       
     } catch (error) {
-      console.error('❌ Swell authentication failed:', error);
-      return { success: false, account: null, error: error.message };
+      console.error('❌ Error associating cart with account:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async ensureSwellInitialized() {
+    console.log('🔗 Checking Swell initialization...');
+    
+    // Wait for Swell to be available
+    let attempts = 0;
+    while (attempts < 50) { // 5 seconds max
+      if (typeof swell !== 'undefined' && swell.init) {
+        break;
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+    
+    if (typeof swell === 'undefined' || !swell.init) {
+      throw new Error('Swell SDK not loaded');
+    }
+    
+    if (!swell.account) {
+      throw new Error('Swell account API not available');
+    }
+  }
+
+  async performSwellAuthentication(firebaseUser) {
+    const password = `firebase_${firebaseUser.uid}`;
+    const email = firebaseUser.email;
+    
+    console.log('🔗 Performing Swell authentication for:', email);
+    
+    // Method 1: Try existing account login
+    console.log('🔗 Method 1: Attempting login with Firebase UID password...');
+    try {
+      const loginResult = await swell.account.login({
+        email: email,
+        password: password
+      });
+
+      if (loginResult && loginResult.id) {
+        console.log('✅ Successfully logged into existing Swell account');
+        return { success: true, account: loginResult, error: null };
+      }
+    } catch (loginError) {
+      console.log('🔗 Login failed:', loginError.message);
+    }
+
+    // Method 2: Try to create new account (FIXED - removed email_verified)
+    console.log('🔗 Method 2: Attempting account creation...');
+    try {
+      const createData = {
+        email: email,
+        password: password,
+        first_name: firebaseUser.displayName?.split(' ')[0] || '',
+        last_name: firebaseUser.displayName?.split(' ').slice(1).join(' ') || ''
+        // ✅ Removed email_verified field - not allowed from frontend
+      };
+      
+      console.log('🔗 Creating account with data:', {
+        ...createData,
+        password: '[REDACTED]'
+      });
+      
+      const createResult = await swell.account.create(createData);
+
+      if (createResult && createResult.id) {
+        console.log('✅ Successfully created and logged into new Swell account');
+        return { success: true, account: createResult, error: null };
+      }
+    } catch (createError) {
+      console.log('🔗 Account creation failed:', createError.message);
+      this.logSwellError('account.create', createError);
+      
+      // If creation failed, account might exist with different password
+      // Try login with email as password (common fallback)
+      console.log('🔗 Method 3: Attempting fallback login with email as password...');
+      try {
+        const fallbackResult = await swell.account.login({
+          email: email,
+          password: email
+        });
+
+        if (fallbackResult && fallbackResult.id) {
+          console.log('✅ Successfully logged in with fallback method');
+          return { success: true, account: fallbackResult, error: null };
+        }
+      } catch (fallbackError) {
+        console.log('🔗 Fallback login failed:', fallbackError.message);
+      }
+    }
+
+    // Method 3: Try guest checkout association (cart-only approach)
+    console.log('🔗 Method 3: Attempting guest checkout association...');
+    try {
+      // Set cart customer info without creating account
+      const cart = await swell.cart.update({
+        account: {
+          email: email,
+          first_name: firebaseUser.displayName?.split(' ')[0] || '',
+          last_name: firebaseUser.displayName?.split(' ').slice(1).join(' ') || ''
+        }
+      });
+
+      if (cart && cart.account?.email === email) {
+        console.log('✅ Successfully associated cart with user info (guest mode)');
+        return { 
+          success: true, 
+          account: { 
+            id: 'guest_' + firebaseUser.uid,
+            email: email,
+            guest: true 
+          }, 
+          error: null 
+        };
+      }
+    } catch (cartError) {
+      console.log('🔗 Cart association failed:', cartError.message);
+    }
+
+    // All methods failed
+    const errorMessage = 'All Swell authentication methods failed';
+    console.error('❌', errorMessage);
+    return { success: false, account: null, error: errorMessage };
+  }
+
+  logSwellError(method, error) {
+    console.error(`🔗 Swell ${method} error details:`, {
+      message: error.message,
+      status: error.status,
+      statusText: error.statusText,
+      response: error.response
+    });
+    
+    // Check for specific error patterns
+    if (error.message?.includes('forbidden') || error.status === 403) {
+      console.error('🚨 PERMISSION ERROR: This operation might be restricted');
+    }
+    
+    if (error.message?.includes('not found') || error.status === 404) {
+      console.error('🚨 API ERROR: This endpoint might not exist');
+    }
+    
+    if (error.message?.includes('validation') || error.status === 400) {
+      console.error('🚨 VALIDATION ERROR: Check required fields and data format');
+    }
+
+    if (error.message?.includes('email_verified')) {
+      console.error('🚨 FIELD RESTRICTION: email_verified cannot be set from frontend');
     }
   }
 
@@ -116,7 +284,11 @@ class SwellAuthIntegration {
     try {
       console.log('🔗 Signing out from Swell...');
       
-      await swell.account.logout();
+      if (swell.account?.logout) {
+        await swell.account.logout();
+      }
+      
+      this.currentSwellAccount = null;
       console.log('✅ Signed out from Swell');
       
     } catch (error) {
@@ -124,51 +296,87 @@ class SwellAuthIntegration {
     }
   }
 
-  // Public method to manually trigger Swell auth
+  // Public methods for external access
   async forceSwellAuthentication() {
     const firebaseUser = authStateManager.getCurrentUser();
     if (firebaseUser) {
+      this.authRetryCount = 0; // Reset retry count
       return await this.authenticateWithSwell(firebaseUser);
     } else {
       throw new Error('No Firebase user found');
     }
   }
 
-  // Public method to check if Swell is authenticated
+  async forceCartAssociation() {
+    return await this.ensureCartAssociation();
+  }
+
   async isSwellAuthenticated() {
     try {
       const account = await swell.account.get();
-      return !!account && !!account.id;
+      return !!account && !!account.id && !account.guest;
     } catch (error) {
       return false;
     }
   }
 
-  // Get current Swell account
   async getCurrentSwellAccount() {
     try {
       return await swell.account.get();
     } catch (error) {
+      console.log('🔗 Unable to get current Swell account:', error.message);
       return null;
     }
   }
 
-  // Debug method
+  // Comprehensive debug method
   async debug() {
     const firebaseUser = authStateManager.getCurrentUser();
     const isSwellAuth = await this.isSwellAuthenticated();
     const swellAccount = await this.getCurrentSwellAccount();
+    const cart = await swell.cart.get();
     
-    console.log('🔗 Swell Auth Integration Debug:', {
-      firebaseUser: firebaseUser?.email || 'None',
-      isSwellAuthenticated: isSwellAuth,
-      isAuthenticating: this.isAuthenticating,
-      swellAccount: swellAccount ? {
-        id: swellAccount.id,
-        email: swellAccount.email,
-        name: swellAccount.name
-      } : 'None'
+    console.group('🔗 Swell Auth Integration Debug');
+    console.log('Firebase User:', firebaseUser?.email || 'None');
+    console.log('Is Authenticating:', this.isAuthenticating);
+    console.log('Retry Count:', this.authRetryCount);
+    console.log('Is Swell Authenticated:', isSwellAuth);
+    console.log('Current Swell Account:', swellAccount ? {
+      id: swellAccount.id,
+      email: swellAccount.email,
+      name: swellAccount.name || `${swellAccount.first_name} ${swellAccount.last_name}`,
+      guest: swellAccount.guest || false
+    } : 'None');
+    
+    console.log('Cart Status:', cart ? {
+      id: cart.id,
+      account_id: cart.account_id,
+      account_email: cart.account?.email,
+      item_count: cart.items?.length || 0,
+      is_associated: !!cart.account_id
+    } : 'No cart');
+    
+    // Test Swell API availability
+    console.log('Swell API Status:', {
+      swellLoaded: typeof swell !== 'undefined',
+      hasAccount: !!swell?.account,
+      hasAccountMethods: {
+        get: !!(swell?.account?.get),
+        login: !!(swell?.account?.login),
+        create: !!(swell?.account?.create),
+        logout: !!(swell?.account?.logout)
+      },
+      hasCart: !!swell?.cart
     });
+    console.groupEnd();
+  }
+
+  // Force reset auth state
+  reset() {
+    this.isAuthenticating = false;
+    this.currentSwellAccount = null;
+    this.authRetryCount = 0;
+    console.log('🔗 Swell auth integration reset');
   }
 }
 

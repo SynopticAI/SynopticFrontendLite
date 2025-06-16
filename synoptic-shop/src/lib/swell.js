@@ -183,6 +183,8 @@ export function getProductDescription(product) {
   return product.description || product.meta_description || '';
 }
 
+
+
 /**
  * Check if product is in stock
  * @param {Object} product - Product object from Swell

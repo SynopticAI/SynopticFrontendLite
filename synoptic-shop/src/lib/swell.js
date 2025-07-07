@@ -199,7 +199,7 @@ export function isProductInStock(product) {
 }
 
 /**
- * Get product options for display
+ * Get product options for display a
  * @param {Object} product - Product object from Swell
  * @returns {Array} Array of product options
  */

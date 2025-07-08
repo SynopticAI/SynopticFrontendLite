@@ -15,7 +15,7 @@
     <key>provisioningProfiles</key>
     <dict>
         <key>com.synoptic.AiDeviceManager</key>
-        <string>YOUR_PROVISIONING_PROFILE_NAME</string>
+        <string>RegeneratedProvProfile080725</string>
     </dict>
 </dict>
 </plist>

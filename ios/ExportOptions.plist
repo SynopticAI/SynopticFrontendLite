@@ -6,18 +6,11 @@
     <string>app-store</string>
     <key>teamID</key>
     <string>XFZ9882C7X</string>
-    <key>uploadBitcode</key>
-    <false/>
-    <key>compileBitcode</key>
-    <false/>
-    <key>uploadSymbols</key>
-    <true/>
     <key>signingStyle</key>
-    <string>manual</string>
-    <key>provisioningProfiles</key>
-    <dict>
-        <key>com.synoptic.AiDeviceManager</key>
-        <string>RegeneratedProvProfile080725</string>
-    </dict>
+    <string>automatic</string>
+    <key>signingCertificate</key>
+    <string>Apple Distribution</string>
+    <key>iCloudContainerEnvironment</key>
+    <string>Production</string>
 </dict>
 </plist>

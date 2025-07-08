@@ -12,5 +12,10 @@
     <string>Apple Distribution</string>
     <key>iCloudContainerEnvironment</key>
     <string>Production</string>
+    <key>provisioningProfiles</key>
+    <dict>
+        <key>com.synoptic.AiDeviceManager</key>
+        <string>YOUR_PROVISIONING_PROFILE_NAME</string>
+    </dict>
 </dict>
 </plist>

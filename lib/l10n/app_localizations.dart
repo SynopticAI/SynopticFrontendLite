@@ -1225,6 +1225,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Error saving settings: {error}'**
   String errorSavingSettings(Object error);
+
+  /// No description provided for @addYourFirstDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your first device'**
+  String get addYourFirstDevice;
+
+  /// No description provided for @noDevicesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'no devices found'**
+  String get noDevicesFound;
 }
 
 class _AppLocalizationsDelegate

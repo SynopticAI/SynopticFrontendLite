@@ -282,7 +282,10 @@
     "drawRegionToTrigger": "Draw region to trigger notification:",
     "saveSettings": "Save Settings",
     "settingsSaved": "Notification settings saved",
-    "errorSavingSettings": "Error saving settings: {error}"
+    "errorSavingSettings": "Error saving settings: {error}",
+
+    "addYourFirstDevice": "Add your first device",
+    "noDevicesFound": "no devices found"
     
     
 }

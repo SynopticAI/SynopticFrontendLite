@@ -634,4 +634,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String errorSavingSettings(Object error) {
     return 'Fehler beim Speichern der Einstellungen: $error';
   }
+
+  @override
+  String get addYourFirstDevice => 'Erstes Gerät hinzufügen';
+
+  @override
+  String get noDevicesFound => 'keine Geräte gefunden';
 }

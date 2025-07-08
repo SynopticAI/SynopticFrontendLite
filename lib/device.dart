@@ -17,6 +17,10 @@ class Device {
   bool motionTriggered;
   bool saveImages;
 
+  // WiFi and connectivity
+  int? wifiSignalStrength; // RSSI value in dBm
+  String? lastHeartbeat; // Timestamp in milliseconds
+
   Device({
     required this.id,
     required this.name,
@@ -33,6 +37,8 @@ class Device {
     this.motionTriggered = false,
     this.saveImages = true,
     this.setupStage = 0, // Default to first stage (0 = not started)
+    this.wifiSignalStrength,
+    this.lastHeartbeat,
   }) : imageUrl = imageUrl ?? 'users/$id/devices/$id/icon.png';
 
   Map<String, dynamic> toMap() {
@@ -52,6 +58,8 @@ class Device {
       'motionTriggered': motionTriggered,
       'saveImages': saveImages,
       'setupStage': setupStage,
+      'wifi_signal_strength': wifiSignalStrength,
+      'last_heartbeat': lastHeartbeat,
     };
   }
 
@@ -72,6 +80,8 @@ class Device {
       motionTriggered: map['motionTriggered'] ?? false,
       saveImages: map['saveImages'] ?? true,
       setupStage: (map['setupStage'] ?? 0).toDouble(),
+      wifiSignalStrength: map['wifi_signal_strength'] as int?,
+      lastHeartbeat: map['last_heartbeat'] as String?,
     );
   }
 }

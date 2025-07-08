@@ -197,5 +197,9 @@
     "drawRegionToTrigger": "Zeichnen Sie einen Bereich, um eine Benachrichtigung auszulösen:",
     "saveSettings": "Einstellungen speichern",
     "settingsSaved": "Benachrichtigungseinstellungen gespeichert",
-    "errorSavingSettings": "Fehler beim Speichern der Einstellungen: {error}"
+    "errorSavingSettings": "Fehler beim Speichern der Einstellungen: {error}",
+
+    "addYourFirstDevice": "Erstes Gerät hinzufügen",
+    "noDevicesFound": "keine Geräte gefunden"
+
 }

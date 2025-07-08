@@ -629,4 +629,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String errorSavingSettings(Object error) {
     return 'Error saving settings: $error';
   }
+
+  @override
+  String get addYourFirstDevice => 'Add your first device';
+
+  @override
+  String get noDevicesFound => 'no devices found';
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:ai_device_manager/widget_tree.dart';
+import 'package:ai_device_manager/pages/splash_screen.dart'; // Add this import
+import 'package:flutter_native_splash/flutter_native_splash.dart'; // Add this import
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'widgets/cached_image_frame.dart';
@@ -12,7 +14,6 @@ import 'package:ai_device_manager/utils/user_settings.dart';
 import 'package:ai_device_manager/utils/app_theme.dart';
 import 'package:ai_device_manager/app_initializer.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:ai_device_manager/pages/splash_screen.dart';
 
 // Add this debug import - you'll need to create this file or comment out if not using
 import 'package:ai_device_manager/pages/notification_debug_page.dart';
@@ -25,8 +26,11 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // Preserve the native splash screen
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   
+  // Initialize your app in the background while native splash is showing
   try {
     // Initialize Firebase first
     await AppInitializer.initialize();
@@ -49,83 +53,79 @@ Future<void> main() async {
       }
       
       await NotificationService().initialize();
-      
-      // Debug FCM tokens after a short delay (iOS needs more time)
-      Future.delayed(const Duration(seconds: 3), () {
-        NotificationService().debugFCMToken();
-      });
     }
+    
+    print('✅ App initialization complete');
   } catch (e) {
-    print("❌ Error during app initialization: $e");
-    // Continue anyway, the app should handle errors gracefully
+    print('❌ Initialization error: $e');
   }
 
-  runApp(const MyApp());
+  runApp(const MainApp());
 }
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+class MainApp extends StatefulWidget {
+  const MainApp({Key? key}) : super(key: key);
 
   @override
-  State<MyApp> createState() => _MyAppState();
+  State<MainApp> createState() => _MainAppState();
 }
 
-class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  // Flag to track if we came from background
-  bool _forceRebuildAfterNextBuild = false;
+class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   bool _wasInBackground = false;
-  bool _showSplash = true;
-  
+  bool _showAnimatedSplash = true; // Show our beautiful animated splash
+  bool _initializationComplete = false;
+
   @override
   void initState() {
     super.initState();
-    // Register for app lifecycle events
     WidgetsBinding.instance.addObserver(this);
-
-    Future.delayed(const Duration(seconds: 4), () {
-      if (_showSplash && mounted) {
-        setState(() {
-          _showSplash = false;
-        });
-      }
-    });
     
-    // Setup notification service lifecycle handling
-    if (!kIsWeb) {
-      _setupNotificationLifecycle();
-    }
+    // TODO: Later, replace this with actual initialization checking
+    // For now, just wait 3 seconds as requested
+    _startSplashSequence();
   }
 
-  void _onSplashComplete() {
+  Future<void> _startSplashSequence() async {
+    // Wait a brief moment to ensure native splash is visible
+    await Future.delayed(const Duration(milliseconds: 100));
+    
+    // Remove the native splash screen to show our animated splash
+    FlutterNativeSplash.remove();
+    
+    // TODO: Replace this placeholder with actual initialization status checking
+    // For now, just wait 3 seconds as requested
+    await Future.delayed(const Duration(seconds: 3));
+    
+    // Mark initialization as complete (placeholder)
     if (mounted) {
       setState(() {
-        _showSplash = false;
+        _initializationComplete = true;
+        _showAnimatedSplash = false;
       });
     }
   }
 
-  void _setupNotificationLifecycle() {
-    // Listen for when app comes to foreground to refresh tokens if needed
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) {
-          // Check notification setup and refresh if needed
-          NotificationService().isNotificationSetupComplete().then((isComplete) {
-            if (!isComplete) {
-              print('🔄 Notification setup incomplete, attempting refresh...');
-              NotificationService().refreshFCMToken();
-            }
-          });
-        }
-      });
+  // This method will be used later for proper initialization tracking
+  Future<void> _waitForInitialization() async {
+    // TODO: Later, implement proper checking like:
+    // - Firebase initialization complete
+    // - User settings loaded
+    // - Notification service ready
+    // - Device scanning initialized
+    // etc.
+    
+    // For now, just the placeholder timer
+    await Future.delayed(const Duration(seconds: 3));
+    
+    setState(() {
+      _initializationComplete = true;
+      _showAnimatedSplash = false;
     });
   }
 
   @override
   void dispose() {
-    // Unregister when the app is disposed
     WidgetsBinding.instance.removeObserver(this);
-    NotificationService().dispose();
     super.dispose();
   }
 
@@ -171,19 +171,29 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 
+  void _onAnimatedSplashComplete() {
+    if (mounted) {
+      setState(() {
+        _showAnimatedSplash = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-      // Show splash screen first
-    if (_showSplash) {
+    // Show our beautiful animated splash screen after native splash
+    if (_showAnimatedSplash) {
       return MaterialApp(
         title: 'Synoptic',
         theme: AppTheme.getTheme(),
         home: SplashScreen(
-          onAnimationComplete: _onSplashComplete,
+          onAnimationComplete: _onAnimatedSplashComplete,
         ),
         debugShowCheckedModeBanner: false,
       );
     }
+
+    // After both splash screens, show main app
     return StreamBuilder<String>(
       stream: UserSettings().languageStream,
       builder: (context, snapshot) {
@@ -243,7 +253,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         return MaterialApp(
           title: 'Synoptic',
           theme: AppTheme.getTheme(), // Use our custom theme
-          locale: locale != null ? Locale(locale) : null,
+          locale: locale != null ? Locale(locale) : const Locale('en'),
           localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
@@ -265,55 +275,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           home: const WidgetTree(),
         );
       },
-    );
-  }
-}
-
-// The rest of your original MyHomePage and _MyHomePageState classes remain unchanged
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
     );
   }
 }

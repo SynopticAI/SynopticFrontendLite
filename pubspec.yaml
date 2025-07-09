@@ -4,6 +4,42 @@ description: "A new Flutter project."
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
+flutter_native_splash:
+  # Background color - using your primary brand color
+  color: "#334998"  # AppTheme.primaryColor
+  
+  # Main splash image - using your new smaller icon
+  image: assets/splashscreen/splash_icon.png
+  
+  # Branding image - this will be your text logo positioned below the main image
+  branding: assets/splashscreen/splash_logo_text.png
+  
+  # Dark mode support
+  color_dark: "#334998"
+  image_dark: assets/splashscreen/splash_icon.png
+  branding_dark: assets/splashscreen/splash_logo_text.png
+  
+  # Android 12+ specific configuration
+  android_12:
+    image: assets/splashscreen/splash_icon.png
+    color: "#334998"
+    icon_background_color: "#334998"
+    image_dark: assets/splashscreen/splash_icon.png
+    color_dark: "#334998"
+    icon_background_color_dark: "#334998"
+  
+  # Platform specific settings
+  android: true
+  ios: true
+  web: true
+  
+  # Control image positioning
+  android_gravity: center
+  ios_content_mode: center
+  fullscreen: true
+
+
+
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
 # followed by an optional build number separated by a +.
@@ -16,7 +52,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.0+42
+version: 1.1.0+43
 
 environment:
   sdk: ^3.6.1
@@ -70,6 +106,8 @@ dependencies:
   intl: ^0.20.2
   device_info_plus: ^10.1.0
 
+  flutter_native_splash: ^2.4.1
+
 
   # manually added  END
 
@@ -105,6 +143,7 @@ flutter:
     - assets/animations/
     - assets/splashscreen/splash_logo_text.png
     - assets/icon/app_icon.png
+    - assets/splashscreen/splash_icon.png
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

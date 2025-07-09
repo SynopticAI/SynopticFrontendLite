@@ -12,6 +12,7 @@ import 'package:ai_device_manager/widgets/language_selector.dart';
 import 'package:ai_device_manager/l10n/app_localizations.dart';
 import 'package:ai_device_manager/pages/esp_config_page.dart';
 import 'package:ai_device_manager/services/notification_service.dart';
+import 'package:ai_device_manager/utils/app_theme.dart';
 
 import 'package:ai_device_manager/l10n/context_extensions.dart';
 
@@ -25,6 +26,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final User? user = Auth().currentUser;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Map<String, bool> _notificationStatus = {}; // Track notification status per device
   
   // Group management state
   List<DeviceGroup> _groups = [];
@@ -37,10 +40,79 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadGroups();
-    Future.delayed(const Duration(seconds: 3), () {NotificationService().debugFCMToken(); });
+    _loadGroups().then((_) => _loadNotificationStatuses());
+    Future.delayed(const Duration(seconds: 3), () {
+      NotificationService().debugFCMToken();
+    });
   }
   
+  Future<void> _loadNotificationStatuses() async {
+    try {
+      final List<String> deviceIds = [];
+      
+      // Collect all device IDs from all groups
+      for (final group in _groups) {
+        final devicesSnapshot = await _firestore
+            .collection('users')
+            .doc(user!.uid)
+            .collection('devices')
+            .where('groupId', isEqualTo: group.id)
+            .get();
+        
+        deviceIds.addAll(devicesSnapshot.docs.map((doc) => doc.id));
+      }
+      
+      // Get notification statuses for all devices
+      final statuses = await NotificationService().getDeviceNotificationStatuses(deviceIds);
+      
+      if (mounted) {
+        setState(() {
+          _notificationStatus = statuses;
+        });
+      }
+    } catch (e) {
+      print('Error loading notification statuses: $e');
+    }
+  }
+
+  Future<void> _toggleDeviceNotification(String deviceId, bool currentStatus) async {
+    try {
+      final success = await NotificationService().toggleDeviceNotification(deviceId, !currentStatus);
+      
+      if (success && mounted) {
+        setState(() {
+          _notificationStatus[deviceId] = !currentStatus;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(!currentStatus 
+                ? 'Notifications enabled for this device' 
+                : 'Notifications disabled for this device'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update notification settings'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error toggling notification: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error updating notification settings'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   Future<void> _loadGroups() async {
     if (user == null) return;
     
@@ -474,208 +546,250 @@ class _HomePageState extends State<HomePage> {
     );
   }
   
-  Widget _buildDeviceTile(Device device, DeviceGroup group, {Key? key}) {
-    // Enhanced device tile that supports both reordering and dragging to other groups
+Widget _buildDeviceTile(Device device, DeviceGroup group, {Key? key}) {
+  // Enhanced device tile that supports both reordering and dragging to other groups
 
-    if (device.name == null) {
-      // Skip devices with null name (being deleted)
-      return SizedBox.shrink(key: key);
-    }
-    
-    return LongPressDraggable<Device>(
-      key: key,
-      data: device,
-      delay: const Duration(milliseconds: 150), // Short delay to differentiate from taps
-      onDragStarted: () {
-        setState(() {
-          _draggedDevice = device;
-        });
-      },
-      onDragEnd: (_) {
-        setState(() {
-          _draggedDevice = null;
-        });
-      },
-      // What shows while dragging
-      feedback: Material(
-        elevation: 4.0,
-        color: Colors.transparent,
-        child: Container(
-          width: 240,
-          padding: const EdgeInsets.all(8.0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8.0),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.devices, size: 24),
-              SizedBox(width: 8),
-              Expanded(child: Text(device.name, overflow: TextOverflow.ellipsis)),
-            ],
-          ),
-        ),
-      ),
-      childWhenDragging: Container(
-        key: ValueKey('dragging_${device.id}'),
-        height: 80,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+  if (device.name == null) {
+    // Skip devices with null name (being deleted)
+    return SizedBox.shrink(key: key);
+  }
+  
+  final isNotificationEnabled = _notificationStatus[device.id] ?? false;
+  
+  return LongPressDraggable<Device>(
+    key: key,
+    data: device,
+    delay: const Duration(milliseconds: 150), // Short delay to differentiate from taps
+    onDragStarted: () {
+      setState(() {
+        _draggedDevice = device;
+      });
+    },
+    onDragEnd: (_) {
+      setState(() {
+        _draggedDevice = null;
+      });
+    },
+    // What shows while dragging
+    feedback: Material(
+      elevation: 4.0,
+      color: Colors.transparent,
+      child: Container(
+        width: 240,
+        padding: const EdgeInsets.all(8.0),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.withOpacity(0.5), width: 1, style: BorderStyle.solid),
-          borderRadius: BorderRadius.circular(8),
-          color: Colors.grey.withOpacity(0.1),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.devices, size: 24),
+            SizedBox(width: 8),
+            Expanded(child: Text(device.name, overflow: TextOverflow.ellipsis)),
+          ],
         ),
       ),
-      // The device card
-      child: DragTarget<Device>(
-        onWillAccept: (incomingDevice) {
-          // Accept if it's not this device and not in this group already
-          return incomingDevice != null && 
-                 incomingDevice.id != device.id &&
-                 incomingDevice.groupId != group.id;
-        },
-        onAccept: (incomingDevice) {
-          // Move the incoming device to this group (will be inserted next to this device)
-          _moveDeviceToGroup(incomingDevice, group.id);
-        },
-        builder: (context, candidateData, rejectedData) {
-          // Highlight when a dragged device is hovering
-          final isHighlighted = candidateData.isNotEmpty;
-          
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: isHighlighted ? Colors.blue : Colors.transparent,
-                width: isHighlighted ? 2 : 0,
-              ),
-              borderRadius: BorderRadius.circular(8),
-              color: isHighlighted ? Colors.blue.withOpacity(0.1) : null,
+    ),
+    childWhenDragging: Container(
+      key: ValueKey('dragging_${device.id}'),
+      height: 80,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.withOpacity(0.5), width: 1, style: BorderStyle.solid),
+        borderRadius: BorderRadius.circular(8),
+        color: Colors.grey.withOpacity(0.1),
+      ),
+    ),
+    // The device card
+    child: DragTarget<Device>(
+      onWillAccept: (incomingDevice) {
+        // Accept if it's not this device and not in this group already
+        return incomingDevice != null && 
+               incomingDevice.id != device.id &&
+               incomingDevice.groupId != group.id;
+      },
+      onAccept: (incomingDevice) {
+        // Move the incoming device to this group (will be inserted next to this device)
+        _moveDeviceToGroup(incomingDevice, group.id);
+      },
+      builder: (context, candidateData, rejectedData) {
+        // Highlight when a dragged device is hovering
+        final isHighlighted = candidateData.isNotEmpty;
+        
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: isHighlighted ? AppTheme.primaryColor : Colors.transparent,
+              width: isHighlighted ? 2 : 0,
             ),
-            child: Card(
-              margin: EdgeInsets.zero,
-              elevation: 0,
-              child: Row(
-                children: [
-                  // Drag handle for reordering
-                  _isEditingGroups ? Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: const Icon(
-                      Icons.drag_handle,
-                      color: Colors.grey,
-                      size: 20,
-                    ),
-                  ) : const SizedBox.shrink(),
-
-                  // Main content
-                  Expanded(
-                    child: ListTile(
-                      leading: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: FutureBuilder<String>(
-                                key: ValueKey("${device.id}_image"),
-                                future: FirebaseStorage.instance
-                                    .ref('users/${user!.uid}/devices/${device.id}/icon.png')
-                                    .getDownloadURL()
-                                    .catchError((e) => ""),
-                                builder: (context, snapshot) {
-                                  if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                                    return Image.network(
-                                      snapshot.data!,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) => const Icon(
-                                        Icons.devices,
-                                        color: Colors.grey,
-                                      ),
-                                    );
-                                  }
-                                  return const Icon(
-                                    Icons.devices,
-                                    color: Colors.grey,
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                          // WiFi Signal Icon positioned at top-right corner
-                          Positioned(
-                            top: -3,
-                            right: -3,
-                            child: _buildWifiIcon(device),
-                          ),
-                        ],
-                      ),
-                      title: Text(device.name),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            device.taskDescription ?? 'No description', 
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            'Status: ${device.status}',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ],
-                      ),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DeviceDashboardPage(
-                              device: device,
-                              userId: user!.uid,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+            borderRadius: BorderRadius.circular(8),
+            color: isHighlighted ? AppTheme.primaryColor.withOpacity(0.1) : null,
+          ),
+          child: Card(
+            margin: EdgeInsets.zero,
+            elevation: 0,
+            child: Row(
+              children: [
+                // Drag handle for reordering
+                _isEditingGroups ? Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: const Icon(
+                    Icons.drag_handle,
+                    color: Colors.grey,
+                    size: 20,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.settings),
-                    onPressed: () async {
-                      final shouldRefresh = await Navigator.push(
+                ) : const SizedBox.shrink(),
+
+                // Main content with image and device info
+                Expanded(
+                  child: ListTile(
+                    leading: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: FutureBuilder<String>(
+                              key: ValueKey("${device.id}_image"),
+                              future: FirebaseStorage.instance
+                                  .ref('users/${user!.uid}/devices/${device.id}/icon.png')
+                                  .getDownloadURL()
+                                  .catchError((e) => ""),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                                  return Image.network(
+                                    snapshot.data!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => const Icon(
+                                      Icons.devices,
+                                      color: Colors.grey,
+                                    ),
+                                  );
+                                }
+                                return const Icon(
+                                  Icons.devices,
+                                  color: Colors.grey,
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        // WiFi Signal Icon positioned at top-right corner
+                        Positioned(
+                          top: -3,
+                          right: -3,
+                          child: _buildWifiIcon(device),
+                        ),
+                      ],
+                    ),
+                    title: Text(device.name),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          device.taskDescription ?? 'No description', 
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          'Status: ${device.status}',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    onTap: () {
+                      Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => DeviceConfigPage(
+                          builder: (context) => DeviceDashboardPage(
                             device: device,
                             userId: user!.uid,
                           ),
                         ),
                       );
-                      
-                      if (shouldRefresh == true) {
-                        setState(() {});  // Trigger a rebuild
-                      }
                     },
                   ),
-                ],
-              ),
+                ),
+                
+                // NEW: Notification toggle button (using company colors)
+                Container(
+                  margin: const EdgeInsets.only(right: 4),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(6),
+                      onTap: () => _toggleDeviceNotification(device.id, isNotificationEnabled),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: isNotificationEnabled 
+                              ? AppTheme.primaryColor.withOpacity(0.1) 
+                              : AppTheme.primaryGray.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isNotificationEnabled 
+                                ? AppTheme.primaryColor.withOpacity(0.3) 
+                                : AppTheme.primaryGray.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Icon(
+                          isNotificationEnabled 
+                              ? Icons.notifications_active 
+                              : Icons.notifications_off_outlined,
+                          size: 18,
+                          color: isNotificationEnabled 
+                              ? AppTheme.primaryColor 
+                              : AppTheme.primaryGray,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // Existing settings button
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  onPressed: () async {
+                    final shouldRefresh = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DeviceConfigPage(
+                          device: device,
+                          userId: user!.uid,
+                        ),
+                      ),
+                    );
+                    
+                    if (shouldRefresh == true) {
+                      setState(() {});
+                      _loadNotificationStatuses(); // Refresh notification statuses
+                    }
+                  },
+                ),
+              ],
             ),
-          );
-        },
-      ),
-    );
-  }
+          ),
+        );
+      },
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {

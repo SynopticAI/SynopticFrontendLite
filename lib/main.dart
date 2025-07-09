@@ -12,6 +12,7 @@ import 'package:ai_device_manager/utils/user_settings.dart';
 import 'package:ai_device_manager/utils/app_theme.dart';
 import 'package:ai_device_manager/app_initializer.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:ai_device_manager/pages/splash_screen.dart';
 
 // Add this debug import - you'll need to create this file or comment out if not using
 import 'package:ai_device_manager/pages/notification_debug_page.dart';
@@ -73,16 +74,33 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   // Flag to track if we came from background
   bool _forceRebuildAfterNextBuild = false;
   bool _wasInBackground = false;
+  bool _showSplash = true;
   
   @override
   void initState() {
     super.initState();
     // Register for app lifecycle events
     WidgetsBinding.instance.addObserver(this);
+
+    Future.delayed(const Duration(seconds: 4), () {
+      if (_showSplash && mounted) {
+        setState(() {
+          _showSplash = false;
+        });
+      }
+    });
     
     // Setup notification service lifecycle handling
     if (!kIsWeb) {
       _setupNotificationLifecycle();
+    }
+  }
+
+  void _onSplashComplete() {
+    if (mounted) {
+      setState(() {
+        _showSplash = false;
+      });
     }
   }
 
@@ -155,6 +173,17 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+      // Show splash screen first
+    if (_showSplash) {
+      return MaterialApp(
+        title: 'Synoptic',
+        theme: AppTheme.getTheme(),
+        home: SplashScreen(
+          onAnimationComplete: _onSplashComplete,
+        ),
+        debugShowCheckedModeBanner: false,
+      );
+    }
     return StreamBuilder<String>(
       stream: UserSettings().languageStream,
       builder: (context, snapshot) {

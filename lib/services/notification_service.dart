@@ -472,6 +472,127 @@ class NotificationService {
     }
   }
 
+  /// Check if current device is enabled for notifications for a specific camera device
+  Future<bool> isDeviceNotificationEnabled(String deviceId) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null || _fcmToken == null) return false;
+
+      final deviceDoc = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('devices')
+          .doc(deviceId)
+          .get();
+
+      if (!deviceDoc.exists) return false;
+
+      final deviceData = deviceDoc.data() as Map<String, dynamic>;
+      final enabledTokens = List<String>.from(deviceData['enabledFCMTokens'] ?? []);
+      
+      return enabledTokens.contains(_fcmToken);
+    } catch (e) {
+      await _cloudLogger.logError('Error checking device notification status', e);
+      return false;
+    }
+  }
+
+  /// Toggle notification for current device for a specific camera device
+  Future<bool> toggleDeviceNotification(String deviceId, bool enable) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null || _fcmToken == null) {
+        await _cloudLogger.logError('No user or FCM token for device notification toggle');
+        return false;
+      }
+
+      await _cloudLogger.logNotification('🔔 Toggling device notification: $deviceId = $enable');
+
+      final deviceRef = _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('devices')
+          .doc(deviceId);
+
+      await _firestore.runTransaction((transaction) async {
+        final deviceDoc = await transaction.get(deviceRef);
+        
+        if (!deviceDoc.exists) {
+          throw Exception('Device not found');
+        }
+
+        final deviceData = deviceDoc.data() as Map<String, dynamic>;
+        List<String> enabledTokens = List<String>.from(deviceData['enabledFCMTokens'] ?? []);
+
+        if (enable) {
+          // Add token if not already present
+          if (!enabledTokens.contains(_fcmToken)) {
+            enabledTokens.add(_fcmToken!);
+          }
+        } else {
+          // Remove token
+          enabledTokens.removeWhere((token) => token == _fcmToken);
+        }
+
+        transaction.update(deviceRef, {
+          'enabledFCMTokens': enabledTokens,
+          'lastNotificationUpdate': FieldValue.serverTimestamp(),
+        });
+      });
+
+      await _cloudLogger.logNotification('✅ Device notification toggled successfully');
+      return true;
+
+    } catch (e) {
+      await _cloudLogger.logError('Error toggling device notification', e);
+      return false;
+    }
+  }
+
+  /// Get notification status for multiple devices at once
+  Future<Map<String, bool>> getDeviceNotificationStatuses(List<String> deviceIds) async {
+    final Map<String, bool> statusMap = {};
+    
+    if (_fcmToken == null) {
+      // Return all false if no token
+      for (final deviceId in deviceIds) {
+        statusMap[deviceId] = false;
+      }
+      return statusMap;
+    }
+    
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return statusMap;
+
+      // Get all devices in one query if possible, otherwise individual queries
+      for (final deviceId in deviceIds) {
+        final deviceDoc = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('devices')
+            .doc(deviceId)
+            .get();
+
+        if (deviceDoc.exists) {
+          final deviceData = deviceDoc.data() as Map<String, dynamic>;
+          final enabledTokens = List<String>.from(deviceData['enabledFCMTokens'] ?? []);
+          statusMap[deviceId] = enabledTokens.contains(_fcmToken);
+        } else {
+          statusMap[deviceId] = false;
+        }
+      }
+    } catch (e) {
+      await _cloudLogger.logError('Error getting device notification statuses', e);
+      // Return all false on error
+      for (final deviceId in deviceIds) {
+        statusMap[deviceId] = false;
+      }
+    }
+    
+    return statusMap;
+  }
+
   Future<bool> optOutFromNotifications() async {
     try {
       final user = FirebaseAuth.instance.currentUser;

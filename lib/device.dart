@@ -20,6 +20,9 @@ class Device {
   // WiFi and connectivity
   int? wifiSignalStrength; // RSSI value in dBm
   String? lastHeartbeat; // Timestamp in milliseconds
+  
+  // NEW: Per-device notification settings
+  List<String> enabledFCMTokens; // FCM tokens that have opted in for this device's notifications
 
   Device({
     required this.id,
@@ -39,7 +42,9 @@ class Device {
     this.setupStage = 0, // Default to first stage (0 = not started)
     this.wifiSignalStrength,
     this.lastHeartbeat,
-  }) : imageUrl = imageUrl ?? 'users/$id/devices/$id/icon.png';
+    List<String>? enabledFCMTokens, // NEW
+  }) : imageUrl = imageUrl ?? 'users/$id/devices/$id/icon.png',
+       enabledFCMTokens = enabledFCMTokens ?? []; // Default to empty list
 
   Map<String, dynamic> toMap() {
     return {
@@ -60,6 +65,7 @@ class Device {
       'setupStage': setupStage,
       'wifi_signal_strength': wifiSignalStrength,
       'last_heartbeat': lastHeartbeat,
+      'enabledFCMTokens': enabledFCMTokens, // NEW
     };
   }
 
@@ -82,6 +88,7 @@ class Device {
       setupStage: (map['setupStage'] ?? 0).toDouble(),
       wifiSignalStrength: map['wifi_signal_strength'] as int?,
       lastHeartbeat: map['last_heartbeat'] as String?,
+      enabledFCMTokens: List<String>.from(map['enabledFCMTokens'] ?? []), // NEW
     );
   }
 }

@@ -18,12 +18,14 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _logoController;
   late AnimationController _textController;
   late AnimationController _pulseController;
+  late AnimationController _sweepController; // Add sweep animation controller
   
   late Animation<double> _logoScale;
   late Animation<double> _logoOpacity;
   late Animation<double> _textOpacity;
   late Animation<Offset> _textSlide;
   late Animation<double> _pulse;
+  late Animation<double> _sweepPosition; // Add sweep position animation
 
   @override
   void initState() {
@@ -44,6 +46,12 @@ class _SplashScreenState extends State<SplashScreen>
     // Pulse animation controller (continuous subtle pulse)
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    );
+
+    // Sweep animation controller (repeating sweep across text)
+    _sweepController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
 
@@ -90,6 +98,15 @@ class _SplashScreenState extends State<SplashScreen>
       curve: Curves.easeInOut,
     ));
 
+    // Sweep animation (moves from left to right)
+    _sweepPosition = Tween<double>(
+      begin: -0.5,
+      end: 1.5,
+    ).animate(CurvedAnimation(
+      parent: _sweepController,
+      curve: Curves.easeInOut,
+    ));
+
     _startAnimations();
   }
 
@@ -104,6 +121,10 @@ class _SplashScreenState extends State<SplashScreen>
     // Start subtle pulse animation
     _pulseController.repeat(reverse: true);
     
+    // Start sweep animation with a delay, then repeat
+    await Future.delayed(const Duration(milliseconds: 800));
+    _sweepController.repeat();
+    
     // Wait for animations to complete, then callback
     await Future.delayed(const Duration(milliseconds: 1200));
     
@@ -117,6 +138,7 @@ class _SplashScreenState extends State<SplashScreen>
     _logoController.dispose();
     _textController.dispose();
     _pulseController.dispose();
+    _sweepController.dispose(); // Dispose sweep controller
     super.dispose();
   }
 
@@ -194,56 +216,69 @@ class _SplashScreenState extends State<SplashScreen>
             
             const SizedBox(height: 32),
             
-            // Text logo with slide and fade animation
+            // Text logo with slide, fade, and sweep animations
             AnimatedBuilder(
-              animation: _textController,
+              animation: Listenable.merge([_textController, _sweepController]),
               builder: (context, child) {
                 return SlideTransition(
                   position: _textSlide,
                   child: FadeTransition(
                     opacity: _textOpacity,
-                    child: Image.asset(
-                      'assets/splashscreen/splash_logo_text.png',
-                      height: 40,
-                      fit: BoxFit.fitHeight,
-                      errorBuilder: (context, error, stackTrace) {
-                        // Fallback text if image doesn't exist yet
-                        return Text(
-                          'Synoptic',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w300,
-                            color: isDarkMode 
-                                ? Colors.white
-                                : AppTheme.primaryColor,
-                            letterSpacing: 2.0,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        // Text logo
+                        Image.asset(
+                          'assets/splashscreen/splash_logo_text.png',
+                          height: 40,
+                          fit: BoxFit.fitHeight,
+                          errorBuilder: (context, error, stackTrace) {
+                            // Fallback text if image doesn't exist yet
+                            return Text(
+                              'Synoptic',
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w300,
+                                color: isDarkMode 
+                                    ? Colors.white
+                                    : AppTheme.primaryColor,
+                                letterSpacing: 2.0,
+                              ),
+                            );
+                          },
+                        ),
+                        
+                        // Sweeping animation overlay
+                        Positioned.fill(
+                          child: ClipRect(
+                            child: AnimatedBuilder(
+                              animation: _sweepController,
+                              builder: (context, child) {
+                                return Transform.translate(
+                                  offset: Offset(_sweepPosition.value * 200, 0),
+                                  child: Transform.rotate(
+                                    angle: 0.785398, // 45 degrees in radians
+                                    child: Container(
+                                      width: 30,
+                                      height: 200,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.white.withOpacity(0.0),
+                                            Colors.white.withOpacity(0.4),
+                                            Colors.white.withOpacity(0.0),
+                                          ],
+                                          stops: const [0.0, 0.5, 1.0],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                );
-              },
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Subtle loading indicator
-            AnimatedBuilder(
-              animation: _textController,
-              builder: (context, child) {
-                return FadeTransition(
-                  opacity: _textOpacity,
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        isDarkMode 
-                            ? AppTheme.secondaryColor.withOpacity(0.7)
-                            : AppTheme.primaryColor.withOpacity(0.7),
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 );

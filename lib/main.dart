@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:ai_device_manager/widget_tree.dart';
-import 'package:ai_device_manager/pages/splash_screen.dart'; // Add this import
-import 'package:flutter_native_splash/flutter_native_splash.dart'; // Add this import
+import 'package:ai_device_manager/widgets/splash_overlay_manager.dart'; // Add this import
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'widgets/cached_image_frame.dart';
@@ -60,6 +60,9 @@ Future<void> main() async {
     print('❌ Initialization error: $e');
   }
 
+  // Remove native splash as soon as possible - right after Flutter engine starts
+  FlutterNativeSplash.remove();
+  
   runApp(const MainApp());
 }
 
@@ -72,55 +75,12 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   bool _wasInBackground = false;
-  bool _showAnimatedSplash = true; // Show our beautiful animated splash
-  bool _initializationComplete = false;
+  int _splashTriggerCount = 0; // Use counter instead of boolean for more reliable triggering
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
-    // TODO: Later, replace this with actual initialization checking
-    // For now, just wait 3 seconds as requested
-    _startSplashSequence();
-  }
-
-  Future<void> _startSplashSequence() async {
-    // Wait a brief moment to ensure native splash is visible
-    await Future.delayed(const Duration(milliseconds: 100));
-    
-    // Remove the native splash screen to show our animated splash
-    FlutterNativeSplash.remove();
-    
-    // TODO: Replace this placeholder with actual initialization status checking
-    // For now, just wait 3 seconds as requested
-    await Future.delayed(const Duration(seconds: 3));
-    
-    // Mark initialization as complete (placeholder)
-    if (mounted) {
-      setState(() {
-        _initializationComplete = true;
-        _showAnimatedSplash = false;
-      });
-    }
-  }
-
-  // This method will be used later for proper initialization tracking
-  Future<void> _waitForInitialization() async {
-    // TODO: Later, implement proper checking like:
-    // - Firebase initialization complete
-    // - User settings loaded
-    // - Notification service ready
-    // - Device scanning initialized
-    // etc.
-    
-    // For now, just the placeholder timer
-    await Future.delayed(const Duration(seconds: 3));
-    
-    setState(() {
-      _initializationComplete = true;
-      _showAnimatedSplash = false;
-    });
   }
 
   @override
@@ -134,6 +94,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused) {
       // App is going to background - upload logs
       _wasInBackground = true;
+      print('📱 App going to background');
       
       // Upload cloud logs when app goes to background
       if (!kIsWeb) {
@@ -141,8 +102,13 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
         NotificationService().dispose(); // This also triggers log upload
       }
     } else if (state == AppLifecycleState.resumed && _wasInBackground) {
-      // App is coming from background
+      // App is coming from background - show splash
       _wasInBackground = false;
+      print('📱 App resumed from background - triggering splash');
+      
+      setState(() {
+        _splashTriggerCount++; // Increment counter to trigger splash
+      });
       
       // Check notification setup when coming back from background
       if (!kIsWeb) {
@@ -171,29 +137,9 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     }
   }
 
-  void _onAnimatedSplashComplete() {
-    if (mounted) {
-      setState(() {
-        _showAnimatedSplash = false;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Show our beautiful animated splash screen after native splash
-    if (_showAnimatedSplash) {
-      return MaterialApp(
-        title: 'Synoptic',
-        theme: AppTheme.getTheme(),
-        home: SplashScreen(
-          onAnimationComplete: _onAnimatedSplashComplete,
-        ),
-        debugShowCheckedModeBanner: false,
-      );
-    }
-
-    // After both splash screens, show main app
+    // Build the main app immediately so all async operations start right away
     return StreamBuilder<String>(
       stream: UserSettings().languageStream,
       builder: (context, snapshot) {
@@ -202,18 +148,23 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
           return MaterialApp(
             title: 'Synoptic',
             theme: AppTheme.getTheme(),
-            home: const Scaffold(
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Initializing...'),
-                  ],
+            home: SplashOverlayManager(
+              splashTriggerCount: _splashTriggerCount,
+              child: const Scaffold(
+                body: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text('Initializing...'),
+                    ],
+                  ),
                 ),
               ),
+              splashDuration: const Duration(seconds: 3),
             ),
+            debugShowCheckedModeBanner: false,
           );
         }
         
@@ -239,20 +190,25 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
               Locale('zh'),
               Locale('ja'),
             ],
-            // Uncomment if you create the debug page
             routes: {
               '/notification-debug': (context) => const NotificationDebugPage(),
             },
-            home: const WidgetTree(),
+            home: SplashOverlayManager(
+              splashTriggerCount: _splashTriggerCount,
+              child: const WidgetTree(),
+              splashDuration: const Duration(seconds: 3),
+            ),
+            debugShowCheckedModeBanner: false,
           );
         }
 
         final locale = snapshot.data;
         print('Current language from stream: $locale'); // Debug print
         
+        // Build the complete main app with splash overlay INSIDE MaterialApp
         return MaterialApp(
           title: 'Synoptic',
-          theme: AppTheme.getTheme(), // Use our custom theme
+          theme: AppTheme.getTheme(),
           locale: locale != null ? Locale(locale) : const Locale('en'),
           localizationsDelegates: const [
             AppLocalizations.delegate,
@@ -268,11 +224,15 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
             Locale('zh'),
             Locale('ja'),
           ],
-          // Uncomment if you create the debug page
           routes: {
             '/notification-debug': (context) => const NotificationDebugPage(),
           },
-          home: const WidgetTree(),
+          home: SplashOverlayManager(
+            splashTriggerCount: _splashTriggerCount,
+            child: const WidgetTree(), // This will start auth stream and load HomePage/LoginPage
+            splashDuration: const Duration(seconds: 3),
+          ),
+          debugShowCheckedModeBanner: false,
         );
       },
     );

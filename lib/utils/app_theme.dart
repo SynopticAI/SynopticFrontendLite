@@ -26,8 +26,10 @@ class AppTheme {
   static const Color secondaryTextColor = Color.fromARGB(255, 100, 100, 100);
   
   // Grays
-  static const Color primaryGray = Color.fromARGB(255, 150, 150, 150);
-  static const Color secondaryGray = Color.fromARGB(255, 211, 211, 211);
+  // static const Color primaryGray = Color.fromARGB(255, 150, 150, 150);
+  static const Color primaryGray = Color.fromARGB(255, 223, 225, 229);
+  // static const Color secondaryGray = Color.fromARGB(255, 211, 211, 211);
+  static const Color secondaryGray = Color.fromARGB(255, 58, 62, 66);
   
   // Status colors
   static const Color successColor = Color.fromARGB(255, 76, 175, 80);

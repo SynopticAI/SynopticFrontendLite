@@ -4,6 +4,7 @@ description: "A new Flutter project."
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
+# Splashscreen (create with : )
 flutter_native_splash:
   # Background color - using your primary brand color
   color: "#334998"  # AppTheme.primaryColor
@@ -12,12 +13,12 @@ flutter_native_splash:
   image: assets/splashscreen/splash_icon.png
   
   # Branding image - this will be your text logo positioned below the main image
-  branding: assets/splashscreen/splash_logo_text.png
+  # branding: assets/splashscreen/splash_logo_text.png
   
   # Dark mode support
   color_dark: "#334998"
   image_dark: assets/splashscreen/splash_icon.png
-  branding_dark: assets/splashscreen/splash_logo_text.png
+  # branding_dark: assets/splashscreen/splash_logo_text.png
   
   # Android 12+ specific configuration
   android_12:

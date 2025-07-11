@@ -1,0 +1,254 @@
+---
+import Layout from '~/layouts/PageLayout.astro';
+import HeroText from '~/components/widgets/HeroText.astro';
+// import Features2 from '~/components/widgets/Features2.astro';
+import Features3 from '~/components/widgets/Features3.astro';
+import WidgetWrapper from '~/components/ui/WidgetWrapper.astro';
+
+const metadata = {
+  title: 'Newsletter',
+};
+---
+
+<Layout metadata={metadata}>
+  <!-- HeroText Widget ******************* -->
+  <HeroText tagline="Newsletter" title="Stay Ahead of the Vision" />
+
+  <!-- Newsletter Signup Section -->
+  <WidgetWrapper containerClass="max-w-4xl mx-auto">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+        Join the Computer Vision Revolution
+      </h2>
+      <p class="text-xl text-gray-600 dark:text-gray-400 mb-8">
+        Get exclusive insights, cutting-edge research updates, and practical tips delivered directly to your inbox. 
+        Stay informed about the latest breakthroughs in machine learning and computer vision technology.
+      </p>
+    </div>
+    
+    <!-- Newsletter Signup Form -->
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-8 mb-12">
+      <form id="newsletter-form" class="max-w-md mx-auto">
+        <div class="mb-6">
+          <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Email Address
+          </label>
+          <input 
+            type="email" 
+            id="email" 
+            name="email" 
+            required
+            placeholder="Enter your email address"
+            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white"
+          />
+        </div>
+        
+        <div class="mb-6">
+          <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Name (Optional)
+          </label>
+          <input 
+            type="text" 
+            id="name" 
+            name="name" 
+            placeholder="Your name"
+            class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white"
+          />
+        </div>
+
+        <div class="mb-6">
+          <fieldset>
+            <legend class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Interest Areas (Optional)
+            </legend>
+            <div class="space-y-2">
+              <label class="flex items-center">
+                <input type="checkbox" name="interests" value="computer-vision" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Computer Vision</span>
+              </label>
+              <label class="flex items-center">
+                <input type="checkbox" name="interests" value="machine-learning" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Machine Learning</span>
+              </label>
+              <label class="flex items-center">
+                <input type="checkbox" name="interests" value="industry-applications" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Industry Applications</span>
+              </label>
+              <label class="flex items-center">
+                <input type="checkbox" name="interests" value="research-updates" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Research Updates</span>
+              </label>
+            </div>
+          </fieldset>
+        </div>
+        
+        <button 
+          type="submit"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          Subscribe to Newsletter
+        </button>
+        
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-4 text-center">
+          By subscribing, you agree to our Privacy Policy. Unsubscribe at any time.
+        </p>
+      </form>
+      
+      <!-- Success/Error Messages (Hidden by default) -->
+      <div id="success-message" class="hidden mt-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-md">
+        <p class="font-medium">Successfully subscribed!</p>
+        <p class="text-sm">Thank you for joining our newsletter. You'll receive our latest updates soon.</p>
+      </div>
+      
+      <div id="error-message" class="hidden mt-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
+        <p class="font-medium">Subscription failed</p>
+        <p class="text-sm">Please try again later or contact support if the problem persists.</p>
+      </div>
+    </div>
+
+    <!-- Newsletter Preview -->
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 rounded-lg p-8 mb-12">
+      <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center">
+        What You'll Receive
+      </h3>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-md">
+          <h4 class="font-semibold text-lg text-gray-900 dark:text-white mb-2">Weekly Insights</h4>
+          <p class="text-gray-600 dark:text-gray-400">
+            Curated articles about the latest developments in computer vision and AI, explained in accessible language.
+          </p>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-md">
+          <h4 class="font-semibold text-lg text-gray-900 dark:text-white mb-2">Case Studies</h4>
+          <p class="text-gray-600 dark:text-gray-400">
+            Real-world applications and success stories from our projects and industry implementations.
+          </p>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-md">
+          <h4 class="font-semibold text-lg text-gray-900 dark:text-white mb-2">Technical Tips</h4>
+          <p class="text-gray-600 dark:text-gray-400">
+            Practical advice and best practices for implementing computer vision solutions in your projects.
+          </p>
+        </div>
+        <div class="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-md">
+          <h4 class="font-semibold text-lg text-gray-900 dark:text-white mb-2">Early Access</h4>
+          <p class="text-gray-600 dark:text-gray-400">
+            Be the first to know about new tools, features, and exclusive content from the Synoptic team.
+          </p>
+        </div>
+      </div>
+    </div>
+  </WidgetWrapper>
+
+  <!-- Newsletter Benefits -->
+  <Features3
+    title="Why Subscribe?"
+    subtitle="Join thousands of professionals who trust Synoptic for the latest in computer vision innovation."
+    columns={3}
+    items={[
+      {
+        title: 'Expert Insights',
+        description: 'Get perspectives from our team of computer vision experts with years of academic and industry experience.',
+        icon: 'tabler:brain',
+      },
+      {
+        title: 'Cutting-Edge Research',
+        description: 'Stay updated with the latest research developments and breakthrough technologies in the field.',
+        icon: 'tabler:microscope',
+      },
+      {
+        title: 'Practical Applications',
+        description: 'Learn how to apply new techniques and technologies to real-world problems and business challenges.',
+        icon: 'tabler:tools',
+      },
+      {
+        title: 'Industry Trends',
+        description: 'Understand market trends and emerging opportunities in computer vision and machine learning.',
+        icon: 'tabler:trending-up',
+      },
+      {
+        title: 'Community Access',
+        description: 'Connect with like-minded professionals and join discussions about the future of vision technology.',
+        icon: 'tabler:users',
+      },
+      {
+        title: 'No Spam Promise',
+        description: 'Quality over quantity. We send only valuable content and respect your inbox with carefully curated updates.',
+        icon: 'tabler:shield-check',
+      },
+    ]}
+  >
+    <Fragment slot="bg">
+      <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
+    </Fragment>
+  </Features3>
+
+  <!-- Developer Note -->
+  <WidgetWrapper containerClass="max-w-4xl mx-auto">
+    <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
+      <div class="flex items-start">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+            Developer Integration Note
+          </h3>
+          <div class="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+            <p>This form currently shows placeholder functionality. To integrate with your newsletter service:</p>
+            <ul class="list-disc list-inside mt-2 space-y-1">
+              <li>Replace the form action with your newsletter service endpoint</li>
+              <li>Add proper form validation and error handling</li>
+              <li>Configure email automation in your chosen platform (Mailchimp, ConvertKit, etc.)</li>
+              <li>Update privacy policy to reflect data collection practices</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </WidgetWrapper>
+</Layout>
+
+<script>
+  // Placeholder form submission handler
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('newsletter-form') as HTMLFormElement;
+    const successMessage = document.getElementById('success-message');
+    const errorMessage = document.getElementById('error-message');
+    
+    if (form && form instanceof HTMLFormElement) {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Hide any previous messages
+        successMessage?.classList.add('hidden');
+        errorMessage?.classList.add('hidden');
+        
+        // Get form data
+        const formData = new FormData(form);
+        const email = formData.get('email');
+        const name = formData.get('name');
+        const interests = formData.getAll('interests');
+        
+        // Simulate form submission (replace with actual integration)
+        console.log('Newsletter signup attempt:', {
+          email,
+          name,
+          interests
+        });
+        
+        // Simulate success (in production, this would be based on actual API response)
+        setTimeout(() => {
+          if (Math.random() > 0.1) { // 90% success rate for demo
+            successMessage?.classList.remove('hidden');
+            form.reset();
+          } else {
+            errorMessage?.classList.remove('hidden');
+          }
+        }, 1000);
+      });
+    }
+  });
+</script>

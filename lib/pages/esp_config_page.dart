@@ -65,6 +65,7 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
   // Initialization methods
   Future<void> _initialize() async {
     await _loadSettings();
+    _validateLoadedSettings(); // Add this line
     if (_savedCameraId != null) {
       setState(() => _showDeviceList = false);
     } else {
@@ -488,6 +489,37 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
     );
   }
 
+  void _updateTimeWithValidation({int? hours, int? minutes, int? seconds}) {
+  // Use current values if not specified
+  int newHours = hours ?? _hours;
+  int newMinutes = minutes ?? _minutes;
+  int newSeconds = seconds ?? _seconds;
+  
+  // Calculate total seconds
+  int totalSeconds = (newHours * 3600) + (newMinutes * 60) + newSeconds;
+  
+  // If total is less than 10 seconds, adjust to minimum
+  if (totalSeconds < 10) {
+    // Set to exactly 10 seconds
+    newHours = 0;
+    newMinutes = 0;
+    newSeconds = 10;
+  }
+  
+  setState(() {
+    _hours = newHours;
+    _minutes = newMinutes;
+    _seconds = newSeconds;
+  });
+}
+
+void _validateLoadedSettings() {
+  int totalSeconds = (_hours * 3600) + (_minutes * 60) + _seconds;
+  if (totalSeconds < 10) {
+    _updateTimeWithValidation();
+  }
+}
+
   // UI Components
   Widget _buildNumberPicker(String label, int value, Function(int) onChanged, {int max = 59}) {
     return Column(
@@ -581,7 +613,7 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
                     child: _buildNumberPicker(
                       context.l10n.hours,
                       _hours,
-                      (value) => setState(() => _hours = value),
+                      (value) => _updateTimeWithValidation(hours: value),
                       max: 23,
                     ),
                   ),
@@ -589,14 +621,14 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
                     child: _buildNumberPicker(
                       context.l10n.minutes,
                       _minutes,
-                      (value) => setState(() => _minutes = value),
+                      (value) => _updateTimeWithValidation(minutes: value),
                     ),
                   ),
                   Expanded(
                     child: _buildNumberPicker(
                       context.l10n.seconds,
                       _seconds,
-                      (value) => setState(() => _seconds = value),
+                      (value) => _updateTimeWithValidation(seconds: value),
                     ),
                   ),
                 ],

@@ -1,0 +1,131 @@
+---
+import Layout from '~/layouts/PageLayout.astro';
+import HeroText from '~/components/widgets/HeroText.astro';
+import Features2 from '~/components/widgets/Features2.astro';
+import WidgetWrapper from '~/components/ui/WidgetWrapper.astro';
+
+const metadata = {
+  title: 'Support',
+};
+---
+
+<Layout metadata={metadata}>
+  <!-- HeroText Widget ******************* -->
+
+  <HeroText tagline="Support" title="We're Here to Help!" />
+
+  <!-- Google Form Embed Section -->
+  <WidgetWrapper containerClass="max-w-4xl mx-auto">
+    <div class="text-center mb-8">
+      <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">Get Support</h2>
+      <p class="text-xl text-gray-600 dark:text-gray-400 mb-6">
+        Need assistance with our computer vision solutions? Fill out the form below and our expert team will get back to you within 24 hours.
+      </p>
+    </div>
+    
+<!-- Google Form Integration -->
+<div class="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6">
+  <iframe 
+    src="https://forms.gle/2CfUwqCZTd9iMBuGA" 
+    width="100%" 
+    height="600" 
+    frameborder="0" 
+    marginheight="0" 
+    marginwidth="0"
+    class="w-full rounded"
+  >
+    Loading…
+  </iframe>
+</div>
+    
+    <!-- Temporary direct link while setting up the form -->
+    <div class="text-center mt-6">
+      <a 
+        href="https://forms.gle/2CfUwqCZTd9iMBuGA" 
+        target="_blank"
+        class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+      >
+        Open Support Form (External)
+        <svg class="ml-2 -mr-1 w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"></path>
+          <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-1a1 1 0 10-2 0v1H5V7h1a1 1 0 000-2H5z"></path>
+        </svg>
+      </a>
+    </div>
+  </WidgetWrapper>
+
+  <!-- Support Information -->
+  <Features2
+    title="How We Can Help You"
+    subtitle="Our expert team specializes in computer vision and machine learning solutions. Whatever challenge you're facing, we're here to provide the guidance you need."
+    items={[
+      {
+        title: 'Technical Support',
+        description: 'Get help with implementation, troubleshooting, and optimization of our computer vision algorithms and solutions.',
+        icon: 'tabler:tools',
+      },
+      {
+        title: 'Integration Assistance',
+        description: 'Need help integrating our solutions into your existing systems? Our team will guide you through the process.',
+        icon: 'tabler:puzzle',
+      },
+      {
+        title: 'Custom Solutions',
+        description: 'Looking for tailored computer vision solutions? We can discuss custom development for your specific requirements.',
+        icon: 'tabler:settings-cog',
+      },
+      {
+        title: 'Training & Consultation',
+        description: 'Get expert advice on best practices, optimization strategies, and maximizing the value of your computer vision implementation.',
+        icon: 'tabler:school',
+      },
+      {
+        title: 'Email Support',
+        description: 'support@synoptic.vision',
+        icon: 'tabler:mail',
+      },
+      {
+        title: 'Response Time',
+        description: 'We typically respond within 24 business hours',
+        icon: 'tabler:clock',
+      },
+    ]}
+  >
+    <Fragment slot="bg">
+      <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
+    </Fragment>
+  </Features2>
+
+  <!-- FAQ Section -->
+  <WidgetWrapper containerClass="max-w-4xl mx-auto">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">Frequently Asked Questions</h2>
+      <p class="text-xl text-gray-600 dark:text-gray-400">
+        Quick answers to common questions about our computer vision solutions
+      </p>
+    </div>
+    
+    <div class="space-y-6">
+      <div class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">How quickly can I get started with Synoptic?</h3>
+        <p class="text-gray-600 dark:text-gray-400">
+          Our team can typically get you started with a proof of concept within a few days, depending on your specific requirements and data availability.
+        </p>
+      </div>
+      
+      <div class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">What types of computer vision problems can you solve?</h3>
+        <p class="text-gray-600 dark:text-gray-400">
+          We specialize in automatic visual inspection, object detection, image analysis, and probabilistic measurement technology across various industries.
+        </p>
+      </div>
+      
+      <div class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Do you provide ongoing support after implementation?</h3>
+        <p class="text-gray-600 dark:text-gray-400">
+          Yes, we provide comprehensive ongoing support including system monitoring, optimization, and regular updates to ensure your solution continues to perform optimally.
+        </p>
+      </div>
+    </div>
+  </WidgetWrapper>
+</Layout>

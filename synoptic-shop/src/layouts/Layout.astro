@@ -62,6 +62,17 @@ const { language, textDirection } = metadata;
       // Make auth available globally for debugging if needed
       window.__FIREBASE_AUTH__ = auth;
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/swell-js@4/dist/index.js"></script>
+    <script>
+      // Initialize Swell globally
+      window.addEventListener('load', () => {
+        if (window.Swell) {
+          window.swell = new window.Swell();
+          window.swell.init('synoptic', 'pk_DUjtNbQywQglujuOK1Ykiqp6vcoSc7Kt');
+          console.log('🔗 Swell initialized globally');
+        }
+      });
+    </script>
   </head>
 
   <body class="antialiased text-default bg-page tracking-tight">

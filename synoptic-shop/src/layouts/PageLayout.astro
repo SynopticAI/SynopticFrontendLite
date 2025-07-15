@@ -105,82 +105,355 @@ const { metadata } = Astro.props;
 })();
 </script>
 
-<!-- Firebase, Auth, Cart, and Orders Scripts with Cache Busting -->
+// Enhanced Debugging Script - Add to PageLayout.astro
+// This script will help identify exactly what's failing and why
+
+<!-- Enhanced Debug Script - Add this BEFORE your current scripts in PageLayout.astro -->
+<script is:inline>
+  // 🔍 DEBUGGING: Enhanced system diagnostics
+  window.DEBUG_SYNOPTIC = true;
+  window.synopticDebug = {
+    moduleLoadTimes: {},
+    errors: [],
+    windowObjects: {},
+    scriptLoadOrder: []
+  };
+
+  // Log script loading order
+  function logScriptLoad(scriptName) {
+    const timestamp = Date.now();
+    window.synopticDebug.scriptLoadOrder.push({
+      name: scriptName,
+      timestamp,
+      time: new Date(timestamp).toISOString()
+    });
+    console.log(`📊 DEBUG: ${scriptName} loaded at ${timestamp}`);
+  }
+
+  // Monitor window object changes
+  function monitorWindowObjects() {
+    const checkInterval = setInterval(() => {
+      const currentObjects = {
+        authState: !!window.authState,
+        authStateManager: !!window.authStateManager,
+        cartManager: !!window.cartManager,
+        authHandler: !!window.authHandler,
+        swellAuthIntegration: !!window.swellAuthIntegration,
+        swell: !!window.swell,
+        firebase: !!window.__FIREBASE_AUTH__
+      };
+
+      // Only log if something changed
+      const changed = JSON.stringify(currentObjects) !== JSON.stringify(window.synopticDebug.windowObjects);
+      if (changed) {
+        window.synopticDebug.windowObjects = currentObjects;
+        console.log('📊 DEBUG: Window objects status:', currentObjects);
+      }
+    }, 500);
+
+    // Stop monitoring after 30 seconds
+    setTimeout(() => clearInterval(checkInterval), 30000);
+  }
+
+  // Start monitoring immediately
+  monitorWindowObjects();
+
+  // Debug function to check current state
+  window.debugSynoptic = function() {
+    console.log('🔍 SYNOPTIC DEBUG REPORT:');
+    console.log('================================');
+    console.log('1. Module Load Order:', window.synopticDebug.scriptLoadOrder);
+    console.log('2. Window Objects:', window.synopticDebug.windowObjects);
+    console.log('3. Errors:', window.synopticDebug.errors);
+    console.log('4. Current URL:', window.location.href);
+    console.log('5. Document Ready State:', document.readyState);
+    
+    // Firebase check
+    console.log('6. Firebase Auth:', {
+      config: !!window.__FIREBASE_CONFIG__,
+      auth: !!window.__FIREBASE_AUTH__,
+      currentUser: window.__FIREBASE_AUTH__?.currentUser?.email || 'Not authenticated'
+    });
+    
+    // Swell check
+    if (window.swell) {
+      console.log('7. Swell Status:', {
+        initialized: !!window.swell,
+        hasAccount: !!window.swell.account,
+        hasCustomers: !!window.swell.customers,
+        hasCart: !!window.swell.cart
+      });
+    } else {
+      console.log('7. Swell: Not loaded');
+    }
+    
+    console.log('================================');
+  };
+
+  // Catch and log all errors
+  window.addEventListener('error', (e) => {
+    const error = {
+      message: e.message,
+      filename: e.filename,
+      line: e.lineno,
+      column: e.colno,
+      timestamp: Date.now()
+    };
+    window.synopticDebug.errors.push(error);
+    console.error('📊 DEBUG: Error caught:', error);
+  });
+
+  // Catch unhandled promise rejections
+  window.addEventListener('unhandledrejection', (e) => {
+    const error = {
+      reason: e.reason,
+      promise: e.promise,
+      timestamp: Date.now()
+    };
+    window.synopticDebug.errors.push(error);
+    console.error('📊 DEBUG: Unhandled promise rejection:', error);
+  });
+
+  // Log when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      logScriptLoad('DOM_READY');
+    });
+  } else {
+    logScriptLoad('DOM_ALREADY_READY');
+  }
+
+  // Log when window loads
+  window.addEventListener('load', () => {
+    logScriptLoad('WINDOW_LOAD');
+    
+    // Final debug report after 2 seconds
+    setTimeout(() => {
+      console.log('🔍 FINAL DEBUG REPORT:');
+      window.debugSynoptic();
+    }, 2000);
+  });
+</script>
+
+<!-- Enhanced Module Loading with Debugging -->
 <script>
-  // 🔐 CRITICAL: Import centralized auth state manager FIRST
-  // This ensures auth state is available before other modules load
+  // 🔐 Enhanced module loading with detailed debugging
+  const DEBUG = true;
   const timestamp = Date.now();
   
-  console.log('🔐 Loading centralized auth state manager...');
-  
-  // Sequential loading with cache busting to ensure proper order
-  import(`../lib/auth-state-manager.js?v=${timestamp}`)
-    .then(() => {
-      console.log('✅ Auth state manager loaded');
+  function debugLog(message, data = {}) {
+    if (DEBUG) {
+      console.log(`🔍 MODULE DEBUG: ${message}`, data);
+    }
+  }
+
+  async function loadModuleWithDebug(modulePath, name) {
+    try {
+      debugLog(`Loading ${name}...`, { path: modulePath });
+      const startTime = Date.now();
       
-      // Load Swell auth integration
-      return import(`../lib/swell-auth-integration.js?v=${timestamp}`);
-    })
-    .then(() => {
-      console.log('✅ Swell auth integration loaded');
+      const module = await import(`${modulePath}?v=${timestamp}`);
       
-      // Load main auth handler
-      return import(`../scripts/auth-handler.js?v=${timestamp}`);
-    })
-    .then(() => {
-      console.log('✅ Auth handler loaded');
+      const loadTime = Date.now() - startTime;
+      debugLog(`✅ ${name} loaded successfully`, { loadTime: `${loadTime}ms` });
       
-      // Load cart handler
-      return import(`../scripts/cart-handler.js?v=${timestamp}`);
-    })
-    .then(() => {
-      console.log('✅ Cart handler loaded');
+      window.synopticDebug.moduleLoadTimes[name] = loadTime;
+      logScriptLoad(name);
       
-      // Conditional imports for performance optimization
-      const pathname = window.location.pathname;
-      const conditionalImports = [];
-      
-      // Import orders handler for orders and account pages
-      if (pathname.includes('/orders') || pathname.includes('/account')) {
-        conditionalImports.push(
-          import(`../scripts/orders-handler.js?v=${timestamp}`)
-            .then(() => console.log('✅ Orders handler loaded'))
-        );
-      }
-      
-      // Import checkout handler for checkout and cart pages
-      if (pathname.includes('/checkout') || pathname.includes('/cart')) {
-        conditionalImports.push(
-          import(`../scripts/checkout-handler.js?v=${timestamp}`)
-            .then(() => console.log('✅ Checkout handler loaded'))
-        );
-      }
-      
-      return Promise.all(conditionalImports);
-    })
-    .then(() => {
-      console.log('🎉 All modules loaded successfully');
-      
-      // Dispatch event that everything is ready
-      window.dispatchEvent(new CustomEvent('synopticSystemReady', {
-        detail: { timestamp: new Date().toISOString() }
-      }));
-    })
-    .catch(error => {
-      console.error('❌ Module loading failed:', error);
-      
-      // Fallback: try loading without cache busting
-      console.log('🔄 Attempting fallback loading...');
-      Promise.all([
-        import('../lib/auth-state-manager.js'),
-        import('../scripts/auth-handler.js'),
-        import('../scripts/cart-handler.js')
-      ]).then(() => {
-        console.log('✅ Fallback loading successful');
-      }).catch(fallbackError => {
-        console.error('❌ Fallback loading also failed:', fallbackError);
+      return module;
+    } catch (error) {
+      debugLog(`❌ Failed to load ${name}`, { error: error.message, stack: error.stack });
+      window.synopticDebug.errors.push({
+        module: name,
+        error: error.message,
+        timestamp: Date.now()
       });
-    });
+      throw error;
+    }
+  }
+
+  // Check for module availability after loading
+  function verifyModuleLoaded(name, windowProperty) {
+    const available = !!window[windowProperty];
+    debugLog(`Verification: ${name} -> window.${windowProperty}`, { available });
+    return available;
+  }
+
+  // Enhanced sequential loading with verification
+  async function loadAllModules() {
+    try {
+      debugLog('🚀 Starting enhanced module loading sequence...');
+      
+      // 1. Load auth state manager
+      await loadModuleWithDebug('../lib/auth-state-manager.js', 'AUTH_STATE_MANAGER');
+      
+      // Verify it's available on window
+      setTimeout(() => {
+        verifyModuleLoaded('auth-state-manager', 'authState');
+        verifyModuleLoaded('auth-state-manager', 'authStateManager'); // Check both names
+      }, 100);
+      
+      // 2. Load Swell auth integration
+      await loadModuleWithDebug('../lib/swell-auth-integration.js', 'SWELL_AUTH_INTEGRATION');
+      
+      // 3. Load main auth handler
+      await loadModuleWithDebug('../scripts/auth-handler.js', 'AUTH_HANDLER');
+      
+      // 4. Load cart handler
+      await loadModuleWithDebug('../scripts/cart-handler.js', 'CART_HANDLER');
+      
+      // Verify cart manager is available
+      setTimeout(() => {
+        verifyModuleLoaded('cart-manager', 'cartManager');
+      }, 100);
+      
+      debugLog('🎉 All core modules loaded successfully');
+      
+      // 5. Load conditional modules based on page
+      const pathname = window.location.pathname;
+      const conditionalModules = [];
+      
+      if (pathname.includes('/orders') || pathname.includes('/account')) {
+        conditionalModules.push(
+          loadModuleWithDebug('../scripts/orders-handler.js', 'ORDERS_HANDLER')
+        );
+      }
+      
+      if (pathname.includes('/checkout') || pathname.includes('/cart')) {
+        conditionalModules.push(
+          loadModuleWithDebug('../scripts/checkout-handler.js', 'CHECKOUT_HANDLER')
+        );
+      }
+      
+      await Promise.all(conditionalModules);
+      
+      debugLog('🏁 All modules loaded successfully');
+      
+      // Dispatch ready event
+      window.dispatchEvent(new CustomEvent('synopticSystemReady', {
+        detail: { 
+          timestamp: new Date().toISOString(),
+          loadTimes: window.synopticDebug.moduleLoadTimes
+        }
+      }));
+      
+    } catch (error) {
+      debugLog('💥 Critical module loading failure', { error: error.message });
+      
+      // Try fallback loading without cache busting
+      debugLog('🔄 Attempting fallback loading...');
+      try {
+        await Promise.all([
+          import('../lib/auth-state-manager.js'),
+          import('../scripts/auth-handler.js'),
+          import('../scripts/cart-handler.js')
+        ]);
+        debugLog('✅ Fallback loading successful');
+      } catch (fallbackError) {
+        debugLog('💀 Fallback loading also failed', { error: fallbackError.message });
+      }
+    }
+  }
+
+  // Start loading when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadAllModules);
+  } else {
+    loadAllModules();
+  }
+</script>
+
+<!-- Swell API Debugging Script -->
+<script is:inline>
+  // 🔗 SWELL API DEBUGGING
+  window.addEventListener('load', function() {
+    // Monitor Swell loading
+    let swellCheckCount = 0;
+    const swellCheckInterval = setInterval(() => {
+      swellCheckCount++;
+      
+      if (window.swell) {
+        console.log('🔗 DEBUG: Swell loaded successfully', {
+          hasAccount: !!window.swell.account,
+          hasCustomers: !!window.swell.customers,
+          hasCart: !!window.swell.cart,
+          checkAttempt: swellCheckCount
+        });
+        
+        // Test Swell account API
+        if (window.swell.account) {
+          window.swell.account.get()
+            .then(account => {
+              console.log('🔗 DEBUG: Swell account.get() test:', account || 'No account');
+            })
+            .catch(error => {
+              console.log('🔗 DEBUG: Swell account.get() error:', error.message);
+            });
+        }
+        
+        clearInterval(swellCheckInterval);
+      } else if (swellCheckCount > 100) { // 10 seconds
+        console.error('🔗 DEBUG: Swell failed to load after 10 seconds');
+        clearInterval(swellCheckInterval);
+      }
+    }, 100);
+  });
+</script>
+
+<!-- Account Page Specific Debugging -->
+<script is:inline>
+  // 👤 ACCOUNT PAGE DEBUGGING
+  if (window.location.pathname.includes('/account')) {
+    console.log('👤 DEBUG: Account page detected, starting enhanced debugging...');
+    
+    // Monitor auth state manager availability
+    let authCheckCount = 0;
+    const authCheckInterval = setInterval(() => {
+      authCheckCount++;
+      
+      const authState = window.authState;
+      const authStateManager = window.authStateManager;
+      
+      console.log(`👤 DEBUG: Auth check #${authCheckCount}`, {
+        'window.authState': !!authState,
+        'window.authStateManager': !!authStateManager,
+        'authState.isReady': authState?.isReady,
+        'authState.currentUser': authState?.currentUser?.email || 'None'
+      });
+      
+      if (authState || authStateManager) {
+        console.log('👤 DEBUG: Auth state manager found!', {
+          type: authState ? 'window.authState' : 'window.authStateManager',
+          isReady: (authState || authStateManager)?.isReady,
+          currentUser: (authState || authStateManager)?.currentUser?.email
+        });
+        clearInterval(authCheckInterval);
+      } else if (authCheckCount > 100) { // 10 seconds
+        console.error('👤 DEBUG: Auth state manager not found after 10 seconds');
+        clearInterval(authCheckInterval);
+      }
+    }, 100);
+  }
+</script>
+
+<script>
+// Skip dynamic imports - just fix window objects
+window.addEventListener('load', () => {
+  // Fix window object names
+  if (window.authState && !window.authStateManager) {
+    window.authStateManager = window.authState;
+    console.log('✅ Fixed authStateManager window reference');
+  }
+  
+  // Check for cart manager
+  setTimeout(() => {
+    if (!window.cartManager) {
+      console.log('❌ Cart manager still missing');
+    } else {
+      console.log('✅ Cart manager found');
+    }
+  }, 1000);
+});
 </script>
 
 <!-- Page Integration and Initialization Script -->

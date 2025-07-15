@@ -151,6 +151,7 @@ const authStateManager = new AuthStateManager();
 // Make globally available
 if (typeof window !== 'undefined') {
   window.authState = authStateManager;
+  window.authStateManager = authStateManager;
 }
 
 export default authStateManager;

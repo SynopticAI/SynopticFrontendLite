@@ -522,4 +522,15 @@ if (typeof window !== 'undefined') {
   window.cartManager = cartManager;
 }
 
+// Expose cart manager to window
+if (window.cartManager) {
+  console.log('🛒 Cart manager already on window');
+} else {
+  // Create if missing - this file should create it
+  console.log('🛒 Creating cart manager window reference');
+}
+
+const cartManager = new CartManager();
+window.cartManager = cartManager;
+console.log('🛒 Cart manager created and exposed to window');
 export default cartManager;

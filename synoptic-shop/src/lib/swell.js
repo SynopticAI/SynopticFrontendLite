@@ -624,6 +624,13 @@ export async function getShippingRates(shippingAddress) {
   }
 }
 
+// Expose swell globally for cart functionality
+if (typeof window !== 'undefined') {
+  window.swell = swell;
+  console.log('🔗 Swell exposed to window from module');
+}
+
+
 // Export swell instance for advanced usage
 export { swell };
 export default swell;

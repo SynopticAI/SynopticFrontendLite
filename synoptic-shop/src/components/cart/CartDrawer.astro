@@ -1,5 +1,5 @@
 ---
-// src/components/cart/CartDrawer.astro - Shopping cart drawer
+// src/components/cart/CartDrawer.astro - Fixed layout for checkout buttons
 ---
 
 <!-- Cart Drawer Overlay -->
@@ -27,7 +27,7 @@
       </button>
     </div>
 
-    <!-- Cart Content -->
+    <!-- 🔧 FIXED: Proper flex layout that shows checkout buttons -->
     <div class="flex flex-col h-full">
       
       <!-- Loading State -->
@@ -51,51 +51,54 @@
         </button>
       </div>
 
-      <!-- Cart Items -->
-      <div id="cart-items" class="flex-1 overflow-y-auto px-6 py-4 hidden">
-        <div id="cart-items-list" class="space-y-4">
-          <!-- Cart items will be populated here -->
-        </div>
-      </div>
-
-      <!-- Cart Footer -->
-      <div id="cart-footer" class="hidden border-t border-gray-200 p-6 space-y-4">
-        
-        <!-- Subtotal -->
-        <div class="flex items-center justify-between text-lg font-semibold">
-          <span>Subtotal:</span>
-          <span id="cart-subtotal" class="text-primary">€0.00</span>
+      <!-- 🔧 FIXED: Cart Items with better height constraints -->
+      <div id="cart-items" class="hidden flex flex-col h-full">
+        <!-- Items List (scrollable middle section) -->
+        <div class="overflow-y-auto px-6 py-4" style="max-height: calc(100vh - 240px); min-height: 200px;">
+          <div id="cart-items-list" class="space-y-4">
+            <!-- Cart items will be populated here -->
+          </div>
         </div>
 
-        <!-- Additional Info -->
-        <p class="text-sm text-gray-600">
-          Shipping and taxes calculated at checkout
-        </p>
-
-        <!-- Action Buttons -->
-        <div class="space-y-3">
-          <button 
-            id="view-cart-button" 
-            class="w-full bg-gray-100 text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-          >
-            View Cart
-          </button>
+        <!-- 🔧 FIXED: Cart Footer (always at bottom, reduced spacing) -->
+        <div id="cart-footer" class="mt-auto border-t border-gray-200 p-4 space-y-3">
           
+          <!-- Subtotal -->
+          <div class="flex items-center justify-between text-lg font-semibold">
+            <span>Subtotal:</span>
+            <span id="cart-subtotal" class="text-primary">€0.00</span>
+          </div>
+
+          <!-- Additional Info -->
+          <p class="text-sm text-gray-600">
+            Shipping and taxes calculated at checkout
+          </p>
+
+          <!-- 🔧 FIXED: Action Buttons (always visible) -->
+          <div class="space-y-3">
+            <button 
+              id="view-cart-button" 
+              class="w-full bg-gray-100 text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+            >
+              View Cart
+            </button>
+            
+            <button 
+              id="checkout-button" 
+              class="w-full bg-primary text-white py-3 px-4 rounded-lg hover:bg-primary-dark transition-colors font-medium"
+            >
+              Proceed to Checkout
+            </button>
+          </div>
+
+          <!-- Clear Cart -->
           <button 
-            id="checkout-button" 
-            class="w-full bg-primary text-white py-3 px-4 rounded-lg hover:bg-primary-dark transition-colors font-medium"
+            id="clear-cart-button" 
+            class="w-full text-sm text-red-600 hover:text-red-800 transition-colors mt-4"
           >
-            Proceed to Checkout
+            Clear Cart
           </button>
         </div>
-
-        <!-- Clear Cart -->
-        <button 
-          id="clear-cart-button" 
-          class="w-full text-sm text-red-600 hover:text-red-800 transition-colors mt-4"
-        >
-          Clear Cart
-        </button>
       </div>
     </div>
   </div>
@@ -204,10 +207,18 @@
     border: none;
     padding: 0.25rem 0.5rem;
     font-size: 0.875rem;
+    -moz-appearance: textfield; /* Firefox: hide spinners */
   }
 
   .quantity-input:focus {
     outline: none;
+  }
+
+  /* Hide number input spinners in WebKit browsers */
+  .quantity-input::-webkit-outer-spin-button,
+  .quantity-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
 
   .remove-btn {
@@ -224,11 +235,16 @@
     background: #fee2e2;
     border-color: #fca5a5;
   }
+
+  /* 🔧 FIXED: Ensure footer is always visible */
+  #cart-footer {
+    min-height: fit-content;
+  }
 </style>
 
 <script>
   // Cart drawer functionality will be handled by cart-handler.js
   document.addEventListener('DOMContentLoaded', function() {
-    console.log('🛒 Cart drawer component loaded');
+    console.log('🛒 Cart drawer component loaded with fixed layout');
   });
 </script>

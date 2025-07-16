@@ -1,4 +1,4 @@
-// src/scripts/cart-handler.js - Complete cart handler with fixed drawer
+// src/scripts/cart-handler.js - Robust cart handler that prevents infinite loops
 import { formatPrice, getProductImageUrl } from '../lib/swell.js';
 
 class CartHandler {
@@ -7,11 +7,17 @@ class CartHandler {
     this.cart = null;
     this.isLoading = false;
     this.subscribers = new Set();
+    
+    // 🔧 SAFETY: Prevent infinite loops with operation tracking
+    this.activeOperations = new Set();
+    this.lastOperationTime = 0;
+    this.operationCooldown = 1000; // 1 second between operations
+    
     this.init();
   }
 
   init() {
-    console.log('🛒 Initializing simple cart handler...');
+    console.log('🛒 Initializing robust cart handler...');
     
     // Wait for DOM to be ready
     if (document.readyState === 'loading') {
@@ -24,33 +30,54 @@ class CartHandler {
   setupDOM() {
     this.setupDrawerEventListeners();
     this.setupProductPageIntegration();
-    this.refreshCart();
+    this.safeRefreshCart();
+  }
+
+  // 🔧 SAFETY: Prevent duplicate operations
+  canPerformOperation(operationType) {
+    const now = Date.now();
+    const operationKey = `${operationType}_${now}`;
+    
+    // Check cooldown
+    if (now - this.lastOperationTime < this.operationCooldown) {
+      console.log('🛡️ Operation blocked by cooldown');
+      return false;
+    }
+    
+    // Check if same operation is already running
+    if (this.activeOperations.has(operationType)) {
+      console.log('🛡️ Operation already in progress:', operationType);
+      return false;
+    }
+    
+    this.activeOperations.add(operationType);
+    this.lastOperationTime = now;
+    return true;
+  }
+
+  finishOperation(operationType) {
+    this.activeOperations.delete(operationType);
   }
 
   setupDrawerEventListeners() {
     // Open cart drawer
     const cartButton = document.getElementById('cart-button');
     if (cartButton) {
-      // 🔧 FIXED: Check for cart page properly (with AND without trailing slash)
       const isCartPage = window.location.pathname === '/cart' || window.location.pathname === '/cart/';
       
       if (isCartPage) {
         cartButton.style.opacity = '0.5';
-        //cartButton.style.cursor = 'not-allowed';
         cartButton.title = 'You are already viewing your cart';
         
-        // 🔧 FIXED: Remove ALL existing event listeners first
         cartButton.replaceWith(cartButton.cloneNode(true));
         const newCartButton = document.getElementById('cart-button');
         
         newCartButton.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          console.log('🛒 Cart button disabled on cart page');
           return false;
         });
       } else {
-        // Normal cart button behavior
         cartButton.addEventListener('click', () => this.openDrawer());
       }
     }
@@ -79,55 +106,61 @@ class CartHandler {
       clearCartBtn.addEventListener('click', () => this.handleClearCart());
     }
 
-    // View Cart (go to cart page)
-    const viewCartBtn = document.getElementById('view-cart-button');
-    if (viewCartBtn) {
-      viewCartBtn.addEventListener('click', () => this.handleViewCart());
+    // View Cart button
+    const viewCartButton = document.getElementById('view-cart-button');
+    if (viewCartButton) {
+      viewCartButton.addEventListener('click', () => {
+        window.location.href = '/cart';
+      });
     }
 
-
-    // Checkout
-    const checkoutBtn = document.getElementById('checkout-button');
-    if (checkoutBtn) {
-      checkoutBtn.addEventListener('click', () => this.handleCheckout());
+    // Checkout button
+    const checkoutButton = document.getElementById('checkout-button');
+    if (checkoutButton) {
+      checkoutButton.addEventListener('click', () => {
+        const validation = this.validateCartForCheckout();
+        if (validation.valid) {
+          this.goToCheckout();
+        } else {
+          this.showError(validation.error);
+        }
+      });
     }
-
-    // ESC key to close drawer
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.isDrawerOpen) {
-        this.closeDrawer();
-      }
-    });
   }
 
   setupProductPageIntegration() {
-    // Handle add to cart button
     const addToCartBtn = document.getElementById('add-to-cart-btn');
+    
     if (addToCartBtn && !addToCartBtn.dataset.handlerAttached) {
-      
       addToCartBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         
-        // Get product data from window (set by product page)
-        const productData = window.productData;
-        
-        if (!productData || !productData.id) {
-          console.error('🛒 No product data available');
-          this.showError('Product information not available');
+        // 🔧 SAFETY: Prevent rapid clicking
+        if (!this.canPerformOperation('add_to_cart')) {
           return;
         }
+        
+        try {
+          const productData = window.productData;
+          if (!productData) {
+            this.showError('Product data not available');
+            return;
+          }
+          
+          const quantityInput = document.getElementById('quantity-input');
+          const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
 
-        // Get quantity
-        const quantityInput = document.getElementById('quantity');
-        const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
+          console.log('🛒 Adding product to cart:', {
+            productId: productData.id,
+            productSlug: productData.slug,
+            quantity: quantity
+          });
 
-        console.log('🛒 Adding product to cart:', {
-          productId: productData.id,
-          productSlug: productData.slug,
-          quantity: quantity
-        });
-
-        await this.addProductToCart(productData.id, quantity);
+          await this.safeAddToCart(productData.id, quantity);
+          
+        } finally {
+          this.finishOperation('add_to_cart');
+        }
       });
       
       addToCartBtn.dataset.handlerAttached = 'true';
@@ -135,11 +168,146 @@ class CartHandler {
     }
   }
 
-  /**
-   * Subscribe to cart changes (for AuthHeader compatibility)
-   * @param {Function} callback - Callback function
-   * @returns {Function} Unsubscribe function
-   */
+  // 🔧 ROBUST: Safe add to cart with no infinite loops
+  async safeAddToCart(productId, quantity = 1) {
+    try {
+      this.setLoading(true);
+      console.log('🛒 Safe add to cart:', { productId, quantity });
+      
+      // Wait for Swell
+      await this.waitForSwell();
+      
+      // 🔧 SAFETY: Clear any problematic cookies first
+      this.cleanupBadCookies();
+      
+      // Simple add item call - NO RETRIES to prevent loops
+      const result = await window.swell.cart.addItem({
+        product_id: productId,
+        quantity: quantity
+      });
+      
+      if (result && result.items && result.items.length > 0) {
+        console.log('✅ Item added successfully');
+        this.cart = result;
+        this.updateCartUI();
+        this.notifySubscribers();
+        this.showSuccess('Item added to cart!');
+        this.openDrawer();
+      } else {
+        throw new Error('No items returned from cart');
+      }
+      
+    } catch (error) {
+      console.error('🛒 Add to cart failed:', error);
+      
+      // 🔧 SAFETY: Handle specific errors without retries
+      if (error.message.includes('Unable to create cart') || error.message.includes('500')) {
+        this.handleCartCreationError();
+      } else {
+        this.showError('Failed to add item to cart. Please refresh the page and try again.');
+      }
+      
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  // 🔧 SAFETY: Handle cart creation errors without infinite loops
+  handleCartCreationError() {
+    console.log('🔧 Handling cart creation error...');
+    
+    try {
+      // Clear problematic data
+      this.cleanupBadCookies();
+      
+      // Reset cart state
+      this.cart = null;
+      this.updateCartUI();
+      
+      // Show helpful error message
+      this.showError('Cart system needs refresh. Please reload the page and try again.');
+      
+      // Don't automatically retry - let user control the retry
+      
+    } catch (cleanupError) {
+      console.error('Error during cleanup:', cleanupError);
+    }
+  }
+
+  // 🔧 SAFETY: Clean up problematic cookies
+  cleanupBadCookies() {
+    try {
+      // Check for malformed currency cookie
+      if (document.cookie.includes('swell-currency=%5Bobject%20Promise%5D')) {
+        console.log('🧹 Cleaning malformed currency cookie');
+        document.cookie = 'swell-currency=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        
+        // Set proper currency
+        if (window.swell?.currency?.select) {
+          window.swell.currency.select('EUR').catch(() => {
+            // Ignore currency setting errors
+          });
+        }
+      }
+    } catch (error) {
+      console.log('Cookie cleanup failed:', error);
+    }
+  }
+
+  // 🔧 ROBUST: Safe cart refresh
+  async safeRefreshCart() {
+    if (!this.canPerformOperation('refresh_cart')) {
+      return;
+    }
+    
+    try {
+      this.setLoading(true);
+      console.log('🛒 Safe refresh cart...');
+      
+      await this.waitForSwell();
+      
+      const cart = await window.swell.cart.get();
+      
+      if (cart) {
+        this.cart = cart;
+        console.log('✅ Cart refreshed successfully');
+      } else {
+        console.log('📭 No cart found (empty cart)');
+        this.cart = null;
+      }
+      
+      this.updateCartUI();
+      this.notifySubscribers();
+      
+    } catch (error) {
+      console.error('🛒 Error refreshing cart:', error);
+      // Don't throw - just set empty state
+      this.cart = null;
+      this.updateCartUI();
+      
+    } finally {
+      this.setLoading(false);
+      this.finishOperation('refresh_cart');
+    }
+  }
+
+  async waitForSwell() {
+    return new Promise((resolve) => {
+      if (window.swell) {
+        resolve(window.swell);
+      } else {
+        const checkSwell = () => {
+          if (window.swell) {
+            resolve(window.swell);
+          } else {
+            setTimeout(checkSwell, 100);
+          }
+        };
+        checkSwell();
+      }
+    });
+  }
+
   subscribe(callback) {
     this.subscribers.add(callback);
     
@@ -152,15 +320,11 @@ class CartHandler {
       }
     }
     
-    // Return unsubscribe function
     return () => {
       this.subscribers.delete(callback);
     };
   }
 
-  /**
-   * Notify all subscribers of cart changes
-   */
   notifySubscribers() {
     this.subscribers.forEach(callback => {
       try {
@@ -173,215 +337,25 @@ class CartHandler {
     });
   }
 
-
-  async addProductToCart(productId, quantity = 1) {
-    try {
-      this.setLoading(true);
-      
-      console.log('🛒 Adding to cart:', { productId, quantity });
-
-      // Get swell instance
-      const swell = window.swell;
-      if (!swell) {
-        throw new Error('Swell not available');
-      }
-
-      // Simple Swell add to cart
-      const result = await swell.cart.addItem({
-        product_id: productId,
-        quantity: quantity
-      });
-
-      if (result && result.items) {
-        console.log('✅ Successfully added to cart');
-        
-        // Update cart state
-        this.cart = result;
-        this.updateCartUI();
-        
-        // Show success
-        this.showSuccess('Item added to cart!');
-        
-        // Open cart drawer
-        setTimeout(() => {
-          this.openDrawer();
-        }, 500);
-        
-        return { success: true, cart: result };
-      } else {
-        throw new Error('Invalid cart response');
-      }
-      
-    } catch (error) {
-      console.error('🛒 Error adding to cart:', error);
-      
-      // Try alternative method with different product reference
-      if (error.message?.includes('not found') || error.message?.includes('not active')) {
-        console.log('🛒 Trying alternative product lookup...');
-        
-        try {
-          // Get product by slug instead
-          const productData = window.productData;
-          if (productData?.slug) {
-            const swell = window.swell;
-            const products = await swell.products.list({
-              where: { slug: productData.slug },
-              limit: 1
-            });
-            
-            if (products.results && products.results.length > 0) {
-              const foundProduct = products.results[0];
-              console.log('🛒 Found product by slug:', foundProduct.id);
-              
-              const retryResult = await swell.cart.addItem({
-                product_id: foundProduct.id,
-                quantity: quantity
-              });
-              
-              if (retryResult && retryResult.items) {
-                console.log('✅ Successfully added to cart via slug lookup');
-                this.cart = retryResult;
-                this.updateCartUI();
-                this.showSuccess('Item added to cart!');
-                setTimeout(() => this.openDrawer(), 500);
-                return { success: true, cart: retryResult };
-              }
-            }
-          }
-        } catch (retryError) {
-          console.error('🛒 Retry also failed:', retryError);
-        }
-      }
-      
-      this.showError('Failed to add item to cart');
-      return { success: false, error: error.message };
-      
-    } finally {
-      this.setLoading(false);
-    }
-  }
-
-  async refreshCart() {
-    try {
-      this.setLoading(true);
-      
-      const swell = window.swell;
-      if (!swell) {
-        console.warn('🛒 Swell not available for cart refresh');
-        return;
-      }
-
-      this.cart = await swell.cart.get();
-      console.log('🛒 Cart refreshed:', this.cart ? `${this.getItemCount()} items` : 'Empty');
-      
-      this.updateCartUI();
-      this.notifySubscribers();
-      
-    } catch (error) {
-      console.error('🛒 Error refreshing cart:', error);
-    } finally {
-      this.setLoading(false);
-    }
-  }
-
-  async updateCartItem(itemId, quantity) {
-    try {
-      this.setLoading(true);
-      
-      const swell = window.swell;
-      if (!swell) {
-        throw new Error('Swell not available');
-      }
-
-      if (quantity <= 0) {
-        return await this.removeCartItem(itemId);
-      }
-
-      const result = await swell.cart.updateItem(itemId, { quantity });
-      
-      if (result) {
-        this.cart = result;
-        this.updateCartUI();
-        this.notifySubscribers();
-        console.log('🛒 Cart item updated');
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('🛒 Error updating cart item:', error);
-      this.showError('Failed to update item');
-      throw error;
-    } finally {
-      this.setLoading(false);
-    }
-  }
-
-  async removeCartItem(itemId) {
-    try {
-      this.setLoading(true);
-      
-      const swell = window.swell;
-      if (!swell) {
-        throw new Error('Swell not available');
-      }
-
-      const result = await swell.cart.removeItem(itemId);
-      
-      if (result) {
-        this.cart = result;
-        this.updateCartUI();
-        this.notifySubscribers();
-        console.log('🛒 Cart item removed');
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('🛒 Error removing cart item:', error);
-      this.showError('Failed to remove item');
-      throw error;
-    } finally {
-      this.setLoading(false);
-    }
-  }
-
-
-  async openDrawer() {
+  openDrawer() {
     console.log('🛒 Opening cart drawer...');
-    
-    // 🔧 FIXED: Refresh cart data BEFORE opening drawer
-    await this.refreshCart();
     
     const overlay = document.getElementById('cart-overlay');
     const drawer = document.getElementById('cart-drawer');
     
     if (overlay && drawer) {
-      // Step 1: Show the overlay (remove hidden class)
       overlay.classList.remove('hidden');
-      
-      // Step 2: Add CSS class for overlay visibility
       overlay.classList.add('open');
       
-      // Step 3: Slide in the drawer (remove translate-x-full, add translate-x-0)
-      drawer.classList.remove('translate-x-full');
-      drawer.classList.add('translate-x-0');
-      
-      // Step 4: Add CSS class for drawer
-      drawer.classList.add('open');
+      setTimeout(() => {
+        drawer.classList.remove('translate-x-full');
+        drawer.classList.add('translate-x-0', 'open');
+      }, 10);
       
       this.isDrawerOpen = true;
-      console.log('🛒 Cart drawer opened with', this.getItemCount(), 'items');
-      
-      // 🔧 FIXED: Update drawer content after drawer is visible
-      setTimeout(() => {
-        this.updateDrawerContent();
-      }, 150); // Small delay to ensure drawer is fully open
-      
-    } else {
-      console.error('🛒 Cart drawer elements not found:', { overlay: !!overlay, drawer: !!drawer });
     }
   }
 
-  // 🔧 FIXED: Proper drawer closing that handles both overlay and drawer
   closeDrawer() {
     console.log('🛒 Closing cart drawer...');
     
@@ -389,45 +363,43 @@ class CartHandler {
     const drawer = document.getElementById('cart-drawer');
     
     if (overlay && drawer) {
-      // Step 1: Slide out the drawer
       drawer.classList.remove('translate-x-0');
       drawer.classList.add('translate-x-full');
       drawer.classList.remove('open');
       
-      // Step 2: Hide overlay after animation completes
       setTimeout(() => {
         overlay.classList.add('hidden');
         overlay.classList.remove('open');
-      }, 300); // Match the transition duration
+      }, 300);
       
       this.isDrawerOpen = false;
-      console.log('🛒 Cart drawer closed');
     }
   }
 
   async clearCart() {
+    if (!this.canPerformOperation('clear_cart')) {
+      return;
+    }
+    
     try {
       this.setLoading(true);
       
       const swell = window.swell;
-      if (!swell || !this.cart || !this.cart.items) {
-        return;
+      if (swell && this.cart && this.cart.items) {
+        for (const item of this.cart.items) {
+          await swell.cart.removeItem(item.id);
+        }
       }
       
-      // Remove all items
-      for (const item of this.cart.items) {
-        await swell.cart.removeItem(item.id);
-      }
-      
-      await this.refreshCart();
-      console.log('🛒 Cart cleared');
+      await this.safeRefreshCart();
+      console.log('🛒 Cart cleared successfully');
       
     } catch (error) {
       console.error('🛒 Error clearing cart:', error);
       this.showError('Failed to clear cart');
-      throw error;
     } finally {
       this.setLoading(false);
+      this.finishOperation('clear_cart');
     }
   }
 
@@ -437,236 +409,159 @@ class CartHandler {
     }
   }
 
-  handleViewCart() {
-    this.closeDrawer();
-    window.location.href = '/cart';
-  }
-
-  handleCheckout() {
-    this.closeDrawer();
-    window.location.href = '/checkout';
-  }
-
   updateCartUI() {
-    const itemCount = this.getItemCount();
+    const cartItemsContainer = document.getElementById('cart-items-list');
+    const cartSubtotal = document.getElementById('cart-subtotal');
+    const cartHeaderCount = document.getElementById('cart-header-count');
+    const cartEmpty = document.getElementById('cart-empty');
+    const cartItems = document.getElementById('cart-items');
     
-    // Update cart count in header
-    const cartCounts = document.querySelectorAll('#cart-count, .cart-count');
-    cartCounts.forEach(el => {
-      el.textContent = itemCount;
-      if (itemCount > 0) {
-        el.classList.remove('hidden');
-      } else {
-        el.classList.add('hidden');
-      }
-    });
-
-    // Update cart drawer content if open
-    if (this.isDrawerOpen) {
-      this.updateDrawerContent();
-    }
-  }
-
-  updateDrawerContent() {
-    console.log('🛒 Updating drawer content with cart:', this.cart);
-    
-    const headerCount = document.getElementById('cart-header-count');
-    const itemsList = document.getElementById('cart-items-list');
-    const emptyEl = document.getElementById('cart-empty');
-    const itemsEl = document.getElementById('cart-items');
-    const subtotalEl = document.getElementById('cart-subtotal');
-    const cartFooter = document.getElementById('cart-footer');
-    
-    const itemCount = this.getItemCount();
-    const subtotal = this.getSubtotal();
-    
-    console.log('🛒 Drawer update - Items:', itemCount, 'Subtotal:', subtotal);
-    
-    // Update header count
-    if (headerCount) {
-      headerCount.textContent = `(${itemCount} item${itemCount !== 1 ? 's' : ''})`;
-    }
-    
-    // 🔧 FIXED: Better empty/items state management
-    if (!this.cart || !this.cart.items || itemCount === 0) {
+    if (!this.cart || !this.cart.items || this.cart.items.length === 0) {
       // Show empty state
-      if (emptyEl) emptyEl.classList.remove('hidden');
-      if (itemsEl) itemsEl.classList.add('hidden');
-      if (cartFooter) cartFooter.classList.add('hidden');
-      
-      console.log('🛒 Drawer showing empty state');
+      if (cartEmpty) cartEmpty.classList.remove('hidden');
+      if (cartItems) cartItems.classList.add('hidden');
+      if (cartHeaderCount) cartHeaderCount.textContent = '(0 items)';
       return;
     }
     
-    // Show items state
-    if (emptyEl) emptyEl.classList.add('hidden');
-    if (itemsEl) itemsEl.classList.remove('hidden');
-    if (cartFooter) cartFooter.classList.remove('hidden');
+    // Show items
+    if (cartEmpty) cartEmpty.classList.add('hidden');
+    if (cartItems) cartItems.classList.remove('hidden');
+    
+    // Update header count
+    if (cartHeaderCount) {
+      cartHeaderCount.textContent = `(${this.cart.items.length} item${this.cart.items.length !== 1 ? 's' : ''})`;
+    }
     
     // Update subtotal
-    if (subtotalEl) {
-      subtotalEl.textContent = this.formatPrice(subtotal);
+    if (cartSubtotal) {
+      const subtotal = this.cart.sub_total || this.cart.subtotal || 0;
+      cartSubtotal.textContent = formatPrice(subtotal);
     }
     
     // Update items list
-    if (itemsList && this.cart.items) {
-      itemsList.innerHTML = this.cart.items.map(item => this.createCartItemHTML(item)).join('');
-      
-      // Add event listeners for quantity controls
-      this.addDrawerItemEventListeners();
+    if (cartItemsContainer) {
+      cartItemsContainer.innerHTML = '';
+      this.cart.items.forEach(item => {
+        const itemElement = this.createCartItemElement(item);
+        cartItemsContainer.appendChild(itemElement);
+      });
     }
-    
-    console.log('🛒 Drawer content updated successfully');
-  }
-
-  // 🔧 NEW: Helper method to create cart item HTML for drawer
-  createCartItemHTML(item) {
-    // Handle different image URL structures
-    let imageUrl = '/images/placeholder.png';
-    
-    if (item.product?.images && item.product.images.length > 0) {
-      imageUrl = item.product.images[0].file?.url || item.product.images[0].url;
-    } else if (item.images && item.images.length > 0) {
-      imageUrl = item.images[0].file?.url || item.images[0].url;
-    }
-    
-    const itemPrice = this.formatPrice((item.price || 0) * item.quantity);
-    const productName = item.product?.name || item.name || 'Product';
-    
-    return `
-      <div class="cart-item" data-item-id="${item.id}">
-        <img 
-          src="${imageUrl}" 
-          alt="${productName}"
-          class="cart-item-image"
-          onerror="this.src='/images/placeholder.png'"
-        />
-        <div class="cart-item-details">
-          <div class="cart-item-title">${productName}</div>
-          <div class="cart-item-price">${itemPrice}</div>
-          <div class="cart-item-controls">
-            <div class="quantity-control">
-              <button class="quantity-btn quantity-decrease" data-item-id="${item.id}">-</button>
-              <input type="number" class="quantity-input" value="${item.quantity}" min="1" readonly>
-              <button class="quantity-btn quantity-increase" data-item-id="${item.id}">+</button>
-            </div>
-            <button class="remove-btn" data-item-id="${item.id}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  // 🔧 NEW: Add event listeners for drawer item controls
-  addDrawerItemEventListeners() {
-    // Quantity decrease
-    document.querySelectorAll('.quantity-decrease').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const itemId = e.target.dataset.itemId;
-        const item = this.cart?.items?.find(i => i.id === itemId);
-        if (item && item.quantity > 1) {
-          await this.updateCartItem(itemId, item.quantity - 1);
-        }
-      });
-    });
-    
-    // Quantity increase
-    document.querySelectorAll('.quantity-increase').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const itemId = e.target.dataset.itemId;
-        const item = this.cart?.items?.find(i => i.id === itemId);
-        if (item) {
-          await this.updateCartItem(itemId, item.quantity + 1);
-        }
-      });
-    });
-    
-    // Remove item
-    document.querySelectorAll('.remove-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const itemId = e.target.dataset.itemId;
-        if (confirm('Remove this item from your cart?')) {
-          await this.removeCartItem(itemId);
-        }
-      });
-    });
-  }
-
-  // 🔧 NEW: Helper method to format price
-  formatPrice(amount) {
-    return new Intl.NumberFormat('de-DE', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(amount || 0);
   }
 
   createCartItemElement(item) {
-    const itemEl = document.createElement('div');
-    itemEl.className = 'cart-item';
-    itemEl.innerHTML = `
-      <img 
-        src="${getProductImageUrl(item.product) || '/placeholder-image.jpg'}" 
-        alt="${item.product?.name || 'Product'}"
-        class="cart-item-image"
-      />
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'cart-item';
+    
+    // 🔧 FIX: Better image URL handling
+    const imageUrl = this.getItemImageUrl(item);
+    const productName = item.product?.name || 'Unknown Product';
+    const quantity = item.quantity || 1;
+    const price = item.price_total || item.price || 0;
+    
+    itemDiv.innerHTML = `
+      <img src="${imageUrl}" alt="${productName}" class="cart-item-image" 
+           onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMCAxNkMyMS42NTY5IDE2IDIzIDEyLjY1NjkgMjMgMTFDMjMgOS4zNDMxNSAyMS42NTY5IDggMjAgOEMxOC4zNDMxIDggMTcgOS4zNDMxNSAxNyAxMUMxNyAxMi42NTY5IDE4LjM0MzEgMTYgMjAgMTZaIiBmaWxsPSIjOUI5QjlCIi8+CjxwYXRoIGQ9Ik0yNiAyNkgyNlYyNEgyNlYyNloiIGZpbGw9IiM5QjlCOUIiLz4KPC9zdmc+Cg=='" />
       <div class="cart-item-details">
-        <h4 class="cart-item-title">${item.product?.name || 'Unknown Product'}</h4>
-        ${item.variant ? `<p class="cart-item-options">${item.variant.name}</p>` : ''}
-        <p class="cart-item-price">${formatPrice(item.price_total)}</p>
+        <h4 class="cart-item-title">${productName}</h4>
+        <p class="cart-item-price">${formatPrice(price)}</p>
         <div class="cart-item-controls">
           <div class="quantity-control">
-            <button class="quantity-btn" data-action="decrease" data-item-id="${item.id}">-</button>
-            <input type="number" class="quantity-input" value="${item.quantity}" min="1" data-item-id="${item.id}" readonly />
-            <button class="quantity-btn" data-action="increase" data-item-id="${item.id}">+</button>
+            <button class="quantity-btn" onclick="window.cartHandler.updateQuantity('${item.id}', ${quantity - 1})">-</button>
+            <input type="number" class="quantity-input" value="${quantity}" min="1" 
+                   onchange="window.cartHandler.updateQuantity('${item.id}', this.value)" />
+            <button class="quantity-btn" onclick="window.cartHandler.updateQuantity('${item.id}', ${quantity + 1})">+</button>
           </div>
-          <button class="remove-btn" data-item-id="${item.id}" title="Remove item">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+          <button class="remove-btn" onclick="window.cartHandler.removeItem('${item.id}')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/>
             </svg>
           </button>
         </div>
       </div>
     `;
     
-    // Add event listeners
-    const decreaseBtn = itemEl.querySelector('[data-action="decrease"]');
-    const increaseBtn = itemEl.querySelector('[data-action="increase"]');
-    const removeBtn = itemEl.querySelector('.remove-btn');
-    
-    if (decreaseBtn) {
-      decreaseBtn.addEventListener('click', () => {
-        const newQuantity = Math.max(0, item.quantity - 1);
-        if (newQuantity === 0) {
-          this.removeCartItem(item.id);
-        } else {
-          this.updateCartItem(item.id, newQuantity);
-        }
-      });
+    return itemDiv;
+  }
+
+  // 🔧 FIX: Local image URL method that works reliably
+  getItemImageUrl(item) {
+    // Try multiple image sources in order of preference
+    if (item.product?.images && item.product.images.length > 0) {
+      const image = item.product.images[0];
+      if (image.file?.url) return image.file.url;
+      if (image.url) return image.url;
     }
     
-    if (increaseBtn) {
-      increaseBtn.addEventListener('click', () => {
-        this.updateCartItem(item.id, item.quantity + 1);
-      });
+    if (item.variant?.images && item.variant.images.length > 0) {
+      const image = item.variant.images[0];
+      if (image.file?.url) return image.file.url;
+      if (image.url) return image.url;
     }
     
-    if (removeBtn) {
-      removeBtn.addEventListener('click', () => {
-        this.removeCartItem(item.id);
-      });
+    // Fallback to a simple placeholder
+    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMCAxNkMyMS42NTY5IDE2IDIzIDEyLjY1NjkgMjMgMTFDMjMgOS4zNDMxNSAyMS42NTY5IDggMjAgOEMxOC4zNDMxIDggMTcgOS4zNDMxNSAxNyAxMUMxNyAxMi42NTY5IDE4LjM0MzEgMTYgMjAgMTZaIiBmaWxsPSIjOUI5QjlCIi8+CjxwYXRoIGQ9Ik0yNiAyNkgyNlYyNEgyNlYyNloiIGZpbGw9IiM5QjlCOUIiLz4KPC9zdmc+Cg==';
+  }
+
+  async updateQuantity(itemId, newQuantity) {
+    if (!this.canPerformOperation(`update_${itemId}`)) {
+      return;
     }
     
-    return itemEl;
+    try {
+      const quantity = parseInt(newQuantity);
+      if (quantity < 1) {
+        await this.removeItem(itemId);
+        return;
+      }
+      
+      this.setLoading(true);
+      
+      const swell = window.swell;
+      if (swell) {
+        const updatedCart = await swell.cart.updateItem(itemId, { quantity });
+        this.cart = updatedCart;
+        this.updateCartUI();
+        this.notifySubscribers();
+      }
+      
+    } catch (error) {
+      console.error('🛒 Error updating quantity:', error);
+      this.showError('Failed to update quantity');
+    } finally {
+      this.setLoading(false);
+      this.finishOperation(`update_${itemId}`);
+    }
+  }
+
+  async removeItem(itemId) {
+    if (!this.canPerformOperation(`remove_${itemId}`)) {
+      return;
+    }
+    
+    try {
+      this.setLoading(true);
+      
+      const swell = window.swell;
+      if (swell) {
+        const updatedCart = await swell.cart.removeItem(itemId);
+        this.cart = updatedCart;
+        this.updateCartUI();
+        this.notifySubscribers();
+      }
+      
+    } catch (error) {
+      console.error('🛒 Error removing item:', error);
+      this.showError('Failed to remove item');
+    } finally {
+      this.setLoading(false);
+      this.finishOperation(`remove_${itemId}`);
+    }
   }
 
   setLoading(loading) {
     this.isLoading = loading;
     
-    // Update loading state in UI
     const loadingEl = document.getElementById('cart-loading');
     if (loadingEl) {
       if (loading) {
@@ -675,78 +570,51 @@ class CartHandler {
         loadingEl.classList.add('hidden');
       }
     }
-    
-    // Disable/enable buttons during loading
-    const buttons = document.querySelectorAll('#add-to-cart-btn, .quantity-btn, .remove-btn');
-    buttons.forEach(btn => {
-      btn.disabled = loading;
-    });
   }
 
   showSuccess(message) {
-    this.showNotification(message, 'success');
+    console.log('✅', message);
+    // Simple success feedback
   }
 
   showError(message) {
-    this.showNotification(message, 'error');
+    console.error('❌', message);
+    // Simple error feedback - could be enhanced with toast notifications
+    alert(message);
   }
 
-  showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300 ${
-      type === 'success' ? 'bg-green-500 text-white' : 
-      type === 'error' ? 'bg-red-500 text-white' : 
-      'bg-blue-500 text-white'
-    }`;
-    notification.textContent = message;
-    
-    document.body.appendChild(notification);
-    
-    // Animate in
-    setTimeout(() => {
-      notification.classList.remove('translate-x-full');
-    }, 100);
-    
-    // Animate out and remove
-    setTimeout(() => {
-      notification.classList.add('translate-x-full');
-      setTimeout(() => {
-        if (document.body.contains(notification)) {
-          document.body.removeChild(notification);
-        }
-      }, 300);
-    }, type === 'error' ? 4000 : 2000);
+  // Checkout integration methods
+  validateCartForCheckout() {
+    if (!this.cart || !this.cart.items || this.cart.items.length === 0) {
+      return { valid: false, error: 'Your cart is empty' };
+    }
+    return { valid: true };
   }
 
-  getItemCount() {
-    if (!this.cart || !this.cart.items) return 0;
-    return this.cart.items.reduce((total, item) => total + (item.quantity || 0), 0);
-  }
-
-  getSubtotal() {
-    return this.cart?.sub_total || 0;
-  }
-
-  // Debug method
-  debug() {
-    console.group('🛒 Cart Handler Debug');
-    console.log('Cart:', this.cart);
-    console.log('Item Count:', this.getItemCount());
-    console.log('Subtotal:', formatPrice(this.getSubtotal()));
-    console.log('Is Loading:', this.isLoading);
-    console.log('Drawer Open:', this.isDrawerOpen);
-    console.groupEnd();
+  async goToCheckout() {
+    try {
+      if (!this.cart || !this.cart.items || this.cart.items.length === 0) {
+        this.showError('Your cart is empty');
+        return;
+      }
+      
+      console.log('🛒 Navigating to checkout with cart:', this.cart);
+      sessionStorage.setItem('checkout_cart', JSON.stringify(this.cart));
+      window.location.href = '/checkout';
+      
+    } catch (error) {
+      console.error('🛒 Error navigating to checkout:', error);
+      this.showError('Failed to proceed to checkout');
+    }
   }
 }
 
-// Initialize cart handler and expose globally
+// Initialize cart handler
 const cartHandler = new CartHandler();
 
-// Make available globally (this is what AuthHeader needs)
+// Make available globally
 if (typeof window !== 'undefined') {
-  window.cartManager = cartHandler;  // AuthHeader looks for this
-  window.cartHandler = cartHandler;  // Also expose as cartHandler
-  console.log('🛒 Cart handler exposed as window.cartManager and window.cartHandler');
+  window.cartHandler = cartHandler;
 }
 
 export default cartHandler;

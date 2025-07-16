@@ -1,0 +1,1261 @@
+---
+// src/pages/checkout.astro - Complete Checkout Page
+import PageLayout from '~/layouts/PageLayout.astro';
+import { getCanonical } from '~/utils/permalinks';
+
+const metadata = {
+  title: 'Checkout - Synoptic',
+  description: 'Complete your Synoptic order',
+  canonical: getCanonical('/checkout'),
+  noindex: true, // Checkout pages should not be indexed
+};
+---
+
+<PageLayout metadata={metadata}>
+  <!-- Checkout Page Content -->
+  <section class="py-8 md:py-12">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6">
+      
+      <!-- Page Header -->
+      <div class="mb-8">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white md:text-3xl">
+          Checkout
+        </h1>
+        <p class="mt-2 text-gray-600 dark:text-gray-300">
+          Complete your order securely
+        </p>
+      </div>
+
+      <!-- Auth Status Header -->
+      <div class="mb-6">
+        <!-- Authenticated User Info -->
+        <div id="checkout-user-info" class="hidden">
+          <!-- Populated by checkout-handler.js -->
+        </div>
+        
+        <!-- Guest Checkout Info -->
+        <div id="checkout-guest-info" class="text-sm text-gray-600 dark:text-gray-300">
+          Checking out as guest
+        </div>
+      </div>
+
+      <!-- Guest Checkout Options (Initial Screen) -->
+      <div id="guest-checkout-section" class="mb-8 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+        <h2 class="mb-6 text-lg font-semibold text-gray-900 dark:text-white">
+          How would you like to checkout?
+        </h2>
+        
+        <div class="grid gap-4 md:grid-cols-2">
+          <!-- Sign In Option -->
+          <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+            <h3 class="mb-2 font-medium text-gray-900 dark:text-white">
+              Sign in to your account
+            </h3>
+            <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
+              Get faster checkout and order tracking
+            </p>
+            <button 
+              id="checkout-sign-in-btn"
+              class="w-full rounded-lg bg-blue-600 py-2 px-4 font-medium text-white hover:bg-blue-700 transition-colors"
+            >
+              Sign In
+            </button>
+          </div>
+          
+          <!-- Guest Checkout Option -->
+          <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+            <h3 class="mb-2 font-medium text-gray-900 dark:text-white">
+              Continue as guest
+            </h3>
+            <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
+              Checkout quickly without creating an account
+            </p>
+            <button 
+              id="continue-as-guest-btn"
+              class="w-full rounded-lg bg-gray-600 py-2 px-4 font-medium text-white hover:bg-gray-700 transition-colors"
+            >
+              Continue as Guest
+            </button>
+          </div>
+        </div>
+        
+        <!-- Create Account Option -->
+        <div class="mt-4 text-center">
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            Don't have an account? 
+            <button 
+              id="checkout-create-account-btn"
+              class="font-medium text-blue-600 hover:text-blue-500 underline"
+            >
+              Create one now
+            </button>
+          </p>
+        </div>
+      </div>
+
+      <!-- Auth Prompt (Returning Customer Detection) -->
+      <div id="checkout-auth-prompt" class="hidden mb-6">
+        <!-- Populated by checkout-handler.js -->
+      </div>
+
+      <!-- Returning Customer Prompt -->
+      <div id="returning-customer-prompt" class="hidden mb-6">
+        <!-- Populated by checkout-handler.js -->
+      </div>
+
+      <!-- Main Checkout Form -->
+      <div id="checkout-form-container" class="hidden">
+        <div class="grid gap-8 lg:grid-cols-3">
+          
+          <!-- Left Column: Checkout Form -->
+          <div class="lg:col-span-2">
+            <form id="checkout-form" class="space-y-8">
+              
+              <!-- Contact Information -->
+              <div class="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+                <h2 class="mb-6 text-lg font-semibold text-gray-900 dark:text-white">
+                  Contact Information
+                </h2>
+                
+                <div class="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label for="checkout-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      id="checkout-email"
+                      name="email"
+                      required
+                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      placeholder="Enter your email"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label for="checkout-phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      id="checkout-phone"
+                      name="phone"
+                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      placeholder="Enter your phone number"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Shipping Address -->
+              <div class="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+                <h2 class="mb-6 text-lg font-semibold text-gray-900 dark:text-white">
+                  Shipping Address
+                </h2>
+                
+                <div class="grid gap-4">
+                  <!-- Name Fields -->
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label for="checkout-first-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        First Name *
+                      </label>
+                      <input
+                        type="text"
+                        id="checkout-first-name"
+                        name="shipping.first_name"
+                        required
+                        class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        placeholder="First name"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label for="checkout-last-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Last Name *
+                      </label>
+                      <input
+                        type="text"
+                        id="checkout-last-name"
+                        name="shipping.last_name"
+                        required
+                        class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        placeholder="Last name"
+                      />
+                    </div>
+                  </div>
+                  
+                  <!-- Address Fields -->
+                  <div>
+                    <label for="checkout-address1" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Street Address *
+                    </label>
+                    <input
+                      type="text"
+                      id="checkout-address1"
+                      name="shipping.address1"
+                      required
+                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      placeholder="Street address"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label for="checkout-address2" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Apartment, suite, etc. (optional)
+                    </label>
+                    <input
+                      type="text"
+                      id="checkout-address2"
+                      name="shipping.address2"
+                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      placeholder="Apartment, suite, etc."
+                    />
+                  </div>
+                  
+                  <!-- City, Postal Code, Country -->
+                  <div class="grid gap-4 md:grid-cols-3">
+                    <div>
+                      <label for="checkout-city" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        City *
+                      </label>
+                      <input
+                        type="text"
+                        id="checkout-city"
+                        name="shipping.city"
+                        required
+                        class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        placeholder="City"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label for="checkout-zip" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Postal Code *
+                      </label>
+                      <input
+                        type="text"
+                        id="checkout-zip"
+                        name="shipping.zip"
+                        required
+                        class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        placeholder="Postal code"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label for="checkout-country" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Country *
+                      </label>
+                      <select
+                        id="checkout-country"
+                        name="shipping.country"
+                        required
+                        class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      >
+                        <option value="">Select country</option>
+                        <option value="DE">Germany</option>
+                        <option value="AT">Austria</option>
+                        <option value="CH">Switzerland</option>
+                        <option value="FR">France</option>
+                        <option value="IT">Italy</option>
+                        <option value="NL">Netherlands</option>
+                        <option value="BE">Belgium</option>
+                        <option value="ES">Spain</option>
+                        <option value="PT">Portugal</option>
+                        <option value="US">United States</option>
+                        <option value="CA">Canada</option>
+                        <option value="GB">United Kingdom</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <!-- State (shown for certain countries) -->
+                  <div id="state-field" class="hidden">
+                    <label for="checkout-state" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      State/Province *
+                    </label>
+                    <input
+                      type="text"
+                      id="checkout-state"
+                      name="shipping.state"
+                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      placeholder="State/Province"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Shipping Options -->
+              <div id="shipping-options-section" class="hidden rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+                <h2 class="mb-6 text-lg font-semibold text-gray-900 dark:text-white">
+                  Shipping Method
+                </h2>
+                
+                <div id="shipping-options" class="space-y-3">
+                  <!-- Shipping options will be populated here -->
+                </div>
+                
+                <div id="shipping-loading" class="hidden text-center py-4">
+                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p class="text-sm text-gray-600 dark:text-gray-300">Loading shipping options...</p>
+                </div>
+              </div>
+
+              <!-- Billing Address -->
+              <div class="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+                <div class="flex items-center justify-between mb-6">
+                  <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    Billing Address
+                  </h2>
+                  
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="same-as-shipping"
+                      checked
+                      class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                      Same as shipping address
+                    </span>
+                  </label>
+                </div>
+                
+                <!-- Billing Fields (Hidden by default) -->
+                <div id="billing-fields" class="hidden grid gap-4">
+                  <!-- Same structure as shipping fields -->
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label for="billing-first-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        First Name *
+                      </label>
+                      <input
+                        type="text"
+                        id="billing-first-name"
+                        name="billing.first_name"
+                        class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label for="billing-last-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Last Name *
+                      </label>
+                      <input
+                        type="text"
+                        id="billing-last-name"
+                        name="billing.last_name"
+                        class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                  
+                  <!-- Add more billing fields as needed -->
+                </div>
+              </div>
+
+              <!-- Payment Method -->
+              <div class="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+                <h2 class="mb-6 text-lg font-semibold text-gray-900 dark:text-white">
+                  Payment Method
+                </h2>
+                
+                <div id="payment-methods" class="space-y-4">
+                  <!-- Payment methods will be loaded here -->
+                  <div class="border border-gray-200 rounded-lg p-4 dark:border-gray-700">
+                    <div class="flex items-center">
+                      <input
+                        type="radio"
+                        id="card-payment"
+                        name="payment_method"
+                        value="card"
+                        checked
+                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                      />
+                      <label for="card-payment" class="ml-3 flex items-center">
+                        <span class="text-sm font-medium text-gray-900 dark:text-white">Credit/Debit Card</span>
+                        <div class="ml-2 flex space-x-1">
+                          <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAzMiAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjIwIiByeD0iNCIgZmlsbD0iIzAwNTFBNSIvPgo8L3N2Zz4K" alt="Visa" class="h-4 w-6" />
+                          <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAzMiAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjIwIiByeD0iNCIgZmlsbD0iI0VCMDAxQiIvPgo8L3N2Zz4K" alt="Mastercard" class="h-4 w-6" />
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <!-- Stripe/Swell Payment Element will be inserted here -->
+                  <div id="payment-element" class="mt-4">
+                    <!-- Payment form will be loaded here -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Order Notes -->
+              <div class="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+                <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+                  Order Notes (Optional)
+                </h2>
+                
+                <textarea
+                  id="order-notes"
+                  name="notes"
+                  rows="3"
+                  class="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  placeholder="Special instructions for your order..."
+                ></textarea>
+              </div>
+
+            </form>
+          </div>
+
+          <!-- Right Column: Order Summary -->
+          <div class="lg:col-span-1">
+            <div class="sticky top-8">
+              <div class="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+                <h2 class="mb-6 text-lg font-semibold text-gray-900 dark:text-white">
+                  Order Summary
+                </h2>
+                
+                <!-- Cart Items -->
+                <div id="checkout-cart-items" class="space-y-4 mb-6">
+                  <!-- Cart items will be populated here -->
+                </div>
+                
+                <!-- Cart Totals -->
+                <div class="space-y-3 border-t border-gray-200 pt-4 dark:border-gray-700">
+                  <div class="flex justify-between text-sm">
+                    <span class="text-gray-600 dark:text-gray-300">Subtotal</span>
+                    <span id="checkout-subtotal" class="font-medium text-gray-900 dark:text-white">€0.00</span>
+                  </div>
+                  
+                  <div id="checkout-shipping-cost" class="hidden flex justify-between text-sm">
+                    <span class="text-gray-600 dark:text-gray-300">Shipping</span>
+                    <span id="shipping-cost-amount" class="font-medium text-gray-900 dark:text-white">€0.00</span>
+                  </div>
+                  
+                  <div class="flex justify-between text-sm">
+                    <span class="text-gray-600 dark:text-gray-300">Tax</span>
+                    <span id="checkout-tax" class="font-medium text-gray-900 dark:text-white">Calculated at checkout</span>
+                  </div>
+                  
+                  <hr class="border-gray-200 dark:border-gray-700">
+                  
+                  <div class="flex justify-between text-lg font-semibold">
+                    <span class="text-gray-900 dark:text-white">Total</span>
+                    <span id="checkout-total" class="text-gray-900 dark:text-white">€0.00</span>
+                  </div>
+                </div>
+                
+                <!-- Place Order Button -->
+                <button
+                  type="submit"
+                  form="checkout-form"
+                  id="place-order-btn"
+                  class="w-full mt-6 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span id="place-order-text">Place Order</span>
+                  <span id="place-order-loading" class="hidden">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                  </span>
+                </button>
+                
+                <!-- Security Notice -->
+                <div class="mt-4 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                  </svg>
+                  Secure SSL Encryption
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error Container -->
+      <div id="checkout-error" class="hidden mb-6">
+        <!-- Error messages will be populated here -->
+      </div>
+
+      <!-- Empty Cart Message -->
+      <div id="empty-cart-message" class="hidden text-center py-16">
+        <div class="max-w-md mx-auto">
+          <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L6 6H2m5 7v1m0 0v5a2 2 0 002 2h6a2 2 0 002-2v-5m-8 0h8"></path>
+          </svg>
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Your cart is empty</h2>
+          <p class="text-gray-600 dark:text-gray-300 mb-6">Add some products to continue with checkout</p>
+          <a 
+            href="/shop" 
+            class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Continue Shopping
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Success/Error Messages -->
+  <div id="message-container" class="fixed top-4 right-4 z-50"></div>
+</PageLayout>
+
+<!-- Checkout Page JavaScript -->
+<script>
+  document.addEventListener('DOMContentLoaded', async function() {
+    console.log('🛒 Checkout page initializing...');
+    
+    // DOM elements
+    const guestCheckoutSection = document.getElementById('guest-checkout-section');
+    const checkoutFormContainer = document.getElementById('checkout-form-container');
+    const emptyCartMessage = document.getElementById('empty-cart-message');
+    const checkoutForm = document.getElementById('checkout-form');
+    const placeOrderBtn = document.getElementById('place-order-btn');
+    const messageContainer = document.getElementById('message-container');
+    
+    // Form elements
+    const countrySelect = document.getElementById('checkout-country');
+    const stateField = document.getElementById('state-field');
+    const sameAsShippingCheckbox = document.getElementById('same-as-shipping');
+    const billingFields = document.getElementById('billing-fields');
+    
+    let cart = null;
+    let currentUser = null;
+    let isProcessingOrder = false;
+    
+    // Initialize page
+    await initializePage();
+    
+    async function initializePage() {
+      try {
+        // Wait for cart handler to be ready
+        await waitForCartHandler();
+        
+        // Load cart data
+        await loadCart();
+        
+        // Wait for auth state with better detection
+        await waitForAuth();
+        
+        // Setup event listeners
+        setupEventListeners();
+        
+        // Initialize checkout flow based on auth state
+        updateCheckoutFlow();
+        
+        console.log('🛒 Checkout page initialized successfully');
+        
+      } catch (error) {
+        console.error('🛒 Error initializing checkout page:', error);
+        showError('Failed to initialize checkout. Please refresh the page.');
+      }
+    }
+    
+    // Update authenticated UI
+    function updateAuthenticatedUI() {
+      const userInfo = document.getElementById('checkout-user-info');
+      const guestInfo = document.getElementById('checkout-guest-info');
+      const guestSection = document.getElementById('guest-checkout-section');
+      const formContainer = document.getElementById('checkout-form-container');
+      
+      if (userInfo && currentUser) {
+        userInfo.innerHTML = `
+          <div class="flex items-center space-x-2 text-sm text-green-600">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+            </svg>
+            <span>Signed in as ${currentUser.email}</span>
+          </div>
+        `;
+        userInfo.classList.remove('hidden');
+      }
+      
+      if (guestInfo) {
+        guestInfo.classList.add('hidden');
+      }
+      
+      // Hide guest selection, show form directly
+      if (guestSection) {
+        guestSection.classList.add('hidden');
+      }
+      
+      if (formContainer) {
+        formContainer.classList.remove('hidden');
+      }
+      
+      // Pre-populate user data
+      populateUserData();
+    }
+    
+    // Update guest UI
+    function updateGuestUI() {
+      const userInfo = document.getElementById('checkout-user-info');
+      const guestInfo = document.getElementById('checkout-guest-info');
+      const guestSection = document.getElementById('guest-checkout-section');
+      const formContainer = document.getElementById('checkout-form-container');
+      
+      if (userInfo) {
+        userInfo.classList.add('hidden');
+      }
+      
+      if (guestInfo) {
+        guestInfo.classList.remove('hidden');
+      }
+      
+      // Show guest selection options
+      if (guestSection && cart && cart.items && cart.items.length > 0) {
+        guestSection.classList.remove('hidden');
+      }
+      
+      if (formContainer) {
+        formContainer.classList.add('hidden');
+      }
+    }
+    
+    // Populate user data for authenticated users
+    function populateUserData() {
+      if (!currentUser) return;
+      
+      console.log('🛒 Populating user data for:', currentUser.email);
+      
+      // Pre-fill email (readonly)
+      const emailInput = document.getElementById('checkout-email');
+      if (emailInput) {
+        emailInput.value = currentUser.email;
+        emailInput.setAttribute('readonly', 'true');
+        emailInput.classList.add('bg-gray-50', 'cursor-not-allowed', 'dark:bg-gray-600');
+      }
+      
+      // Pre-fill name if available
+      if (currentUser.displayName) {
+        const nameParts = currentUser.displayName.split(' ');
+        const firstNameInput = document.getElementById('checkout-first-name');
+        const lastNameInput = document.getElementById('checkout-last-name');
+        
+        if (firstNameInput && nameParts[0]) {
+          firstNameInput.value = nameParts[0];
+        }
+        
+        if (lastNameInput && nameParts.length > 1) {
+          lastNameInput.value = nameParts.slice(1).join(' ');
+        }
+      }
+    }
+    
+    // Wait for cart handler
+    async function waitForCartHandler() {
+      return new Promise((resolve) => {
+        if (window.cartHandler) {
+          resolve(window.cartHandler);
+        } else {
+          const checkCart = () => {
+            if (window.cartHandler) {
+              resolve(window.cartHandler);
+            } else {
+              setTimeout(checkCart, 100);
+            }
+          };
+          checkCart();
+        }
+      });
+    }
+    
+    // Wait for auth state with better detection
+    async function waitForAuth() {
+      return new Promise((resolve) => {
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds max wait
+        
+        const checkAuth = () => {
+          attempts++;
+          
+          // Try multiple ways to detect auth state
+          if (window.authStateManager) {
+            console.log('🛒 Auth state manager found, checking current user...');
+            
+            // Get current user immediately if ready
+            if (window.authStateManager.isReady) {
+              currentUser = window.authStateManager.getCurrentUser();
+              console.log('🛒 Auth state ready, current user:', currentUser ? `✅ ${currentUser.email}` : '❌ Guest');
+              
+              // Subscribe to future changes
+              window.authStateManager.subscribe((user) => {
+                if (user !== currentUser) {
+                  console.log('🛒 Auth state changed during checkout:', user ? `✅ ${user.email}` : '❌ Guest');
+                  currentUser = user;
+                  updateCheckoutFlow();
+                }
+              });
+              
+              resolve(currentUser);
+              return;
+            }
+            
+            // Subscribe and wait for ready state
+            window.authStateManager.subscribe((user) => {
+              console.log('🛒 Auth subscription triggered:', user ? `✅ ${user.email}` : '❌ Guest');
+              currentUser = user;
+              resolve(user);
+            });
+            
+            // Also check if auth is ready via waitForReady if available
+            if (window.authStateManager.waitForReady) {
+              window.authStateManager.waitForReady().then(() => {
+                currentUser = window.authStateManager.getCurrentUser();
+                console.log('🛒 Auth ready via waitForReady:', currentUser ? `✅ ${currentUser.email}` : '❌ Guest');
+                resolve(currentUser);
+              });
+            }
+            
+          } else if (attempts < maxAttempts) {
+            // Auth state manager not ready yet, keep trying
+            console.log(`🛒 Waiting for auth state manager... (${attempts}/${maxAttempts})`);
+            setTimeout(checkAuth, 100);
+          } else {
+            // Fallback: check for Firebase auth directly
+            console.log('🛒 Auth state manager not found, checking Firebase directly...');
+            
+            if (window.__FIREBASE_AUTH__ && window.__FIREBASE_AUTH__.currentUser) {
+              currentUser = window.__FIREBASE_AUTH__.currentUser;
+              console.log('🛒 Found user via Firebase directly:', currentUser.email);
+              resolve(currentUser);
+            } else {
+              console.log('🛒 No auth found, proceeding as guest');
+              resolve(null);
+            }
+          }
+        };
+        
+        checkAuth();
+      });
+    }
+    
+    // Update checkout flow based on auth state
+    function updateCheckoutFlow() {
+      if (currentUser) {
+        console.log('🛒 Updating to authenticated flow for:', currentUser.email);
+        showCheckoutForm();
+        updateAuthenticatedUI();
+      } else {
+        console.log('🛒 Updating to guest flow');
+        showCheckoutForm(); // Show guest options
+        updateGuestUI();
+      }
+    }
+    
+    // Load cart data
+    async function loadCart() {
+      try {
+        if (window.cartHandler && window.cartHandler.cart) {
+          cart = window.cartHandler.cart;
+        } else {
+          // Fallback to direct Swell call
+          const swell = window.swell;
+          if (swell) {
+            cart = await swell.cart.get();
+          }
+        }
+        
+        console.log('🛒 Checkout cart loaded:', cart);
+        
+        if (!cart || !cart.items || cart.items.length === 0) {
+          showEmptyCart();
+          return;
+        }
+        
+        updateCartDisplay();
+        showCheckoutForm();
+        
+      } catch (error) {
+        console.error('🛒 Error loading cart:', error);
+        showError('Failed to load cart data');
+      }
+    }
+    
+    // Show empty cart
+    function showEmptyCart() {
+      guestCheckoutSection.classList.add('hidden');
+      checkoutFormContainer.classList.add('hidden');
+      emptyCartMessage.classList.remove('hidden');
+    }
+    
+    // Show checkout form
+    function showCheckoutForm() {
+      emptyCartMessage.classList.add('hidden');
+      
+      // Always show form for authenticated users, let them see the checkout options for guests
+      if (currentUser) {
+        console.log('🛒 Showing checkout form for authenticated user:', currentUser.email);
+        // Skip guest options entirely for authenticated users
+        guestCheckoutSection.classList.add('hidden');
+        checkoutFormContainer.classList.remove('hidden');
+        updateAuthenticatedUI();
+        populateUserData();
+      } else {
+        console.log('🛒 Showing guest checkout options');
+        // Show guest checkout selection first
+        guestCheckoutSection.classList.remove('hidden');
+        checkoutFormContainer.classList.add('hidden');
+        updateGuestUI();
+      }
+    }
+    
+    // Update cart display in order summary
+    function updateCartDisplay() {
+      const cartItemsContainer = document.getElementById('checkout-cart-items');
+      const subtotalEl = document.getElementById('checkout-subtotal');
+      const totalEl = document.getElementById('checkout-total');
+      
+      if (!cart || !cart.items) return;
+      
+      // Display cart items
+      cartItemsContainer.innerHTML = '';
+      cart.items.forEach(item => {
+        const itemEl = createCartItemElement(item);
+        cartItemsContainer.appendChild(itemEl);
+      });
+      
+      // Update totals
+      const subtotal = cart.sub_total || cart.subtotal || 0;
+      const total = cart.grand_total || cart.total || subtotal;
+      
+      subtotalEl.textContent = formatPrice(subtotal);
+      totalEl.textContent = formatPrice(total);
+    }
+    
+    // Create cart item element for order summary
+    function createCartItemElement(item) {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'flex items-center space-x-3';
+      
+      const imageUrl = getProductImage(item);
+      const productName = item.product?.name || 'Unknown Product';
+      const quantity = item.quantity || 1;
+      const price = item.price_total || item.price || 0;
+      
+      itemDiv.innerHTML = `
+        <div class="relative">
+          <img 
+            src="${imageUrl}" 
+            alt="${productName}"
+            class="w-12 h-12 rounded object-cover"
+            onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMCAxNkMyMS42NTY5IDE2IDIzIDEyLjY1NjkgMjMgMTFDMjMgOS4zNDMxNSAyMS42NTY5IDggMjAgOEMxOC4zNDMxIDggMTcgOS4zNDMxNSAxNyAxMUMxNyAxMi42NTY5IDE4LjM0MzEgMTYgMjAgMTZaIiBmaWxsPSIjOUI5QjlCIi8+CjxwYXRoIGQ9Ik0yNiAyNkgyNlYyNEgyNlYyNloiIGZpbGw9IiM5QjlCOUIiLz4KPC9zdmc+Cg=='"
+          />
+          <span class="absolute -top-2 -right-2 bg-gray-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+            ${quantity}
+          </span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+            ${productName}
+          </p>
+          ${item.variant?.name ? `
+            <p class="text-xs text-gray-600 dark:text-gray-300">
+              ${item.variant.name}
+            </p>
+          ` : ''}
+        </div>
+        <div class="text-sm font-medium text-gray-900 dark:text-white">
+          ${formatPrice(price)}
+        </div>
+      `;
+      
+      return itemDiv;
+    }
+    
+    // Get product image
+    function getProductImage(item) {
+      if (item.product?.images && item.product.images.length > 0) {
+        return item.product.images[0].file?.url || '';
+      }
+      if (item.variant?.images && item.variant.images.length > 0) {
+        return item.variant.images[0].file?.url || '';
+      }
+      return '';
+    }
+    
+    // Format price
+    function formatPrice(amount) {
+      if (amount === undefined || amount === null) return '€0.00';
+      const price = typeof amount === 'number' ? amount : parseFloat(amount) || 0;
+      return `€${price.toFixed(2)}`;
+    }
+    
+    // Setup event listeners
+    function setupEventListeners() {
+      // Guest checkout section buttons
+      const signInBtn = document.getElementById('checkout-sign-in-btn');
+      const createAccountBtn = document.getElementById('checkout-create-account-btn');
+      const guestBtn = document.getElementById('continue-as-guest-btn');
+      
+      if (signInBtn) {
+        signInBtn.addEventListener('click', () => {
+          console.log('🛒 Sign in button clicked');
+          if (window.authHandler) {
+            window.authHandler.openModal('signin');
+          } else {
+            console.warn('🛒 Auth handler not available');
+          }
+        });
+      }
+      
+      if (createAccountBtn) {
+        createAccountBtn.addEventListener('click', () => {
+          console.log('🛒 Create account button clicked');
+          if (window.authHandler) {
+            window.authHandler.openModal('signup');
+          } else {
+            console.warn('🛒 Auth handler not available');
+          }
+        });
+      }
+      
+      if (guestBtn) {
+        guestBtn.addEventListener('click', () => {
+          console.log('🛒 Continue as guest clicked');
+          continueAsGuest();
+        });
+      }
+      
+      // Form submission
+      if (checkoutForm) {
+        checkoutForm.addEventListener('submit', handleFormSubmission);
+      }
+      
+      // Country change handler
+      if (countrySelect) {
+        countrySelect.addEventListener('change', handleCountryChange);
+      }
+      
+      // Billing address toggle
+      if (sameAsShippingCheckbox) {
+        sameAsShippingCheckbox.addEventListener('change', toggleBillingFields);
+      }
+      
+      // Address field changes (for shipping calculation)
+      const addressFields = ['checkout-address1', 'checkout-city', 'checkout-zip', 'checkout-country'];
+      addressFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+          field.addEventListener('blur', debounce(calculateShipping, 1000));
+        }
+      });
+    }
+    
+    // Continue as guest
+    function continueAsGuest() {
+      console.log('🛒 Continuing as guest checkout');
+      
+      const guestSection = document.getElementById('guest-checkout-section');
+      const formContainer = document.getElementById('checkout-form-container');
+      
+      if (guestSection) {
+        guestSection.classList.add('hidden');
+      }
+      
+      if (formContainer) {
+        formContainer.classList.remove('hidden');
+      }
+      
+      // Focus on first form field
+      const firstInput = document.querySelector('#checkout-form input:not([readonly])');
+      if (firstInput) {
+        setTimeout(() => firstInput.focus(), 100);
+      }
+    }
+    
+    // Handle country change
+    function handleCountryChange() {
+      const country = countrySelect.value;
+      const requiresState = ['US', 'CA'].includes(country);
+      
+      if (requiresState) {
+        stateField.classList.remove('hidden');
+        document.getElementById('checkout-state').required = true;
+      } else {
+        stateField.classList.add('hidden');
+        document.getElementById('checkout-state').required = false;
+      }
+    }
+    
+    // Toggle billing fields
+    function toggleBillingFields() {
+      if (sameAsShippingCheckbox.checked) {
+        billingFields.classList.add('hidden');
+      } else {
+        billingFields.classList.remove('hidden');
+      }
+    }
+    
+    // Calculate shipping
+    async function calculateShipping() {
+      try {
+        const address = getShippingAddress();
+        if (!address.address1 || !address.city || !address.zip || !address.country) {
+          return; // Not enough address info
+        }
+        
+        console.log('🛒 Calculating shipping for:', address);
+        
+        const shippingSection = document.getElementById('shipping-options-section');
+        const shippingOptions = document.getElementById('shipping-options');
+        const shippingLoading = document.getElementById('shipping-loading');
+        
+        // Show loading
+        shippingSection.classList.remove('hidden');
+        shippingLoading.classList.remove('hidden');
+        shippingOptions.innerHTML = '';
+        
+        // Get shipping rates from Swell
+        const swell = window.swell;
+        if (swell) {
+          const rates = await swell.cart.getShippingRates(address);
+          console.log('🛒 Shipping rates:', rates);
+          
+          shippingLoading.classList.add('hidden');
+          
+          if (rates && rates.length > 0) {
+            displayShippingOptions(rates);
+          } else {
+            shippingOptions.innerHTML = `
+              <div class="text-center py-4 text-gray-600">
+                No shipping options available for this address
+              </div>
+            `;
+          }
+        }
+        
+      } catch (error) {
+        console.error('🛒 Error calculating shipping:', error);
+        const shippingLoading = document.getElementById('shipping-loading');
+        if (shippingLoading) {
+          shippingLoading.classList.add('hidden');
+        }
+      }
+    }
+    
+    // Display shipping options
+    function displayShippingOptions(rates) {
+      const shippingOptions = document.getElementById('shipping-options');
+      
+      shippingOptions.innerHTML = '';
+      
+      rates.forEach((rate, index) => {
+        const optionDiv = document.createElement('div');
+        optionDiv.className = 'border border-gray-200 rounded-lg p-3 dark:border-gray-700';
+        
+        optionDiv.innerHTML = `
+          <label class="flex items-center justify-between cursor-pointer">
+            <div class="flex items-center">
+              <input
+                type="radio"
+                name="shipping_method"
+                value="${rate.id}"
+                ${index === 0 ? 'checked' : ''}
+                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+              />
+              <div class="ml-3">
+                <p class="text-sm font-medium text-gray-900 dark:text-white">
+                  ${rate.name}
+                </p>
+                ${rate.description ? `
+                  <p class="text-xs text-gray-600 dark:text-gray-300">
+                    ${rate.description}
+                  </p>
+                ` : ''}
+              </div>
+            </div>
+            <span class="text-sm font-medium text-gray-900 dark:text-white">
+              ${formatPrice(rate.price)}
+            </span>
+          </label>
+        `;
+        
+        shippingOptions.appendChild(optionDiv);
+      });
+      
+      // Update shipping cost in summary
+      if (rates.length > 0) {
+        updateShippingCost(rates[0].price);
+      }
+      
+      // Add event listeners for shipping method changes
+      shippingOptions.querySelectorAll('input[name="shipping_method"]').forEach(input => {
+        input.addEventListener('change', (e) => {
+          const selectedRate = rates.find(rate => rate.id === e.target.value);
+          if (selectedRate) {
+            updateShippingCost(selectedRate.price);
+          }
+        });
+      });
+    }
+    
+    // Update shipping cost in order summary
+    function updateShippingCost(cost) {
+      const shippingCostSection = document.getElementById('checkout-shipping-cost');
+      const shippingCostAmount = document.getElementById('shipping-cost-amount');
+      const totalEl = document.getElementById('checkout-total');
+      
+      if (cost > 0) {
+        shippingCostSection.classList.remove('hidden');
+        shippingCostAmount.textContent = formatPrice(cost);
+        
+        // Update total
+        const subtotal = cart?.sub_total || cart?.subtotal || 0;
+        const total = subtotal + cost;
+        totalEl.textContent = formatPrice(total);
+      } else {
+        shippingCostSection.classList.add('hidden');
+      }
+    }
+    
+    // Get shipping address from form
+    function getShippingAddress() {
+      return {
+        first_name: document.getElementById('checkout-first-name')?.value || '',
+        last_name: document.getElementById('checkout-last-name')?.value || '',
+        address1: document.getElementById('checkout-address1')?.value || '',
+        address2: document.getElementById('checkout-address2')?.value || '',
+        city: document.getElementById('checkout-city')?.value || '',
+        zip: document.getElementById('checkout-zip')?.value || '',
+        state: document.getElementById('checkout-state')?.value || '',
+        country: document.getElementById('checkout-country')?.value || ''
+      };
+    }
+    
+    // Handle form submission
+    async function handleFormSubmission(e) {
+      e.preventDefault();
+      
+      if (isProcessingOrder) return;
+      
+      try {
+        isProcessingOrder = true;
+        setSubmitButtonLoading(true);
+        
+        console.log('🛒 Processing checkout...');
+        
+        // Collect form data
+        const formData = new FormData(checkoutForm);
+        const orderData = {
+          account: currentUser ? { email: currentUser.email } : null,
+          shipping: getShippingAddress(),
+          billing: sameAsShippingCheckbox.checked ? getShippingAddress() : getBillingAddress(),
+          items: cart.items,
+          notes: formData.get('notes') || ''
+        };
+        
+        // Get selected shipping method
+        const selectedShipping = document.querySelector('input[name="shipping_method"]:checked');
+        if (selectedShipping) {
+          orderData.shipping_method = selectedShipping.value;
+        }
+        
+        console.log('🛒 Order data:', orderData);
+        
+        // Submit order via Swell
+        const swell = window.swell;
+        if (!swell) {
+          throw new Error('Payment system not available');
+        }
+        
+        const result = await swell.cart.submitOrder(orderData);
+        
+        if (result && result.id) {
+          console.log('✅ Order submitted successfully:', result);
+          
+          // Redirect to success page
+          window.location.href = `/order-confirmation?order=${result.id}`;
+        } else {
+          throw new Error('Order submission failed');
+        }
+        
+      } catch (error) {
+        console.error('🛒 Checkout error:', error);
+        showError(`Checkout failed: ${error.message}`);
+      } finally {
+        isProcessingOrder = false;
+        setSubmitButtonLoading(false);
+      }
+    }
+    
+    // Get billing address from form
+    function getBillingAddress() {
+      if (sameAsShippingCheckbox.checked) {
+        return getShippingAddress();
+      }
+      
+      return {
+        first_name: document.getElementById('billing-first-name')?.value || '',
+        last_name: document.getElementById('billing-last-name')?.value || '',
+        // Add other billing fields as needed
+      };
+    }
+    
+    // Set submit button loading state
+    function setSubmitButtonLoading(loading) {
+      const btn = document.getElementById('place-order-btn');
+      const text = document.getElementById('place-order-text');
+      const loadingText = document.getElementById('place-order-loading');
+      
+      if (loading) {
+        btn.disabled = true;
+        text.classList.add('hidden');
+        loadingText.classList.remove('hidden');
+      } else {
+        btn.disabled = false;
+        text.classList.remove('hidden');
+        loadingText.classList.add('hidden');
+      }
+    }
+    
+    // Show error message
+    function showError(message) {
+      const errorContainer = document.getElementById('checkout-error');
+      errorContainer.innerHTML = `
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">
+          ${message}
+        </div>
+      `;
+      errorContainer.classList.remove('hidden');
+      
+      // Scroll to error
+      errorContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
+    // Show success message
+    function showMessage(text, type = 'info') {
+      const messageEl = document.createElement('div');
+      messageEl.className = `p-4 rounded-md mb-4 ${
+        type === 'error' ? 'bg-red-100 text-red-800' : 
+        type === 'success' ? 'bg-green-100 text-green-800' : 
+        'bg-blue-100 text-blue-800'
+      }`;
+      messageEl.textContent = text;
+      
+      messageContainer.appendChild(messageEl);
+      
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        messageEl.remove();
+      }, 5000);
+    }
+    
+    // Debounce utility
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+  });
+</script>

@@ -28,9 +28,19 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> signInWithEmailAndPassword() async {
     if (_formKey.currentState?.validate() ?? false) {
       try {
+        // Check for reviewer bypass code
+        String emailToUse = _emailController.text;
+        String passwordToUse = _passwordController.text;
+        
+        if (_emailController.text.trim() == "REVIEW756488") {
+          // Use reviewer test account credentials
+          emailToUse = "test@gmail.com";
+          passwordToUse = "756488";
+        }
+        
         await Auth().signInWithEmailAndPassword(
-          email: _emailController.text,
-          password: _passwordController.text,
+          email: emailToUse,
+          password: passwordToUse,
         );
       } on FirebaseAuthException catch (e) {
         setState(() {
@@ -122,6 +132,11 @@ class _LoginPageState extends State<LoginPage> {
                 if (value == null || value.isEmpty) {
                   return 'Please enter your email';
                 }
+                // Allow reviewer bypass code
+                if (value.trim() == "REVIEW756488") {
+                  return null; // Valid for reviewer
+                }
+                // Normal email validation for regular users
                 if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
                   return 'Please enter a valid email';
                 }
@@ -142,6 +157,12 @@ class _LoginPageState extends State<LoginPage> {
               ),
               obscureText: true,
               validator: (value) {
+                // Check if reviewer bypass code is being used
+                if (_emailController.text.trim() == "REVIEW756488") {
+                  return null; // Allow any password (or no password) for reviewer
+                }
+                
+                // Normal password validation for regular users
                 if (value == null || value.isEmpty) {
                   return 'Please enter your password';
                 }
@@ -183,21 +204,22 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  isLogin = !isLogin;
-                  errorMessage = '';
-                });
-              },
-              child: Text(
-                isLogin
-                    ? 'Need an account? Sign up'
-                    : 'Already have an account? Login',
-                style: const TextStyle(color: Color.fromARGB(255, 51, 73, 152)),
-              ),
-            ),
+            // TEMPORARILY COMMENTED OUT - more extensive register functionality moved to homepage 
+            // const SizedBox(height: 16),
+            // TextButton(
+            //   onPressed: () {
+            //     setState(() {
+            //       isLogin = !isLogin;
+            //       errorMessage = '';
+            //     });
+            //   },
+            //   child: Text(
+            //     isLogin
+            //         ? 'Need an account? Sign up'
+            //         : 'Already have an account? Login',
+            //     style: const TextStyle(color: Color.fromARGB(255, 51, 73, 152)),
+            //   ),
+            // ),
           ],
         ),
       ),

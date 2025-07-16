@@ -1,4 +1,4 @@
-// src/lib/swell-auth-integration.js - Enhanced with cart association
+// src/lib/swell-auth-integration.js - FIXED: Remove cart.create() which doesn't exist
 import swell from 'swell-js';
 import authStateManager from './auth-state-manager.js';
 
@@ -91,31 +91,37 @@ class SwellAuthIntegration {
     }
   }
 
+  // 🔧 FIXED: Remove cart.create() call and handle cart association properly
   async ensureCartAssociation() {
     try {
       console.log('🛒 Ensuring cart is associated with authenticated account...');
       
-      // Get current cart
+      // Get current cart (may be null if no cart exists yet)
       let cart = await swell.cart.get();
       
+      // 🔧 FIXED: Don't try to create cart manually - Swell creates carts automatically
       if (!cart) {
-        console.log('🛒 No cart found, creating new one...');
-        cart = await swell.cart.create();
+        console.log('🛒 No cart found - cart will be created automatically when first item is added');
+        return { success: true, cart: null, message: 'No cart exists yet, will be created on first add' };
       }
       
       // Check if cart is already associated with account
       const currentAccount = await this.getCurrentSwellAccount();
-      if (cart.account_id === currentAccount?.id) {
+      if (!currentAccount) {
+        console.log('🛒 No authenticated account found, skipping cart association');
+        return { success: false, error: 'No authenticated account' };
+      }
+      
+      if (cart.account_id === currentAccount.id) {
         console.log('✅ Cart already associated with account');
         return { success: true, cart };
       }
       
-      console.log('🛒 Associating cart with authenticated account...');
+      console.log('🛒 Associating existing cart with authenticated account...');
       
       // Force cart to be associated with the authenticated account
-      // This is the key step that was missing!
       const updatedCart = await swell.cart.update({
-        account_id: currentAccount?.id
+        account_id: currentAccount.id
       });
       
       if (updatedCart && updatedCart.account_id) {
@@ -128,6 +134,13 @@ class SwellAuthIntegration {
       
     } catch (error) {
       console.error('❌ Error associating cart with account:', error);
+      
+      // If the error is about cart not existing, that's actually fine
+      if (error.message?.includes('cart') && error.message?.includes('not found')) {
+        console.log('🛒 No cart exists yet - this is normal, cart will be created when items are added');
+        return { success: true, cart: null, message: 'No cart exists yet' };
+      }
+      
       return { success: false, error: error.message };
     }
   }
@@ -226,9 +239,8 @@ class SwellAuthIntegration {
       // Set cart customer info without creating account
       const cart = await swell.cart.update({
         account: {
-          email: email,
-          first_name: firebaseUser.displayName?.split(' ')[0] || '',
-          last_name: firebaseUser.displayName?.split(' ').slice(1).join(' ') || ''
+          email: email
+          // Remove first_name and last_name - they're restricted from frontend updates
         }
       });
 
@@ -366,7 +378,14 @@ class SwellAuthIntegration {
         create: !!(swell?.account?.create),
         logout: !!(swell?.account?.logout)
       },
-      hasCart: !!swell?.cart
+      hasCart: !!swell?.cart,
+      hasCartMethods: {
+        get: !!(swell?.cart?.get),
+        update: !!(swell?.cart?.update),
+        addItem: !!(swell?.cart?.addItem),
+        // Note: cart.create does NOT exist in Swell API
+        create: !!(swell?.cart?.create)  // This should be false
+      }
     });
     console.groupEnd();
   }

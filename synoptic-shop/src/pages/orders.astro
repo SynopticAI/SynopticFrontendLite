@@ -1,142 +1,153 @@
 ---
-// src/pages/orders.astro - Fixed Orders page with proper Swell integration
+// src/pages/orders.astro - FIXED Orders Page with Proper Swell Auth Integration
 import PageLayout from '~/layouts/PageLayout.astro';
-import { getCanonical } from '~/utils/permalinks';
+import { getCanonical, getHomePermalink } from '~/utils/permalinks';
 
 const metadata = {
   title: 'My Orders - Synoptic',
-  description: 'View and manage your Synoptic orders',
+  description: 'View your order history and track shipments.',
   canonical: getCanonical('/orders'),
-  noindex: true, // Orders pages should not be indexed
+  noindex: true, // Orders should not be indexed
 };
 ---
 
 <PageLayout metadata={metadata}>
   <!-- Orders Page Content -->
   <section class="py-16 md:py-20">
-    <div class="mx-auto max-w-6xl px-4 sm:px-6">
-      
+    <div class="mx-auto max-w-7xl px-4 sm:px-6">
       <!-- Page Header -->
       <div class="mb-8">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white lg:text-4xl mb-2">
-              My Orders
-            </h1>
-            <p class="text-gray-600 dark:text-gray-300">
-              Track and manage your Synoptic purchases
-            </p>
-          </div>
-          
-          <!-- Search and Filters -->
-          <div class="mt-6 md:mt-0 flex flex-col sm:flex-row gap-4">
-            <!-- Search -->
-            <div class="relative">
-              <input 
-                type="text" 
-                id="order-search"
-                placeholder="Search orders..."
-                class="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-              />
-              <svg class="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-              </svg>
-            </div>
-            
-            <!-- Status Filter -->
-            <select 
-              id="status-filter"
-              class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-            >
-              <option value="">All Orders</option>
-              <option value="pending">Pending</option>
-              <option value="delivery_pending">Processing</option>
-              <option value="shipped">Shipped</option>
-              <option value="delivered">Delivered</option>
-              <option value="canceled">Canceled</option>
-            </select>
-          </div>
-        </div>
+        <h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white md:text-4xl">
+          My Orders
+        </h1>
+        <p class="mt-4 text-lg text-gray-600 dark:text-gray-300">
+          Track your order history and shipment status
+        </p>
       </div>
 
-      <!-- Auth Check Message -->
-      <div id="auth-required" class="hidden text-center py-16">
-        <div class="max-w-md mx-auto">
-          <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-          </svg>
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Sign In Required</h2>
-          <p class="text-gray-600 dark:text-gray-300 mb-6">Please sign in to view your orders</p>
-          <button 
-            id="sign-in-button" 
-            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+      <!-- Authentication Required Section -->
+      <div id="auth-required" class="hidden text-center py-12">
+        <div class="mx-auto max-w-md">
+          <div class="h-16 w-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+            <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            Sign In Required
+          </h3>
+          <p class="text-gray-600 dark:text-gray-300 mb-6">
+            Please sign in to view your order history.
+          </p>
+          <button
+            id="sign-in-button"
+            class="rounded-md bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             Sign In
           </button>
         </div>
       </div>
 
-      <!-- Loading State -->
-      <div id="orders-loading" class="hidden text-center py-16">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p class="text-gray-600 dark:text-gray-300">Loading your orders...</p>
+      <!-- Loading Section -->
+      <div id="orders-loading" class="hidden text-center py-12">
+        <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+        <p class="mt-4 text-gray-600 dark:text-gray-300">Loading your orders...</p>
       </div>
 
-      <!-- Error State -->
-      <div id="orders-error" class="hidden text-center py-16">
-        <div class="max-w-md mx-auto">
-          <svg class="w-16 h-16 mx-auto text-red-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Unable to Load Orders</h2>
-          <p class="text-gray-600 dark:text-gray-300 mb-6" id="error-message">Something went wrong while loading your orders.</p>
-          <button 
-            id="retry-button" 
-            class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+      <!-- Error Section -->
+      <div id="orders-error" class="hidden text-center py-12">
+        <div class="mx-auto max-w-md">
+          <div class="h-16 w-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+            <svg class="h-8 w-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            Unable to Load Orders
+          </h3>
+          <p id="error-message" class="text-gray-600 dark:text-gray-300 mb-6">
+            Something went wrong while loading your orders.
+          </p>
+          <button
+            id="retry-button"
+            class="rounded-md bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             Try Again
           </button>
         </div>
       </div>
 
-      <!-- Empty State -->
-      <div id="orders-empty" class="hidden text-center py-16">
-        <div class="max-w-md mx-auto">
-          <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
-          </svg>
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">No Orders Yet</h2>
-          <p class="text-gray-600 dark:text-gray-300 mb-6">You haven't placed any orders yet. Start shopping to see your orders here.</p>
-          <a 
-            href="/shop" 
-            class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+      <!-- Empty State Section -->
+      <div id="orders-empty" class="hidden text-center py-12">
+        <div class="mx-auto max-w-md">
+          <div class="h-16 w-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+            <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            No Orders Yet
+          </h3>
+          <p class="text-gray-600 dark:text-gray-300 mb-6">
+            You haven't placed any orders yet. Start shopping to see your orders here.
+          </p>
+          <a
+            href="/shop"
+            class="rounded-md bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             Start Shopping
           </a>
         </div>
       </div>
 
-      <!-- Orders List -->
-      <div id="orders-list" class="hidden">
-        <div id="orders-container" class="space-y-6">
-          <!-- Orders will be populated here -->
+      <!-- Orders Content -->
+      <div id="orders-container" class="hidden">
+        <!-- Search and Filter Section -->
+        <div class="mb-8 flex flex-col sm:flex-row gap-4">
+          <div class="flex-1">
+            <input
+              type="text"
+              id="order-search"
+              placeholder="Search orders by number, item name..."
+              class="w-full rounded-md border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          <div class="sm:w-48">
+            <select
+              id="status-filter"
+              class="w-full rounded-md border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            >
+              <option value="">All Orders</option>
+              <option value="pending">Pending</option>
+              <option value="draft">Draft</option>
+              <option value="payment_pending">Payment Pending</option>
+              <option value="delivery_pending">Delivery Pending</option>
+              <option value="hold">On Hold</option>
+              <option value="complete">Complete</option>
+              <option value="canceled">Canceled</option>
+            </select>
+          </div>
         </div>
 
-        <!-- Pagination -->
-        <div id="orders-pagination" class="hidden mt-8 flex items-center justify-center space-x-2">
-          <button 
-            id="prev-page" 
-            class="px-3 py-2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled
+        <!-- Orders List -->
+        <div id="orders-list" class="space-y-6">
+          <!-- Orders will be inserted here -->
+        </div>
+
+        <!-- Pagination (if needed) -->
+        <div id="pagination" class="hidden mt-8 flex items-center justify-center">
+          <button
+            id="prev-page"
+            class="rounded-l-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             Previous
           </button>
-          <div id="page-numbers" class="flex space-x-1">
-            <!-- Page numbers will be populated here -->
-          </div>
-          <button 
-            id="next-page" 
-            class="px-3 py-2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          <span id="page-info" class="border-t border-b border-gray-300 px-4 py-2 text-sm text-gray-700 dark:border-gray-600 dark:text-gray-300">
+            Page 1 of 1
+          </span>
+          <button
+            id="next-page"
+            class="rounded-r-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             Next
           </button>
@@ -146,38 +157,39 @@ const metadata = {
   </section>
 
   <!-- Order Details Modal -->
-  <div id="order-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-      <div class="fixed inset-0 transition-opacity">
-        <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-      </div>
+  <div id="order-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="flex min-h-screen items-center justify-center p-4">
+      <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" id="modal-backdrop"></div>
       
-      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-medium text-gray-900" id="modal-title">
-              Order Details
-            </h3>
-            <button class="close-modal text-gray-400 hover:text-gray-600">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
-          </div>
-          
-          <div id="modal-content">
-            <!-- Order details will be populated here -->
-          </div>
+      <div class="relative w-full max-w-4xl rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
+        <!-- Modal Header -->
+        <div class="mb-6 flex items-center justify-between">
+          <h2 id="modal-title" class="text-2xl font-bold text-gray-900 dark:text-white">
+            Order Details
+          </h2>
+          <button
+            id="close-modal"
+            class="rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700"
+          >
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Modal Content -->
+        <div id="modal-content">
+          <!-- Order details will be loaded here -->
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Success/Error Messages -->
+  <!-- Message Container -->
   <div id="message-container" class="fixed top-4 right-4 z-50"></div>
 </PageLayout>
 
-<!-- Orders Page JavaScript -->
+<!-- Orders Page JavaScript with FIXED Swell Auth Integration -->
 <script>
   document.addEventListener('DOMContentLoaded', async function() {
     console.log('📦 Orders page initializing...');
@@ -194,11 +206,53 @@ const metadata = {
     const statusFilter = document.getElementById('status-filter');
     const signInButton = document.getElementById('sign-in-button');
     const retryButton = document.getElementById('retry-button');
+    const errorMessage = document.getElementById('error-message');
     
     let currentUser = null;
     let orders = [];
     let currentPage = 1;
     let totalPages = 1;
+    let searchTimeout = null;
+    
+    // Show specific section
+    function showSection(sectionId) {
+      // Hide all sections
+      [authRequired, ordersLoading, ordersError, ordersEmpty, ordersContainer].forEach(el => {
+        if (el) el.classList.add('hidden');
+      });
+      
+      // Show target section
+      const targetSection = document.getElementById(sectionId);
+      if (targetSection) {
+        targetSection.classList.remove('hidden');
+      }
+    }
+    
+    // Show error with message
+    function showError(message) {
+      if (errorMessage) {
+        errorMessage.textContent = message;
+      }
+      showSection('orders-error');
+    }
+    
+    // Show message to user
+    function showMessage(text, type = 'info') {
+      const messageEl = document.createElement('div');
+      messageEl.className = `p-4 rounded-md mb-4 ${
+        type === 'error' ? 'bg-red-100 text-red-800' : 
+        type === 'success' ? 'bg-green-100 text-green-800' : 
+        'bg-blue-100 text-blue-800'
+      }`;
+      messageEl.textContent = text;
+      
+      messageContainer.appendChild(messageEl);
+      
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        messageEl.remove();
+      }, 5000);
+    }
     
     // Wait for auth state to be ready
     async function waitForAuth() {
@@ -212,7 +266,10 @@ const metadata = {
             currentUser = user;
             
             if (user) {
-              loadOrders();
+              // Wait for Swell auth integration before loading orders
+              waitForSwellAuthentication().then(() => {
+                loadOrders();
+              });
             } else {
               showSection('auth-required');
             }
@@ -226,7 +283,10 @@ const metadata = {
             currentUser = user;
             
             if (user) {
-              loadOrders();
+              // Wait for Swell auth integration before loading orders
+              waitForSwellAuthentication().then(() => {
+                loadOrders();
+              });
             } else {
               showSection('auth-required');
             }
@@ -239,11 +299,75 @@ const metadata = {
       });
     }
     
-    // Load orders from Swell
+    // FIXED: Wait for Swell authentication to complete
+    async function waitForSwellAuthentication() {
+      console.log('📦 Waiting for Swell authentication to complete...');
+      
+      // Wait for Swell to be available
+      await waitForSwell();
+      
+      // Wait for Swell auth integration to complete
+      return new Promise((resolve) => {
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds max wait
+        
+        const checkSwellAuth = async () => {
+          attempts++;
+          
+          try {
+            const account = await window.swell.account.get();
+            if (account && account.email) {
+              console.log('✅ Swell authentication verified for:', account.email);
+              resolve(account);
+              return;
+            }
+          } catch (error) {
+            console.log(`📦 Swell auth check ${attempts}/${maxAttempts}:`, error.message);
+          }
+          
+          if (attempts >= maxAttempts) {
+            console.warn('⚠️ Swell authentication timeout, proceeding anyway...');
+            resolve(null);
+            return;
+          }
+          
+          // Wait and try again
+          setTimeout(checkSwellAuth, 100);
+        };
+        
+        // Start checking
+        checkSwellAuth();
+      });
+    }
+    
+    // Wait for Swell to be available
+    async function waitForSwell() {
+      return new Promise((resolve) => {
+        if (window.swell) {
+          resolve(window.swell);
+        } else {
+          const checkSwell = () => {
+            if (window.swell) {
+              resolve(window.swell);
+            } else {
+              setTimeout(checkSwell, 100);
+            }
+          };
+          checkSwell();
+        }
+      });
+    }
+    
+    // FIXED: Load orders with better error handling and retry logic
     async function loadOrders(page = 1, search = '', status = '') {
       try {
         showSection('orders-loading');
         console.log('📦 Loading orders...', { page, search, status });
+        
+        // Ensure we have a Firebase user
+        if (!currentUser) {
+          throw new Error('No authenticated user found');
+        }
         
         // Wait for Swell to be available
         await waitForSwell();
@@ -253,12 +377,51 @@ const metadata = {
           throw new Error('Swell not available');
         }
         
-        // Check if user is authenticated with Swell
-        const account = await swell.account.get();
+        // CRITICAL FIX: Wait for Swell authentication with retries
+        let account = null;
+        let authAttempts = 0;
+        const maxAuthAttempts = 3;
+        
+        while (!account && authAttempts < maxAuthAttempts) {
+          authAttempts++;
+          console.log(`📦 Swell auth attempt ${authAttempts}/${maxAuthAttempts}...`);
+          
+          try {
+            // Check current Swell auth state
+            account = await swell.account.get();
+            
+            if (!account) {
+              console.log('📦 No Swell account found, triggering re-authentication...');
+              
+              // Trigger Swell auth integration manually
+              if (window.swellAuthIntegration) {
+                await window.swellAuthIntegration.authenticateWithSwell(currentUser);
+                
+                // Wait a bit for auth to complete
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Try to get account again
+                account = await swell.account.get();
+              }
+            }
+            
+            if (account) {
+              console.log('✅ Swell account verified:', account.email);
+              break;
+            }
+            
+          } catch (authError) {
+            console.warn(`📦 Swell auth attempt ${authAttempts} failed:`, authError);
+            
+            if (authAttempts < maxAuthAttempts) {
+              // Wait before retrying
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
+        }
+        
         if (!account) {
-          console.log('📦 User not authenticated with Swell, trying to authenticate...');
-          // Try to wait for Swell auth integration
-          await waitForSwellAuth();
+          throw new Error('Unable to authenticate with Swell after multiple attempts. Please try refreshing the page.');
         }
         
         // Build query options
@@ -280,8 +443,13 @@ const metadata = {
         
         console.log('📦 Fetching orders with options:', queryOptions);
         
-        // Fetch orders
-        const result = await swell.account.listOrders(queryOptions);
+        // Fetch orders with timeout
+        const orderPromise = swell.account.listOrders(queryOptions);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 10000)
+        );
+        
+        const result = await Promise.race([orderPromise, timeoutPromise]);
         console.log('📦 Orders result:', result);
         
         if (result && result.results) {
@@ -293,7 +461,7 @@ const metadata = {
             showSection('orders-empty');
           } else {
             displayOrders();
-            showSection('orders-list');
+            showSection('orders-container');
           }
         } else {
           console.warn('📦 No orders result or unexpected format:', result);
@@ -306,531 +474,173 @@ const metadata = {
       }
     }
     
-    // Wait for Swell to be available
-    async function waitForSwell() {
-      return new Promise((resolve) => {
-        if (window.swell) {
-          resolve(window.swell);
-        } else {
-          const checkSwell = () => {
-            if (window.swell) {
-              resolve(window.swell);
-            } else {
-              setTimeout(checkSwell, 100);
-            }
-          };
-          checkSwell();
-        }
-      });
-    }
-    
-    // Wait for Swell auth integration to complete
-    async function waitForSwellAuth() {
-      return new Promise((resolve) => {
-        if (window.swellAuthIntegration) {
-          resolve();
-        } else {
-          // Listen for auth completion event
-          const authCompleteHandler = () => {
-            window.removeEventListener('swellAuthComplete', authCompleteHandler);
-            resolve();
-          };
-          window.addEventListener('swellAuthComplete', authCompleteHandler);
-          
-          // Timeout after 10 seconds
-          setTimeout(() => {
-            window.removeEventListener('swellAuthComplete', authCompleteHandler);
-            resolve();
-          }, 10000);
-        }
-      });
-    }
-    
     // Display orders in the UI
     function displayOrders() {
-      if (!ordersContainer) return;
+      if (!ordersList || !orders.length) return;
       
-      ordersContainer.innerHTML = '';
+      ordersList.innerHTML = '';
       
       orders.forEach(order => {
-        const orderElement = createOrderElement(order);
-        ordersContainer.appendChild(orderElement);
+        const orderCard = createOrderCard(order);
+        ordersList.appendChild(orderCard);
       });
-      
-      updatePagination();
     }
     
-    // Create order element
-    function createOrderElement(order) {
+    // Create order card element
+    function createOrderCard(order) {
       const orderDiv = document.createElement('div');
-      orderDiv.className = 'bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6';
+      orderDiv.className = 'rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800';
       
-      const statusInfo = getOrderStatusInfo(order.status);
+      const orderNumber = order.number || order.id.slice(-8).toUpperCase();
       const orderDate = new Date(order.date_created).toLocaleDateString();
-      const orderTotal = formatPrice(order.grand_total || order.total || 0);
+      const orderTotal = formatPrice(order.grand_total || 0);
       const itemCount = order.items ? order.items.length : 0;
       
+      const statusInfo = getOrderStatusInfo(order.status);
+      
       orderDiv.innerHTML = `
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-          <div class="flex-1">
-            <div class="flex items-center space-x-4 mb-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div class="mb-4 sm:mb-0">
+            <div class="flex items-center space-x-4">
               <div>
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                  Order #${order.number || order.id.slice(-8)}
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                  Order #${orderNumber}
                 </h3>
                 <p class="text-sm text-gray-600 dark:text-gray-300">
-                  Placed on ${orderDate}
+                  ${orderDate} • ${itemCount} item${itemCount !== 1 ? 's' : ''}
                 </p>
               </div>
               <span class="px-3 py-1 text-xs font-medium rounded-full ${statusInfo.bgColor} ${statusInfo.textColor}">
                 ${statusInfo.label}
               </span>
             </div>
-            
-            <div class="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-300">
-              <span>${itemCount} item${itemCount !== 1 ? 's' : ''}</span>
-              <span class="font-semibold text-gray-900 dark:text-white">${orderTotal}</span>
-            </div>
-            
-            ${order.items && order.items.length > 0 ? `
-              <div class="mt-4 flex -space-x-2">
-                ${order.items.slice(0, 3).map(item => `
-                  <img 
-                    src="${getProductImage(item)}" 
-                    alt="${item.product?.name || 'Product'}"
-                    class="w-10 h-10 rounded-full border-2 border-white object-cover"
-                    onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMCAxNkMyMS42NTY5IDE2IDIzIDEyLjY1NjkgMjMgMTFDMjMgOS4zNDMxNSAyMS42NTY5IDggMjAgOEMxOC4zNDMxIDggMTcgOS4zNDMxNSAxNyAxMUMxNyAxMi42NTY5IDE4LjM0MzEgMTYgMjAgMTZaIiBmaWxsPSIjOUI5QjlCIi8+CjxwYXRoIGQ9Ik0yNiAyNkgyNlYyNEgyNlYyNloiIGZpbGw9IiM5QjlCOUIiLz4KPC9zdmc+Cg=='"
-                  />
-                `).join('')}
-                ${order.items.length > 3 ? `
-                  <div class="w-10 h-10 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600">
-                    +${order.items.length - 3}
-                  </div>
-                ` : ''}
-              </div>
-            ` : ''}
           </div>
           
-          <div class="mt-4 lg:mt-0 lg:ml-6 flex space-x-3">
-            <button 
-              onclick="viewOrderDetails('${order.id}')"
-              class="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+          <div class="flex items-center space-x-4">
+            <div class="text-right">
+              <p class="text-lg font-medium text-gray-900 dark:text-white">
+                ${orderTotal}
+              </p>
+            </div>
+            <button
+              class="view-order-btn rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              data-order-id="${order.id}"
             >
               View Details
             </button>
-            ${canReorderOrder(order) ? `
-              <button 
-                onclick="reorderOrder('${order.id}')"
-                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Reorder
-              </button>
-            ` : ''}
           </div>
         </div>
+        
+        ${order.items && order.items.length > 0 ? `
+          <div class="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+            <div class="flex items-center space-x-4 overflow-x-auto">
+              ${order.items.slice(0, 3).map(item => `
+                <div class="flex-shrink-0 flex items-center space-x-3">
+                  ${item.product && item.product.images && item.product.images.length > 0 ? `
+                    <img
+                      src="${item.product.images[0].file.url}"
+                      alt="${item.product.name || 'Product'}"
+                      class="h-12 w-12 rounded-md object-cover"
+                    />
+                  ` : `
+                    <div class="h-12 w-12 rounded-md bg-gray-200 dark:bg-gray-600"></div>
+                  `}
+                  <div>
+                    <p class="text-sm font-medium text-gray-900 dark:text-white">
+                      ${item.product ? item.product.name : 'Product'}
+                    </p>
+                    <p class="text-sm text-gray-600 dark:text-gray-300">
+                      Qty: ${item.quantity}
+                    </p>
+                  </div>
+                </div>
+              `).join('')}
+              ${order.items.length > 3 ? `
+                <div class="flex-shrink-0 text-sm text-gray-600 dark:text-gray-300">
+                  +${order.items.length - 3} more item${order.items.length - 3 !== 1 ? 's' : ''}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        ` : ''}
       `;
       
       return orderDiv;
     }
     
-    // Get order status info
+    // Get order status information
     function getOrderStatusInfo(status) {
       const statusMap = {
-        'pending': {
-          label: 'Pending',
-          bgColor: 'bg-yellow-100',
-          textColor: 'text-yellow-800'
-        },
-        'draft': {
-          label: 'Draft',
-          bgColor: 'bg-gray-100',
-          textColor: 'text-gray-800'
-        },
-        'payment_pending': {
-          label: 'Payment Pending',
-          bgColor: 'bg-orange-100',
-          textColor: 'text-orange-800'
-        },
-        'delivery_pending': {
-          label: 'Processing',
-          bgColor: 'bg-blue-100',
-          textColor: 'text-blue-800'
-        },
-        'shipped': {
-          label: 'Shipped',
-          bgColor: 'bg-indigo-100',
-          textColor: 'text-indigo-800'
-        },
-        'delivered': {
-          label: 'Delivered',
-          bgColor: 'bg-green-100',
-          textColor: 'text-green-800'
-        },
-        'canceled': {
-          label: 'Canceled',
-          bgColor: 'bg-red-100',
-          textColor: 'text-red-800'
-        },
-        'returned': {
-          label: 'Returned',
-          bgColor: 'bg-purple-100',
-          textColor: 'text-purple-800'
-        }
+        'draft': { label: 'Draft', bgColor: 'bg-gray-100', textColor: 'text-gray-800' },
+        'pending': { label: 'Pending', bgColor: 'bg-yellow-100', textColor: 'text-yellow-800' },
+        'payment_pending': { label: 'Payment Pending', bgColor: 'bg-orange-100', textColor: 'text-orange-800' },
+        'delivery_pending': { label: 'Delivery Pending', bgColor: 'bg-blue-100', textColor: 'text-blue-800' },
+        'hold': { label: 'On Hold', bgColor: 'bg-red-100', textColor: 'text-red-800' },
+        'complete': { label: 'Complete', bgColor: 'bg-green-100', textColor: 'text-green-800' },
+        'canceled': { label: 'Canceled', bgColor: 'bg-gray-100', textColor: 'text-gray-800' }
       };
       
-      return statusMap[status] || {
-        label: status || 'Unknown',
-        bgColor: 'bg-gray-100',
-        textColor: 'text-gray-800'
-      };
+      return statusMap[status] || { label: status || 'Unknown', bgColor: 'bg-gray-100', textColor: 'text-gray-800' };
     }
     
     // Format price
     function formatPrice(amount) {
-      if (amount === undefined || amount === null) return '€0.00';
-      const price = typeof amount === 'number' ? amount : parseFloat(amount) || 0;
-      return `€${price.toFixed(2)}`;
-    }
-    
-    // Get product image
-    function getProductImage(item) {
-      if (item.product?.images && item.product.images.length > 0) {
-        return item.product.images[0].file?.url || '';
-      }
-      if (item.variant?.images && item.variant.images.length > 0) {
-        return item.variant.images[0].file?.url || '';
-      }
-      return '';
-    }
-    
-    // Check if order can be reordered
-    function canReorderOrder(order) {
-      return order.status === 'delivered' || order.status === 'completed';
-    }
-    
-    // Update pagination
-    function updatePagination() {
-      const pagination = document.getElementById('orders-pagination');
-      const prevBtn = document.getElementById('prev-page');
-      const nextBtn = document.getElementById('next-page');
-      const pageNumbers = document.getElementById('page-numbers');
-      
-      if (!pagination || totalPages <= 1) {
-        if (pagination) pagination.classList.add('hidden');
-        return;
-      }
-      
-      pagination.classList.remove('hidden');
-      
-      // Update prev/next buttons
-      if (prevBtn) {
-        prevBtn.disabled = currentPage <= 1;
-        prevBtn.onclick = () => goToPage(currentPage - 1);
-      }
-      
-      if (nextBtn) {
-        nextBtn.disabled = currentPage >= totalPages;
-        nextBtn.onclick = () => goToPage(currentPage + 1);
-      }
-      
-      // Update page numbers
-      if (pageNumbers) {
-        pageNumbers.innerHTML = '';
-        
-        for (let i = 1; i <= Math.min(totalPages, 5); i++) {
-          const button = document.createElement('button');
-          button.textContent = i;
-          button.className = `px-3 py-2 text-sm font-medium rounded-lg ${
-            i === currentPage 
-              ? 'bg-blue-600 text-white' 
-              : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-          }`;
-          button.onclick = () => goToPage(i);
-          pageNumbers.appendChild(button);
-        }
-      }
-    }
-    
-    // Go to page
-    function goToPage(page) {
-      if (page < 1 || page > totalPages || page === currentPage) return;
-      
-      currentPage = page;
-      const search = orderSearch?.value || '';
-      const status = statusFilter?.value || '';
-      loadOrders(page, search, status);
-    }
-    
-    // View order details (global function)
-    window.viewOrderDetails = async function(orderId) {
-      try {
-        console.log('📦 Loading order details for:', orderId);
-        
-        const swell = window.swell;
-        if (!swell) {
-          throw new Error('Swell not available');
-        }
-        
-        const order = await swell.account.getOrder(orderId, {
-          expand: ['items.product', 'items.variant']
-        });
-        
-        if (order) {
-          showOrderModal(order);
-        } else {
-          showMessage('Order not found', 'error');
-        }
-        
-      } catch (error) {
-        console.error('📦 Error loading order details:', error);
-        showMessage('Failed to load order details', 'error');
-      }
-    };
-    
-    // Reorder (global function)
-    window.reorderOrder = async function(orderId) {
-      try {
-        console.log('📦 Reordering:', orderId);
-        
-        const order = orders.find(o => o.id === orderId);
-        if (!order || !order.items) {
-          throw new Error('Order items not found');
-        }
-        
-        // Add items to cart
-        const swell = window.swell;
-        if (!swell) {
-          throw new Error('Swell not available');
-        }
-        
-        let addedItems = 0;
-        for (const item of order.items) {
-          if (item.product) {
-            try {
-              await swell.cart.addItem({
-                product_id: item.product.id,
-                quantity: item.quantity || 1,
-                variant_id: item.variant?.id
-              });
-              addedItems++;
-            } catch (error) {
-              console.warn('📦 Could not add item to cart:', item.product.name, error);
-            }
-          }
-        }
-        
-        if (addedItems > 0) {
-          showMessage(`Added ${addedItems} items to cart`, 'success');
-          
-          // Refresh cart UI if available
-          if (window.cartHandler) {
-            window.cartHandler.refreshCart();
-          }
-        } else {
-          showMessage('No items could be added to cart', 'error');
-        }
-        
-      } catch (error) {
-        console.error('📦 Error reordering:', error);
-        showMessage('Failed to reorder items', 'error');
-      }
-    };
-    
-    // Show order modal
-    function showOrderModal(order) {
-      const modal = document.getElementById('order-modal');
-      const modalContent = document.getElementById('modal-content');
-      
-      if (!modal || !modalContent) return;
-      
-      const statusInfo = getOrderStatusInfo(order.status);
-      const orderDate = new Date(order.date_created).toLocaleDateString();
-      const orderTotal = formatPrice(order.grand_total || order.total || 0);
-      
-      modalContent.innerHTML = `
-        <div class="space-y-6">
-          <!-- Order Header -->
-          <div class="border-b pb-4">
-            <div class="flex items-center justify-between mb-2">
-              <h4 class="font-semibold">Order #${order.number || order.id.slice(-8)}</h4>
-              <span class="px-3 py-1 text-xs font-medium rounded-full ${statusInfo.bgColor} ${statusInfo.textColor}">
-                ${statusInfo.label}
-              </span>
-            </div>
-            <p class="text-sm text-gray-600">Placed on ${orderDate}</p>
-          </div>
-          
-          <!-- Order Items -->
-          <div>
-            <h5 class="font-medium mb-3">Items (${order.items?.length || 0})</h5>
-            <div class="space-y-3">
-              ${order.items ? order.items.map(item => `
-                <div class="flex items-center space-x-3">
-                  <img 
-                    src="${getProductImage(item)}" 
-                    alt="${item.product?.name || 'Product'}"
-                    class="w-12 h-12 rounded object-cover"
-                    onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMCAxNkMyMS42NTY5IDE2IDIzIDEyLjY1NjkgMjMgMTFDMjMgOS4zNDMxNSAyMS42NTY5IDggMjAgOEMxOC4zNDMxIDggMTcgOS4zNDMxNSAxNyAxMUMxNyAxMi42NTY5IDE4LjM0MzEgMTYgMjAgMTZaIiBmaWxsPSIjOUI5QjlCIi8+CjxwYXRoIGQ9Ik0yNiAyNkgyNlYyNEgyNlYyNloiIGZpbGw9IiM5QjlCOUIiLz4KPC9zdmc+Cg=='"
-                  />
-                  <div class="flex-1">
-                    <p class="font-medium text-sm">${item.product?.name || 'Unknown Product'}</p>
-                    <p class="text-xs text-gray-600">Qty: ${item.quantity || 1}</p>
-                  </div>
-                  <p class="font-medium text-sm">${formatPrice(item.price_total || item.price || 0)}</p>
-                </div>
-              `).join('') : '<p class="text-gray-600">No items found</p>'}
-            </div>
-          </div>
-          
-          <!-- Order Total -->
-          <div class="border-t pt-4">
-            <div class="flex justify-between font-semibold">
-              <span>Total</span>
-              <span>${orderTotal}</span>
-            </div>
-          </div>
-          
-          <!-- Shipping Address -->
-          ${order.shipping ? `
-            <div>
-              <h5 class="font-medium mb-2">Shipping Address</h5>
-              <div class="text-sm text-gray-600">
-                <p>${order.shipping.name || ''}</p>
-                <p>${order.shipping.address1 || ''}</p>
-                ${order.shipping.address2 ? `<p>${order.shipping.address2}</p>` : ''}
-                <p>${order.shipping.zip || ''} ${order.shipping.city || ''}</p>
-                ${order.shipping.state ? `<p>${order.shipping.state}</p>` : ''}
-                <p>${order.shipping.country || ''}</p>
-              </div>
-            </div>
-          ` : ''}
-        </div>
-      `;
-      
-      modal.classList.remove('hidden');
-    }
-    
-    // Close modal
-    function closeModal() {
-      const modal = document.getElementById('order-modal');
-      if (modal) {
-        modal.classList.add('hidden');
-      }
-    }
-    
-    // Show section
-    function showSection(sectionId) {
-      const sections = [
-        'auth-required',
-        'orders-loading', 
-        'orders-error',
-        'orders-empty',
-        'orders-list'
-      ];
-
-      sections.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-          if (id === sectionId) {
-            el.classList.remove('hidden');
-          } else {
-            el.classList.add('hidden');
-          }
-        }
-      });
-
-      // Hide pagination when not showing orders list
-      const paginationEl = document.getElementById('orders-pagination');
-      if (paginationEl && sectionId !== 'orders-list') {
-        paginationEl.classList.add('hidden');
-      }
-    }
-    
-    // Show error
-    function showError(message) {
-      const errorSection = document.getElementById('orders-error');
-      const errorMessage = document.getElementById('error-message');
-      
-      if (errorMessage) {
-        errorMessage.textContent = message;
-      }
-      
-      showSection('orders-error');
-    }
-    
-    // Show message
-    function showMessage(text, type = 'info') {
-      const messageEl = document.createElement('div');
-      messageEl.className = `p-4 rounded-md mb-4 ${
-        type === 'error' ? 'bg-red-100 text-red-800' : 
-        type === 'success' ? 'bg-green-100 text-green-800' : 
-        'bg-blue-100 text-blue-800'
-      }`;
-      messageEl.textContent = text;
-      
-      messageContainer.appendChild(messageEl);
-      
-      // Auto-remove after 5 seconds
-      setTimeout(() => {
-        messageEl.remove();
-      }, 5000);
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+      }).format(amount);
     }
     
     // Event listeners
-    if (signInButton) {
-      signInButton.addEventListener('click', () => {
-        if (window.authHandler) {
-          window.authHandler.openModal('signin');
-        }
-      });
-    }
+    signInButton?.addEventListener('click', () => {
+      if (window.authHandler) {
+        window.authHandler.openModal('signin');
+      }
+    });
     
-    if (retryButton) {
-      retryButton.addEventListener('click', () => {
-        if (currentUser) {
-          loadOrders();
-        }
-      });
-    }
+    retryButton?.addEventListener('click', () => {
+      if (currentUser) {
+        loadOrders();
+      } else {
+        waitForAuth();
+      }
+    });
     
-    // Search and filter
-    let searchTimeout;
-    if (orderSearch) {
-      orderSearch.addEventListener('input', () => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-          if (currentUser) {
-            const search = orderSearch.value;
-            const status = statusFilter?.value || '';
-            loadOrders(1, search, status);
-          }
-        }, 500);
-      });
-    }
+    // Search functionality
+    orderSearch?.addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        loadOrders(1, e.target.value, statusFilter?.value || '');
+      }, 500);
+    });
     
-    if (statusFilter) {
-      statusFilter.addEventListener('change', () => {
-        if (currentUser) {
-          const search = orderSearch?.value || '';
-          const status = statusFilter.value;
-          loadOrders(1, search, status);
-        }
-      });
-    }
+    // Status filter
+    statusFilter?.addEventListener('change', (e) => {
+      loadOrders(1, orderSearch?.value || '', e.target.value);
+    });
     
-    // Modal close events
-    const modal = document.getElementById('order-modal');
-    if (modal) {
-      const closeButtons = modal.querySelectorAll('.close-modal');
-      closeButtons.forEach(btn => {
-        btn.addEventListener('click', closeModal);
-      });
-      
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-          closeModal();
+    // View order details
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('view-order-btn')) {
+        const orderId = e.target.getAttribute('data-order-id');
+        if (orderId) {
+          viewOrderDetails(orderId);
         }
-      });
+      }
+    });
+    
+    // View order details (basic implementation)
+    function viewOrderDetails(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        // For now, just show an alert with order details
+        // You can implement a proper modal later
+        alert(`Order #${order.number || order.id.slice(-8).toUpperCase()}\n` +
+              `Date: ${new Date(order.date_created).toLocaleDateString()}\n` +
+              `Status: ${order.status}\n` +
+              `Total: ${formatPrice(order.grand_total || 0)}\n` +
+              `Items: ${order.items ? order.items.length : 0}`);
+      }
     }
     
     // Initialize the page

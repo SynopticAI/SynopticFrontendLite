@@ -1,0 +1,361 @@
+---
+// src/components/checkout/CouponCode.astro
+// Coupon/discount code component for checkout
+
+export interface Props {
+  className?: string;
+  showTitle?: boolean;
+}
+
+const { 
+  className = "",
+  showTitle = true
+} = Astro.props;
+---
+
+<div class={`coupon-code-container ${className}`}>
+  {showTitle && (
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+      Discount Code
+    </h3>
+  )}
+  
+  <!-- Coupon Input Section -->
+  <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+    <div class="flex space-x-2">
+      <div class="flex-1">
+        <input
+          type="text"
+          id="coupon-code-input"
+          placeholder="Enter discount code"
+          class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+        />
+      </div>
+      <button
+        type="button"
+        id="apply-coupon-btn"
+        class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+      >
+        Apply
+      </button>
+    </div>
+    
+    <!-- Coupon Status Messages -->
+    <div id="coupon-message" class="mt-2 text-sm hidden">
+      <!-- Success/error messages will appear here -->
+    </div>
+  </div>
+  
+  <!-- Applied Coupons List -->
+  <div id="applied-coupons" class="mt-4 space-y-2 hidden">
+    <h4 class="text-sm font-medium text-gray-900 dark:text-white">Applied Discounts:</h4>
+    <div id="applied-coupons-list">
+      <!-- Applied coupons will appear here -->
+    </div>
+  </div>
+</div>
+
+<!-- Coupon JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  class CouponManager {
+    constructor() {
+      this.appliedCoupons = [];
+      this.isProcessing = false;
+      this.swell = window.swell;
+      
+      this.init();
+    }
+    
+    init() {
+      this.bindEvents();
+      this.loadAppliedCoupons();
+    }
+    
+    bindEvents() {
+      const input = document.getElementById('coupon-code-input');
+      const applyBtn = document.getElementById('apply-coupon-btn');
+      
+      if (input) {
+        // Apply on Enter key
+        input.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            this.applyCoupon();
+          }
+        });
+        
+        // Clear message when typing
+        input.addEventListener('input', () => {
+          this.clearMessage();
+        });
+      }
+      
+      if (applyBtn) {
+        applyBtn.addEventListener('click', () => {
+          this.applyCoupon();
+        });
+      }
+    }
+    
+    async applyCoupon() {
+      if (this.isProcessing) return;
+      
+      const input = document.getElementById('coupon-code-input');
+      const couponCode = input.value.trim();
+      
+      if (!couponCode) {
+        this.showMessage('Please enter a coupon code', 'error');
+        return;
+      }
+      
+      this.isProcessing = true;
+      this.setLoading(true);
+      
+      try {
+        console.log('🎫 Applying coupon:', couponCode);
+        
+        if (!this.swell) {
+          throw new Error('Swell not available');
+        }
+        
+        // Apply coupon to cart
+        const result = await this.swell.cart.applyCoupon(couponCode);
+        
+        if (result) {
+          console.log('✅ Coupon applied successfully:', result);
+          
+          // Clear input
+          input.value = '';
+          
+          // Refresh applied coupons
+          await this.loadAppliedCoupons();
+          
+          this.showMessage('Coupon applied successfully!', 'success');
+          
+          // Notify parent components of cart change
+          this.notifyCartChange();
+          
+        } else {
+          console.log('❌ Coupon application failed');
+          this.showMessage('Invalid coupon code', 'error');
+        }
+        
+      } catch (error) {
+        console.error('❌ Error applying coupon:', error);
+        
+        if (error.message.includes('not found')) {
+          this.showMessage('Coupon code not found', 'error');
+        } else if (error.message.includes('expired')) {
+          this.showMessage('Coupon code has expired', 'error');
+        } else if (error.message.includes('minimum')) {
+          this.showMessage('Minimum order amount not met', 'error');
+        } else if (error.message.includes('already')) {
+          this.showMessage('Coupon already applied', 'error');
+        } else {
+          this.showMessage('Failed to apply coupon. Please try again.', 'error');
+        }
+      } finally {
+        this.isProcessing = false;
+        this.setLoading(false);
+      }
+    }
+    
+    async removeCoupon(couponCode) {
+      if (this.isProcessing) return;
+      
+      this.isProcessing = true;
+      
+      try {
+        console.log('🗑️ Removing coupon:', couponCode);
+        
+        if (!this.swell) {
+          throw new Error('Swell not available');
+        }
+        
+        // Remove coupon from cart
+        await this.swell.cart.removeCoupon(couponCode);
+        
+        console.log('✅ Coupon removed successfully');
+        
+        // Refresh applied coupons
+        await this.loadAppliedCoupons();
+        
+        this.showMessage('Coupon removed', 'success');
+        
+        // Notify parent components of cart change
+        this.notifyCartChange();
+        
+      } catch (error) {
+        console.error('❌ Error removing coupon:', error);
+        this.showMessage('Failed to remove coupon. Please try again.', 'error');
+      } finally {
+        this.isProcessing = false;
+      }
+    }
+    
+    async loadAppliedCoupons() {
+      try {
+        if (!this.swell) {
+          return;
+        }
+        
+        // Get current cart with coupons
+        const cart = await this.swell.cart.get();
+        
+        if (cart.coupons && cart.coupons.length > 0) {
+          this.appliedCoupons = cart.coupons;
+          this.renderAppliedCoupons();
+        } else {
+          this.appliedCoupons = [];
+          this.hideAppliedCoupons();
+        }
+        
+      } catch (error) {
+        console.error('❌ Error loading applied coupons:', error);
+      }
+    }
+    
+    renderAppliedCoupons() {
+      const appliedCouponsSection = document.getElementById('applied-coupons');
+      const appliedCouponsList = document.getElementById('applied-coupons-list');
+      
+      if (this.appliedCoupons.length === 0) {
+        appliedCouponsSection.classList.add('hidden');
+        return;
+      }
+      
+      appliedCouponsSection.classList.remove('hidden');
+      appliedCouponsList.innerHTML = '';
+      
+      this.appliedCoupons.forEach(coupon => {
+        const couponDiv = this.createCouponElement(coupon);
+        appliedCouponsList.appendChild(couponDiv);
+      });
+    }
+    
+    createCouponElement(coupon) {
+      const div = document.createElement('div');
+      div.className = 'flex items-center justify-between bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-3';
+      
+      const discountText = this.formatDiscount(coupon);
+      
+      div.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <span class="text-green-600 dark:text-green-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </span>
+          <div>
+            <span class="font-medium text-green-800 dark:text-green-200">${coupon.code}</span>
+            <span class="text-sm text-green-600 dark:text-green-400 ml-2">${discountText}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm remove-coupon-btn"
+          data-code="${coupon.code}"
+        >
+          Remove
+        </button>
+      `;
+      
+      // Bind remove event
+      div.querySelector('.remove-coupon-btn').addEventListener('click', (e) => {
+        const code = e.target.getAttribute('data-code');
+        this.removeCoupon(code);
+      });
+      
+      return div;
+    }
+    
+    formatDiscount(coupon) {
+      if (coupon.discount_type === 'percentage') {
+        return `-${coupon.discount_value}%`;
+      } else if (coupon.discount_type === 'fixed') {
+        return `-€${coupon.discount_value.toFixed(2)}`;
+      } else {
+        return `€${coupon.discount_value.toFixed(2)} off`;
+      }
+    }
+    
+    hideAppliedCoupons() {
+      const appliedCouponsSection = document.getElementById('applied-coupons');
+      appliedCouponsSection.classList.add('hidden');
+    }
+    
+    showMessage(message, type = 'info') {
+      const messageDiv = document.getElementById('coupon-message');
+      
+      let className = 'text-blue-600 dark:text-blue-400';
+      if (type === 'error') {
+        className = 'text-red-600 dark:text-red-400';
+      } else if (type === 'success') {
+        className = 'text-green-600 dark:text-green-400';
+      }
+      
+      messageDiv.className = `mt-2 text-sm ${className}`;
+      messageDiv.textContent = message;
+      messageDiv.classList.remove('hidden');
+      
+      // Auto-hide success messages after 3 seconds
+      if (type === 'success') {
+        setTimeout(() => {
+          this.clearMessage();
+        }, 3000);
+      }
+    }
+    
+    clearMessage() {
+      const messageDiv = document.getElementById('coupon-message');
+      messageDiv.classList.add('hidden');
+    }
+    
+    setLoading(isLoading) {
+      const applyBtn = document.getElementById('apply-coupon-btn');
+      const input = document.getElementById('coupon-code-input');
+      
+      if (isLoading) {
+        applyBtn.textContent = 'Applying...';
+        applyBtn.disabled = true;
+        input.disabled = true;
+      } else {
+        applyBtn.textContent = 'Apply';
+        applyBtn.disabled = false;
+        input.disabled = false;
+      }
+    }
+    
+    notifyCartChange() {
+      // Dispatch a custom event to notify other components
+      window.dispatchEvent(new CustomEvent('cartUpdated'));
+      
+      // Also notify cart manager if available
+      if (window.cartManager) {
+        window.cartManager.refreshCart();
+      }
+    }
+    
+    // Public method to check if a coupon is applied
+    isCouponApplied(code) {
+      return this.appliedCoupons.some(coupon => coupon.code === code);
+    }
+    
+    // Public method to get applied coupons
+    getAppliedCoupons() {
+      return this.appliedCoupons;
+    }
+  }
+
+  // Wait for Swell to be available
+  function initCouponManager() {
+    if (window.swell) {
+      window.couponManager = new CouponManager();
+    } else {
+      setTimeout(initCouponManager, 100);
+    }
+  }
+  
+  initCouponManager();
+});
+</script>

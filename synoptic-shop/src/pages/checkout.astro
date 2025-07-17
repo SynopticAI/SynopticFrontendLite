@@ -1,6 +1,9 @@
 ---
-// src/pages/checkout.astro - FIXED: Payment, Address & Shipping Issues
+// src/pages/checkout.astro - Updated streamlined checkout with reusable components
 import PageLayout from '~/layouts/PageLayout.astro';
+import AddressList from '~/components/checkout/AddressList.astro';
+import PaymentMethodsList from '~/components/checkout/PaymentMethodsList.astro';
+import CouponCode from '~/components/checkout/CouponCode.astro';
 import { getCanonical } from '~/utils/permalinks';
 
 const metadata = {
@@ -12,623 +15,264 @@ const metadata = {
 ---
 
 <PageLayout metadata={metadata}>
-  <!-- Checkout Page Content -->
-  <section class="py-16 md:py-20">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6">
-      
-      <!-- Page Header -->
-      <div class="mb-8">
-        <h1 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white md:text-4xl">
-          Checkout
-        </h1>
-        <div class="mt-4 flex items-center space-x-4">
-          <div class="flex items-center space-x-2">
-            <div class="h-2 w-2 rounded-full bg-blue-600"></div>
-            <span class="text-sm text-gray-600 dark:text-gray-300">Cart</span>
-          </div>
-          <div class="h-px flex-1 bg-gray-300 dark:bg-gray-600"></div>
-          <div class="flex items-center space-x-2">
-            <div class="h-2 w-2 rounded-full bg-blue-600"></div>
-            <span class="text-sm font-medium text-gray-900 dark:text-white">Checkout</span>
-          </div>
-          <div class="h-px flex-1 bg-gray-300 dark:bg-gray-600"></div>
-          <div class="flex items-center space-x-2">
-            <div class="h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
-            <span class="text-sm text-gray-600 dark:text-gray-300">Complete</span>
-          </div>
-        </div>
-      </div>
+  <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-2xl lg:max-w-none">
+      <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">
+        Checkout
+      </h1>
 
       <!-- Loading State -->
-      <div id="checkout-loading" class="text-center py-16">
-        <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-        <p class="mt-4 text-gray-600 dark:text-gray-300">Loading checkout...</p>
+      <div id="checkout-loading" class="mt-8 text-center">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        <p class="mt-2 text-gray-600 dark:text-gray-300">Loading checkout...</p>
       </div>
 
       <!-- Empty Cart Message -->
-      <div id="empty-cart-message" class="hidden text-center py-16">
-        <div class="mx-auto max-w-md">
-          <div class="h-16 w-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-            <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-            </svg>
-          </div>
-          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            Your cart is empty
-          </h3>
-          <p class="text-gray-600 dark:text-gray-300 mb-6">
-            Add some items to your cart before proceeding to checkout.
+      <div id="empty-cart-message" class="mt-8 hidden">
+        <div class="text-center py-8">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+          </svg>
+          <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">Your cart is empty</h3>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Continue shopping to add items to your cart.
           </p>
-          <a
-            href="/shop"
-            class="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            Continue Shopping
-          </a>
+          <div class="mt-6">
+            <a
+              href="/shop"
+              class="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+            >
+              Continue Shopping
+            </a>
+          </div>
         </div>
       </div>
 
-      <!-- Guest Checkout Section -->
-      <div id="guest-checkout-section" class="hidden">
-        <div class="mx-auto max-w-2xl rounded-lg bg-white p-8 shadow-sm dark:bg-gray-800">
-          <h2 class="mb-6 text-xl font-semibold text-gray-900 dark:text-white">
-            How would you like to checkout?
+      <!-- Guest Checkout Options -->
+      <div id="guest-checkout-section" class="mt-8 hidden">
+        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6">
+          <h2 class="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4">
+            Checkout Options
           </h2>
-          
           <div class="space-y-4">
-            <!-- Sign In Option -->
             <button
-              id="sign-in-checkout-btn"
-              class="w-full rounded-lg border-2 border-blue-600 bg-blue-600 p-4 text-white hover:bg-blue-700 transition-colors"
+              id="signin-for-checkout-btn"
+              class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
             >
-              <div class="text-left">
-                <div class="font-medium">Sign in to your account</div>
-                <div class="text-sm opacity-90">Access saved addresses and faster checkout</div>
-              </div>
+              Sign In for Faster Checkout
             </button>
-            
-            <!-- Guest Checkout Option -->
             <button
-              id="guest-checkout-btn"
-              class="w-full rounded-lg border-2 border-gray-300 bg-white p-4 text-gray-900 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+              id="continue-as-guest-btn"
+              class="w-full bg-gray-200 text-gray-800 py-3 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors"
             >
-              <div class="text-left">
-                <div class="font-medium">Continue as guest</div>
-                <div class="text-sm text-gray-600 dark:text-gray-300">Quick checkout without an account</div>
-              </div>
+              Continue as Guest
             </button>
           </div>
         </div>
       </div>
 
       <!-- Main Checkout Form -->
-      <div id="checkout-form-container" class="hidden">
-        <div class="lg:grid lg:grid-cols-12 lg:gap-x-12 xl:gap-x-16">
-          
+      <div id="checkout-form-container" class="mt-8 hidden">
+        <div class="lg:grid lg:grid-cols-2 lg:gap-x-12 xl:gap-x-16">
           <!-- Left Column - Forms -->
-          <div class="lg:col-span-7">
-            <form id="checkout-form" class="space-y-8">
+          <div class="space-y-8">
+            
+            <!-- Contact Information -->
+            <div id="contact-section">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Contact Information</h2>
+              <div class="mt-4">
+                <label for="checkout-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  id="checkout-email"
+                  required
+                  class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <!-- Shipping Address -->
+            <div id="shipping-section">
+              <AddressList 
+                showAddForm={true} 
+                showUseButtons={true} 
+                title="Shipping Address" 
+                className="shipping-address-section"
+              />
+            </div>
+
+            <!-- Shipping Options -->
+            <div id="shipping-options-section" class="hidden">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Shipping Method</h2>
               
-              <!-- Customer Information (for authenticated users) -->
-              <div id="customer-info" class="hidden rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
-                <div class="flex items-center justify-between">
-                  <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                    Customer Information
-                  </h2>
-                  <button type="button" id="sign-out-checkout" class="text-sm text-blue-600 hover:text-blue-700">
-                    Sign out
-                  </button>
-                </div>
-                <div class="mt-4 flex items-center space-x-3">
-                  <div class="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
-                    <span id="customer-initials" class="text-sm font-medium text-white">U</span>
-                  </div>
-                  <div>
-                    <p id="customer-name" class="font-medium text-gray-900 dark:text-white">Loading...</p>
-                    <p id="customer-email" class="text-sm text-gray-600 dark:text-gray-300">Loading...</p>
-                  </div>
-                </div>
+              <!-- Shipping Loading -->
+              <div id="shipping-loading" class="mt-4 text-center py-4 hidden">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">Calculating shipping...</p>
               </div>
-
-              <!-- FIXED: Saved Addresses Section -->
-              <div id="saved-addresses-section" class="hidden rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
-                <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-                  Saved Addresses
-                </h2>
-                <div id="saved-addresses-list" class="space-y-3">
-                  <!-- Saved addresses will be populated here -->
-                </div>
-                <button
-                  type="button"
-                  id="add-new-address-btn"
-                  class="mt-4 text-sm text-blue-600 hover:text-blue-700"
-                >
-                  + Add new address
-                </button>
+              
+              <!-- Shipping Error -->
+              <div id="shipping-error" class="mt-4 hidden">
+                <p class="text-sm text-red-600 dark:text-red-400">
+                  Unable to calculate shipping rates. Using standard rates.
+                </p>
               </div>
-
-              <!-- Shipping Address -->
-              <div id="shipping-address-section" class="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
-                <div class="flex items-center justify-between mb-6">
-                  <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                    Shipping Address
-                  </h2>
-                  <button
-                    type="button"
-                    id="save-address-btn"
-                    class="hidden text-sm text-blue-600 hover:text-blue-700"
-                  >
-                    💾 Save this address
-                  </button>
-                </div>
-                
-                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <!-- First Name -->
-                  <div>
-                    <label for="checkout-first-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      First name *
-                    </label>
-                    <input
-                      type="text"
-                      id="checkout-first-name"
-                      name="shipping.first_name"
-                      required
-                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-
-                  <!-- Last Name -->
-                  <div>
-                    <label for="checkout-last-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Last name *
-                    </label>
-                    <input
-                      type="text"
-                      id="checkout-last-name"
-                      name="shipping.last_name"
-                      required
-                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-
-                  <!-- Email -->
-                  <div class="sm:col-span-2">
-                    <label for="checkout-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Email address *
-                    </label>
-                    <input
-                      type="email"
-                      id="checkout-email"
-                      name="shipping.email"
-                      required
-                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-
-                  <!-- Phone -->
-                  <div>
-                    <label for="checkout-phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Phone number
-                    </label>
-                    <input
-                      type="tel"
-                      id="checkout-phone"
-                      name="shipping.phone"
-                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-
-                  <!-- Address Line 1 -->
-                  <div>
-                    <label for="checkout-address1" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Address *
-                    </label>
-                    <input
-                      type="text"
-                      id="checkout-address1"
-                      name="shipping.address1"
-                      required
-                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                      placeholder="Street address"
-                    />
-                  </div>
-
-                  <!-- Address Line 2 -->
-                  <div>
-                    <label for="checkout-address2" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Apartment, suite, etc.
-                    </label>
-                    <input
-                      type="text"
-                      id="checkout-address2"
-                      name="shipping.address2"
-                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                      placeholder="Optional"
-                    />
-                  </div>
-
-                  <!-- City -->
-                  <div>
-                    <label for="checkout-city" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      City *
-                    </label>
-                    <input
-                      type="text"
-                      id="checkout-city"
-                      name="shipping.city"
-                      required
-                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-
-                  <!-- Postal Code -->
-                  <div>
-                    <label for="checkout-zip" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Postal code *
-                    </label>
-                    <input
-                      type="text"
-                      id="checkout-zip"
-                      name="shipping.zip"
-                      required
-                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-
-                  <!-- Country -->
-                  <div>
-                    <label for="checkout-country" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Country *
-                    </label>
-                    <select
-                      id="checkout-country"
-                      name="shipping.country"
-                      required
-                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                    >
-                      <option value="">Select country...</option>
-                      <option value="DE">Germany</option>
-                      <option value="AT">Austria</option>
-                      <option value="CH">Switzerland</option>
-                      <option value="FR">France</option>
-                      <option value="IT">Italy</option>
-                      <option value="NL">Netherlands</option>
-                      <option value="BE">Belgium</option>
-                      <option value="ES">Spain</option>
-                      <option value="PT">Portugal</option>
-                    </select>
-                  </div>
-
-                  <!-- State (shown for certain countries) -->
-                  <div id="state-field" class="hidden">
-                    <label for="checkout-state" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      State/Province *
-                    </label>
-                    <input
-                      type="text"
-                      id="checkout-state"
-                      name="shipping.state"
-                      class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                      placeholder="State/Province"
-                    />
-                  </div>
-                </div>
-              </div>
-
+              
               <!-- Shipping Options -->
-              <div id="shipping-options-section" class="hidden rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
-                <h2 class="mb-6 text-lg font-semibold text-gray-900 dark:text-white">
-                  Shipping Method
-                </h2>
-                
-                <div id="shipping-options" class="space-y-3">
-                  <!-- Shipping options will be populated here -->
-                </div>
-                
-                <div id="shipping-loading" class="hidden text-center py-4">
-                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                  <p class="text-sm text-gray-600 dark:text-gray-300">Loading shipping options...</p>
-                </div>
-                
-                <div id="shipping-error" class="hidden text-center py-4">
-                  <p class="text-sm text-red-600">No shipping options available for this address.</p>
-                  <p class="text-xs text-gray-500 mt-1">Please check your address or contact support.</p>
-                </div>
+              <div id="shipping-options" class="mt-4 space-y-3">
+                <!-- Shipping options will be populated here -->
               </div>
+            </div>
 
-              <!-- FIXED: Payment Section -->
-              <div id="payment-section" class="hidden rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
-                <h2 class="mb-6 text-lg font-semibold text-gray-900 dark:text-white">
-                  Payment Information
-                </h2>
-
-                <!-- Payment Method Options -->
-                <div class="space-y-4">
-                  <!-- Credit Card Option -->
-                  <div class="border border-gray-200 rounded-lg p-4 dark:border-gray-700">
-                    <label class="flex items-center">
-                      <input
-                        type="radio"
-                        name="payment_method"
-                        value="card"
-                        checked
-                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                      />
-                      <span class="ml-3 text-sm font-medium text-gray-900 dark:text-white">
-                        Credit Card
-                      </span>
-                    </label>
-                    
-                    <!-- Basic Card Form (will be replaced with Stripe when available) -->
-                    <div id="card-form" class="mt-4 space-y-4">
-                      <div>
-                        <label for="card-number" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Card Number *
-                        </label>
-                        <input
-                          type="text"
-                          id="card-number"
-                          placeholder="1234 5678 9012 3456"
-                          class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                        />
-                      </div>
-                      
-                      <div class="grid grid-cols-2 gap-4">
-                        <div>
-                          <label for="card-expiry" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Expiry Date *
-                          </label>
-                          <input
-                            type="text"
-                            id="card-expiry"
-                            placeholder="MM/YY"
-                            class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label for="card-cvc" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            CVC *
-                          </label>
-                          <input
-                            type="text"
-                            id="card-cvc"
-                            placeholder="123"
-                            class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- PayPal Option (placeholder) -->
-                  <div class="border border-gray-200 rounded-lg p-4 dark:border-gray-700 opacity-50">
-                    <label class="flex items-center">
-                      <input
-                        type="radio"
-                        name="payment_method"
-                        value="paypal"
-                        disabled
-                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                      />
-                      <span class="ml-3 text-sm font-medium text-gray-500">
-                        PayPal (Coming Soon)
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                <!-- Save Payment Method -->
-                <div id="save-payment-option" class="hidden mt-4">
-                  <label class="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="save-payment-method"
-                      class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                      💾 Save this payment method for future purchases
-                    </span>
-                  </label>
-                </div>
+            <!-- Payment Method -->
+            <div id="payment-section" class="hidden">
+              <PaymentMethodsList 
+                showAddForm={true} 
+                showUseButtons={true} 
+                title="Payment Method" 
+                className="payment-methods-section"
+              />
+              
+              <!-- Billing Address Option -->
+              <div class="mt-4">
+                <label class="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="same-as-shipping"
+                    checked
+                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                    Billing address same as shipping address
+                  </span>
+                </label>
               </div>
+            </div>
 
-              <!-- Billing Address -->
-              <div class="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
-                <div class="flex items-center justify-between mb-6">
-                  <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                    Billing Address
-                  </h2>
-                </div>
+            <!-- Coupon Code -->
+            <div id="coupon-section">
+              <CouponCode className="coupon-section" />
+            </div>
 
-                <div class="mb-4">
-                  <label class="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="same-as-shipping"
-                      checked
-                      class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                      Same as shipping address
-                    </span>
-                  </label>
-                </div>
-
-                <div id="billing-fields" class="hidden space-y-6">
-                  <p class="text-sm text-gray-600 dark:text-gray-300">
-                    Billing address fields will appear here when different from shipping address.
-                  </p>
-                </div>
-              </div>
-
-            </form>
           </div>
 
           <!-- Right Column - Order Summary -->
-          <div class="lg:col-span-5">
-            <div class="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800 lg:sticky lg:top-8">
-              <h2 class="mb-6 text-lg font-semibold text-gray-900 dark:text-white">
-                Order Summary
-              </h2>
+          <div class="mt-10 lg:mt-0">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Order Summary</h2>
+            
+            <!-- Cart Items -->
+            <div id="cart-items-summary" class="mt-4 space-y-3">
+              <!-- Cart items will be populated here -->
+            </div>
 
-              <!-- Cart Items -->
-              <div id="checkout-cart-items" class="space-y-4 mb-6">
-                <!-- Cart items will be populated here -->
+            <!-- Order Totals -->
+            <div class="mt-6 border-t border-gray-200 pt-6 dark:border-gray-700">
+              <div class="flex justify-between text-sm">
+                <span class="text-gray-600 dark:text-gray-300">Subtotal</span>
+                <span id="order-subtotal" class="font-medium text-gray-900 dark:text-white">€0.00</span>
               </div>
-
-              <!-- Order Totals -->
-              <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-                <div class="space-y-2">
-                  <div class="flex justify-between">
-                    <span class="text-gray-600 dark:text-gray-300">Subtotal</span>
-                    <span id="checkout-subtotal" class="text-gray-900 dark:text-white">€0.00</span>
-                  </div>
-                  
-                  <div id="checkout-shipping-cost" class="hidden flex justify-between">
-                    <span class="text-gray-600 dark:text-gray-300">Shipping</span>
-                    <span id="shipping-cost-amount" class="text-gray-900 dark:text-white">€0.00</span>
-                  </div>
-                  
-                  <div class="flex justify-between">
-                    <span class="text-gray-600 dark:text-gray-300">Tax</span>
-                    <span id="checkout-tax" class="text-gray-900 dark:text-white">€0.00</span>
-                  </div>
-                  
-                  <div class="border-t border-gray-200 dark:border-gray-700 pt-2">
-                    <div class="flex justify-between">
-                      <span class="text-lg font-semibold text-gray-900 dark:text-white">Total</span>
-                      <span id="checkout-total" class="text-lg font-semibold text-gray-900 dark:text-white">€0.00</span>
-                    </div>
-                  </div>
-                </div>
+              
+              <div id="shipping-total-row" class="flex justify-between text-sm mt-2 hidden">
+                <span class="text-gray-600 dark:text-gray-300">Shipping</span>
+                <span id="order-shipping" class="font-medium text-gray-900 dark:text-white">€0.00</span>
               </div>
+              
+              <div id="discount-total-row" class="flex justify-between text-sm mt-2 hidden">
+                <span class="text-gray-600 dark:text-gray-300">Discount</span>
+                <span id="order-discount" class="font-medium text-green-600 dark:text-green-400">-€0.00</span>
+              </div>
+              
+              <div id="tax-total-row" class="flex justify-between text-sm mt-2 hidden">
+                <span class="text-gray-600 dark:text-gray-300">Tax</span>
+                <span id="order-tax" class="font-medium text-gray-900 dark:text-white">€0.00</span>
+              </div>
+              
+              <div class="flex justify-between text-base font-medium mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <span class="text-gray-900 dark:text-white">Total</span>
+                <span id="order-total" class="text-gray-900 dark:text-white">€0.00</span>
+              </div>
+            </div>
 
-              <!-- Place Order Button -->
+            <!-- Place Order Button -->
+            <div class="mt-6">
               <button
-                type="submit"
-                form="checkout-form"
+                type="button"
                 id="place-order-btn"
-                class="mt-6 w-full rounded-md bg-blue-600 px-6 py-3 text-white font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 disabled
               >
-                <span id="place-order-text">Place Order</span>
-                <span id="place-order-loading" class="hidden">
-                  <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Processing...
-                </span>
+                Place Order
               </button>
+            </div>
 
-              <!-- Security Badge -->
-              <div class="mt-4 flex items-center justify-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0H10m4-2a2 2 0 100-4 2 2 0 000 4zm-6-7V9a6 6 0 1112 0v2l-1 .5v3l1 .5v1.5a2 2 0 01-2 2H8a2 2 0 01-2-2V16l1-.5v-3L6 12V8z"/>
-                </svg>
-                <span>Secure Checkout</span>
-              </div>
+            <!-- Security Notice -->
+            <div class="mt-4 text-xs text-gray-500 dark:text-gray-400 text-center">
+              <p>🔒 Your payment information is secure and encrypted</p>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Error Container -->
-      <div id="checkout-error" class="hidden mt-4"></div>
-
-    </div>
-  </section>
-
-  <!-- FIXED: Address Save Modal -->
-  <div id="address-save-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
-    <div class="flex min-h-screen items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black bg-opacity-50"></div>
-      <div class="relative w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
-        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-          Save Address
-        </h3>
-        <div class="mb-4">
-          <label for="address-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Address Name
-          </label>
-          <input
-            type="text"
-            id="address-name"
-            placeholder="e.g., Home, Work, etc."
-            class="w-full rounded-md border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-          />
-        </div>
-        <div class="flex space-x-3">
-          <button
-            id="save-address-confirm"
-            class="flex-1 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-          >
-            Save
-          </button>
-          <button
-            id="save-address-cancel"
-            class="flex-1 rounded-md border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
     </div>
   </div>
-
 </PageLayout>
 
-<!-- FIXED: Enhanced Checkout JavaScript -->
+<!-- Enhanced Checkout JavaScript -->
 <script>
   document.addEventListener('DOMContentLoaded', async function() {
-    console.log('🛒 FIXED Enhanced checkout initializing...');
+    console.log('🛒 Enhanced checkout initializing...');
     
     // DOM elements
     const checkoutLoading = document.getElementById('checkout-loading');
     const emptyCartMessage = document.getElementById('empty-cart-message');
     const guestCheckoutSection = document.getElementById('guest-checkout-section');
     const checkoutFormContainer = document.getElementById('checkout-form-container');
-    const checkoutForm = document.getElementById('checkout-form');
-    const countrySelect = document.getElementById('checkout-country');
-    const stateField = document.getElementById('state-field');
-    const sameAsShippingCheckbox = document.getElementById('same-as-shipping');
-    const billingFields = document.getElementById('billing-fields');
-    const saveAddressBtn = document.getElementById('save-address-btn');
     const placeOrderBtn = document.getElementById('place-order-btn');
-    const addressSaveModal = document.getElementById('address-save-modal');
     
-    // State variables
+    // State
     let currentUser = null;
-    let cart = null;
+    let currentCart = null;
+    let selectedShippingMethod = null;
+    let selectedPaymentMethod = null;
     let isProcessingOrder = false;
-    let savedAddresses = [];
     
-    // Format price with EUR currency
-    function formatPrice(amount, currency = 'EUR') {
-      if (typeof amount !== 'number') return 'N/A';
-      
+    // Initialize checkout
+    await initializeCheckout();
+    
+    async function initializeCheckout() {
       try {
-        return new Intl.NumberFormat('de-DE', {
-          style: 'currency',
-          currency: currency
-        }).format(amount);
+        // Wait for auth state
+        await waitForAuth();
+        
+        // Load cart
+        await loadCart();
+        
+        // Setup event listeners
+        setupEventListeners();
+        
+        // Show appropriate section
+        showCheckoutSection();
+        
       } catch (error) {
-        return `${currency} ${amount.toFixed(2)}`;
+        console.error('❌ Checkout initialization failed:', error);
+        showError('Failed to initialize checkout. Please refresh the page.');
       }
     }
     
-    // Wait for auth state to be ready
-    async function waitForAuth() {
+    function waitForAuth() {
       return new Promise((resolve) => {
         if (window.authStateManager) {
           window.authStateManager.subscribe((user) => {
+            console.log('🔐 Auth state changed:', user ? `✅ ${user.email}` : '❌ Not authenticated');
             currentUser = user;
-            resolve(user);
+            resolve();
           });
           
+          // If already ready, get current state
           if (window.authStateManager.isReady) {
             currentUser = window.authStateManager.getCurrentUser();
-            resolve(currentUser);
+            resolve();
           }
         } else {
           setTimeout(() => waitForAuth().then(resolve), 100);
@@ -636,337 +280,255 @@ const metadata = {
       });
     }
     
-    // FIXED: Load cart and initialize checkout
-    async function initializeCheckout() {
+    async function loadCart() {
       try {
-        checkoutLoading.classList.remove('hidden');
-        
-        // Wait for auth and cart
-        await waitForAuth();
-        await waitForSwell();
-        
-        cart = await window.swell.cart.get();
-        
-        if (!cart || !cart.items || cart.items.length === 0) {
-          showEmptyCart();
-          return;
+        if (!window.swell) {
+          throw new Error('Swell not available');
         }
         
-        // Update cart display
-        updateCartDisplay();
+        const cart = await window.swell.cart.get();
+        currentCart = cart;
         
-        // Show appropriate checkout flow
-        if (currentUser) {
-          await loadCustomerData();
-          showAuthenticatedCheckout();
-        } else {
-          showGuestCheckout();
-        }
-        
-        checkoutLoading.classList.add('hidden');
-        
-      } catch (error) {
-        console.error('🛒 Error initializing checkout:', error);
-        showError('Failed to load checkout. Please refresh and try again.');
-      }
-    }
-    
-    // Wait for Swell to be available
-    async function waitForSwell() {
-      return new Promise((resolve) => {
-        if (window.swell) {
-          resolve(window.swell);
-        } else {
-          const checkSwell = () => {
-            if (window.swell) {
-              resolve(window.swell);
-            } else {
-              setTimeout(checkSwell, 100);
-            }
-          };
-          checkSwell();
-        }
-      });
-    }
-    
-    // FIXED: Load customer data for authenticated users
-    async function loadCustomerData() {
-      try {
-        const account = await window.swell.account.get();
-        if (account) {
-          console.log('📋 Account data:', account);
-          
-          // Populate customer info
-          document.getElementById('customer-name').textContent = 
-            account.name || `${account.first_name || ''} ${account.last_name || ''}`.trim() || 'Customer';
-          document.getElementById('customer-email').textContent = account.email;
-          document.getElementById('customer-initials').textContent = 
-            getInitials(account.name || account.email);
-          
-          // FIXED: Load real saved addresses from account
-          await loadSavedAddresses(account);
-          
-          // FIXED: Pre-populate form with saved data
-          await populateFormFromAccount(account);
-        }
-      } catch (error) {
-        console.error('🛒 Error loading customer data:', error);
-      }
-    }
-    
-    // Get user initials
-    function getInitials(name) {
-      if (!name) return 'U';
-      return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
-    }
-    
-    // FIXED: Load saved addresses from Swell account
-    async function loadSavedAddresses(account) {
-      try {
-        savedAddresses = [];
-        
-        // Check if account has properly filled shipping address
-        if (account.shipping && isValidAddress(account.shipping)) {
-          savedAddresses.push({
-            id: 'shipping_default',
-            name: 'Default Shipping',
-            ...account.shipping
-          });
-        }
-        
-        // Check if account has billing address that's different from shipping
-        if (account.billing && isValidAddress(account.billing) && 
-            JSON.stringify(account.billing) !== JSON.stringify(account.shipping)) {
-          savedAddresses.push({
-            id: 'billing_default',
-            name: 'Default Billing',
-            ...account.billing
-          });
-        }
-        
-        console.log('📍 Loaded addresses:', savedAddresses);
-        
-        // FIXED: Only display if we have valid addresses
-        if (savedAddresses.length > 0) {
-          displaySavedAddresses();
-        } else {
-          // Hide saved addresses section if none exist
-          document.getElementById('saved-addresses-section').classList.add('hidden');
-        }
-      } catch (error) {
-        console.error('🛒 Error loading saved addresses:', error);
-      }
-    }
-    
-    // FIXED: Check if address is valid (not empty/undefined)
-    function isValidAddress(address) {
-      return address && 
-             address.address1 && 
-             address.city && 
-             address.zip && 
-             address.country &&
-             address.address1.trim() !== '' &&
-             address.city.trim() !== '' &&
-             address.zip.trim() !== '';
-    }
-    
-    // FIXED: Display saved addresses only if they exist
-    function displaySavedAddresses() {
-      const savedAddressesSection = document.getElementById('saved-addresses-section');
-      const savedAddressesList = document.getElementById('saved-addresses-list');
-      
-      if (savedAddresses.length === 0) {
-        savedAddressesSection.classList.add('hidden');
-        return;
-      }
-      
-      savedAddressesList.innerHTML = '';
-      
-      savedAddresses.forEach(address => {
-        const addressDiv = document.createElement('div');
-        addressDiv.className = 'border border-gray-200 rounded-lg p-3 cursor-pointer hover:border-blue-500 dark:border-gray-700';
-        
-        // FIXED: Format address properly with null checks
-        const formattedAddress = [
-          address.address1,
-          address.address2,
-          address.city,
-          address.zip,
-          address.country
-        ].filter(Boolean).join(', ');
-        
-        addressDiv.innerHTML = `
-          <div class="flex items-center justify-between">
-            <div>
-              <h4 class="font-medium text-gray-900 dark:text-white">${address.name}</h4>
-              <p class="text-sm text-gray-600 dark:text-gray-300">
-                ${formattedAddress}
-              </p>
-            </div>
-            <button type="button" class="text-blue-600 hover:text-blue-700 text-sm use-address-btn">
-              Use
-            </button>
-          </div>
-        `;
-        
-        // Add click handler
-        addressDiv.querySelector('.use-address-btn').addEventListener('click', (e) => {
-          e.stopPropagation();
-          populateAddressForm(address);
+        console.log('🛒 Cart loaded:', {
+          items: cart.item_count,
+          total: cart.grand_total,
+          currency: cart.currency
         });
         
-        savedAddressesList.appendChild(addressDiv);
-      });
-      
-      savedAddressesSection.classList.remove('hidden');
-    }
-    
-    // FIXED: Populate form from account data
-    async function populateFormFromAccount(account) {
-      // Pre-populate with the best available address
-      if (account.shipping && isValidAddress(account.shipping)) {
-        populateAddressForm(account.shipping);
-      } else if (account.billing && isValidAddress(account.billing)) {
-        populateAddressForm(account.billing);
-      } else {
-        // Just populate email if we have it
-        document.getElementById('checkout-email').value = account.email || '';
+        if (!cart.items || cart.items.length === 0) {
+          throw new Error('Cart is empty');
+        }
+        
+        // Update UI
+        updateCartSummary();
+        
+      } catch (error) {
+        console.error('❌ Failed to load cart:', error);
+        if (error.message === 'Cart is empty') {
+          showEmptyCart();
+        } else {
+          showError('Failed to load cart. Please try again.');
+        }
       }
     }
     
-    // FIXED: Populate address form with null checks
-    function populateAddressForm(address) {
-      document.getElementById('checkout-first-name').value = address.first_name || '';
-      document.getElementById('checkout-last-name').value = address.last_name || '';
-      document.getElementById('checkout-email').value = address.email || currentUser?.email || '';
-      document.getElementById('checkout-phone').value = address.phone || '';
-      document.getElementById('checkout-address1').value = address.address1 || '';
-      document.getElementById('checkout-address2').value = address.address2 || '';
-      document.getElementById('checkout-city').value = address.city || '';
-      document.getElementById('checkout-zip').value = address.zip || '';
-      document.getElementById('checkout-country').value = address.country || 'DE';
-      document.getElementById('checkout-state').value = address.state || '';
+    function setupEventListeners() {
+      // Guest checkout buttons
+      const signinBtn = document.getElementById('signin-for-checkout-btn');
+      const guestBtn = document.getElementById('continue-as-guest-btn');
       
-      // Trigger shipping calculation after populating
-      setTimeout(() => {
-        calculateShipping();
-      }, 500);
+      if (signinBtn) {
+        signinBtn.addEventListener('click', () => {
+          if (window.authHandler) {
+            window.authHandler.openModal('signin');
+          }
+        });
+      }
+      
+      if (guestBtn) {
+        guestBtn.addEventListener('click', () => {
+          showCheckoutForm();
+        });
+      }
+      
+      // Place order button
+      if (placeOrderBtn) {
+        placeOrderBtn.addEventListener('click', handlePlaceOrder);
+      }
+      
+      // Listen for cart updates from coupon component
+      window.addEventListener('cartUpdated', async () => {
+        await loadCart();
+      });
+      
+      // Listen for shipping method selection
+      document.addEventListener('change', (e) => {
+        if (e.target.name === 'shipping_method') {
+          selectedShippingMethod = e.target.value;
+          updateShippingTotal();
+          validateForm();
+        }
+      });
+      
+      // Initialize component managers with callbacks
+      initializeComponentManagers();
     }
     
-    // Show empty cart
+    function initializeComponentManagers() {
+      // Wait for component managers to be ready
+      setTimeout(() => {
+        // Configure address list manager
+        if (window.addressListManager) {
+          window.addressListManager.config.onUseAddress = (address) => {
+            populateShippingForm(address);
+            calculateShipping();
+          };
+          
+          window.addressListManager.config.onAddressChange = () => {
+            calculateShipping();
+          };
+        }
+        
+        // Configure payment methods manager
+        if (window.paymentMethodsManager) {
+          window.paymentMethodsManager.config.onUsePaymentMethod = (paymentMethod) => {
+            selectedPaymentMethod = paymentMethod;
+            validateForm();
+          };
+          
+          window.paymentMethodsManager.config.onPaymentMethodChange = () => {
+            validateForm();
+          };
+        }
+      }, 1000);
+    }
+    
+    function showCheckoutSection() {
+      checkoutLoading.classList.add('hidden');
+      
+      if (currentUser) {
+        // User is authenticated - show checkout form directly
+        showCheckoutForm();
+      } else {
+        // Guest checkout options
+        guestCheckoutSection.classList.remove('hidden');
+      }
+    }
+    
+    function showCheckoutForm() {
+      guestCheckoutSection.classList.add('hidden');
+      checkoutFormContainer.classList.remove('hidden');
+      
+      // Populate user data if available
+      if (currentUser) {
+        populateUserData();
+      }
+    }
+    
     function showEmptyCart() {
       checkoutLoading.classList.add('hidden');
       emptyCartMessage.classList.remove('hidden');
     }
     
-    // Show guest checkout options
-    function showGuestCheckout() {
-      checkoutLoading.classList.add('hidden');
-      guestCheckoutSection.classList.remove('hidden');
+    function populateUserData() {
+      const emailInput = document.getElementById('checkout-email');
+      if (emailInput && currentUser) {
+        emailInput.value = currentUser.email;
+        emailInput.readOnly = true;
+        emailInput.classList.add('bg-gray-50', 'cursor-not-allowed');
+      }
     }
     
-    // Show authenticated checkout
-    function showAuthenticatedCheckout() {
-      checkoutLoading.classList.add('hidden');
-      checkoutFormContainer.classList.remove('hidden');
-      document.getElementById('customer-info').classList.remove('hidden');
-      document.getElementById('save-address-btn').classList.remove('hidden');
-      
-      // Setup shipping address change detection for shipping calculation
-      setupShippingCalculation();
+    function populateShippingForm(address) {
+      // This would be called by the AddressList component
+      // The address form is handled by the component itself
+      console.log('📍 Using address:', address);
     }
     
-    // Update cart display in order summary
-    function updateCartDisplay() {
-      const cartItemsContainer = document.getElementById('checkout-cart-items');
-      const subtotalEl = document.getElementById('checkout-subtotal');
-      const taxEl = document.getElementById('checkout-tax');
-      const totalEl = document.getElementById('checkout-total');
+    function updateCartSummary() {
+      if (!currentCart) return;
       
-      if (!cart || !cart.items) return;
+      const container = document.getElementById('cart-items-summary');
+      container.innerHTML = '';
       
-      // Display cart items
-      cartItemsContainer.innerHTML = '';
-      cart.items.forEach(item => {
-        const itemEl = createCartItemElement(item);
-        cartItemsContainer.appendChild(itemEl);
+      // Add cart items
+      currentCart.items.forEach(item => {
+        const itemDiv = createCartItemElement(item);
+        container.appendChild(itemDiv);
       });
       
       // Update totals
-      const subtotal = cart.sub_total || cart.subtotal || 0;
-      const tax = cart.tax_total || 0;
-      const total = cart.grand_total || cart.total || subtotal;
-      
-      subtotalEl.textContent = formatPrice(subtotal, cart.currency || 'EUR');
-      taxEl.textContent = formatPrice(tax, cart.currency || 'EUR');
-      totalEl.textContent = formatPrice(total, cart.currency || 'EUR');
+      updateOrderTotals();
     }
     
-    // Create cart item element
     function createCartItemElement(item) {
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'flex items-center space-x-4';
+      const div = document.createElement('div');
+      div.className = 'flex items-center space-x-3 p-3 border border-gray-200 rounded-lg dark:border-gray-700';
       
+      const imageUrl = item.product?.images?.[0]?.file?.url || '/placeholder-product.jpg';
       const price = item.price || 0;
       const quantity = item.quantity || 1;
       const total = price * quantity;
       
-      itemDiv.innerHTML = `
-        <div class="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
-          <svg class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-          </svg>
-        </div>
+      div.innerHTML = `
+        <img src="${imageUrl}" alt="${item.product?.name || 'Product'}" class="h-12 w-12 object-cover rounded-md">
         <div class="flex-1">
-          <h4 class="font-medium text-gray-900 dark:text-white">
-            ${item.product?.name || 'Product'}
-          </h4>
-          <p class="text-sm text-gray-600 dark:text-gray-300">
-            Qty: ${quantity} × ${formatPrice(price, cart.currency || 'EUR')}
-          </p>
+          <h4 class="font-medium text-gray-900 dark:text-white">${item.product?.name || 'Product'}</h4>
+          <p class="text-sm text-gray-600 dark:text-gray-300">Qty: ${quantity} × €${price.toFixed(2)}</p>
         </div>
         <div class="text-right">
-          <p class="font-medium text-gray-900 dark:text-white">
-            ${formatPrice(total, cart.currency || 'EUR')}
-          </p>
+          <p class="font-medium text-gray-900 dark:text-white">€${total.toFixed(2)}</p>
         </div>
       `;
       
-      return itemDiv;
+      return div;
     }
     
-    // Setup shipping calculation
-    function setupShippingCalculation() {
-      const shippingFields = [
-        'checkout-address1', 'checkout-city', 'checkout-zip', 'checkout-country'
-      ];
+    function updateOrderTotals() {
+      if (!currentCart) return;
       
-      shippingFields.forEach(fieldId => {
-        const field = document.getElementById(fieldId);
-        if (field) {
-          field.addEventListener('blur', debounce(calculateShipping, 1000));
-          field.addEventListener('change', debounce(calculateShipping, 1000));
-        }
-      });
+      const subtotal = currentCart.sub_total || 0;
+      const shipping = currentCart.shipping_total || 0;
+      const discount = currentCart.discount_total || 0;
+      const tax = currentCart.tax_total || 0;
+      const total = currentCart.grand_total || 0;
       
-      countrySelect.addEventListener('change', handleCountryChange);
+      const subtotalEl = document.getElementById('order-subtotal');
+      const totalEl = document.getElementById('order-total');
+      
+      if (subtotalEl) subtotalEl.textContent = `€${subtotal.toFixed(2)}`;
+      if (totalEl) totalEl.textContent = `€${total.toFixed(2)}`;
+      
+      // Show/hide shipping
+      const shippingRow = document.getElementById('shipping-total-row');
+      const shippingEl = document.getElementById('order-shipping');
+      if (shipping > 0 && shippingRow && shippingEl) {
+        shippingEl.textContent = `€${shipping.toFixed(2)}`;
+        shippingRow.classList.remove('hidden');
+      } else if (shippingRow) {
+        shippingRow.classList.add('hidden');
+      }
+      
+      // Show/hide discount
+      const discountRow = document.getElementById('discount-total-row');
+      const discountEl = document.getElementById('order-discount');
+      if (discount > 0 && discountRow && discountEl) {
+        discountEl.textContent = `-€${discount.toFixed(2)}`;
+        discountRow.classList.remove('hidden');
+      } else if (discountRow) {
+        discountRow.classList.add('hidden');
+      }
+      
+      // Show/hide tax
+      const taxRow = document.getElementById('tax-total-row');
+      const taxEl = document.getElementById('order-tax');
+      if (tax > 0 && taxRow && taxEl) {
+        taxEl.textContent = `€${tax.toFixed(2)}`;
+        taxRow.classList.remove('hidden');
+      } else if (taxRow) {
+        taxRow.classList.add('hidden');
+      }
     }
     
-    // FIXED: Calculate shipping rates with better error handling
     async function calculateShipping() {
       try {
+        console.log('🚚 Calculating shipping...');
+        
         const address = getShippingAddress();
-        if (!address.address1 || !address.city || !address.zip || !address.country) {
-          console.log('🚚 Incomplete address, skipping shipping calculation');
+        if (!isValidAddress(address)) {
+          console.log('🚚 Invalid address, skipping shipping calculation');
           return;
         }
         
-        console.log('🚚 Calculating shipping for:', address);
-        
         const shippingSection = document.getElementById('shipping-options-section');
-        const shippingOptions = document.getElementById('shipping-options');
         const shippingLoading = document.getElementById('shipping-loading');
         const shippingError = document.getElementById('shipping-error');
+        const shippingOptions = document.getElementById('shipping-options');
+        
+        if (!shippingSection || !shippingLoading || !shippingError || !shippingOptions) {
+          console.log('🚚 Shipping UI elements not found');
+          return;
+        }
         
         // Show loading
         shippingSection.classList.remove('hidden');
@@ -974,59 +536,47 @@ const metadata = {
         shippingOptions.innerHTML = '';
         shippingError.classList.add('hidden');
         
-        // Get shipping rates from Swell
+        // Debug shipping calculation
+        console.log('🚚 Shipping address:', address);
+        
+        // Get shipping rates
         const rates = await window.swell.cart.getShippingRates(address);
-        console.log('🚚 Shipping rates:', rates);
+        console.log('🚚 Shipping rates result:', rates);
         
         shippingLoading.classList.add('hidden');
         
-        // FIXED: Handle null/empty shipping rates
         if (!rates || rates.length === 0) {
-          console.warn('🚚 No shipping rates available');
+          console.warn('🚚 No shipping rates returned - using fallback');
           shippingError.classList.remove('hidden');
-          
-          // Show fallback shipping options for Germany
-          if (address.country === 'DE') {
-            console.log('🚚 Showing fallback shipping options for Germany');
-            displayFallbackShippingOptions();
-            document.getElementById('payment-section').classList.remove('hidden');
-          }
+          displayFallbackShipping();
         } else {
           displayShippingOptions(rates);
-          document.getElementById('payment-section').classList.remove('hidden');
+        }
+        
+        const paymentSection = document.getElementById('payment-section');
+        if (paymentSection) {
+          paymentSection.classList.remove('hidden');
         }
         
       } catch (error) {
-        console.error('🚚 Error calculating shipping:', error);
+        console.error('❌ Shipping calculation failed:', error);
         const shippingLoading = document.getElementById('shipping-loading');
         const shippingError = document.getElementById('shipping-error');
-        if (shippingLoading) {
-          shippingLoading.classList.add('hidden');
-        }
-        if (shippingError) {
-          shippingError.classList.remove('hidden');
-        }
+        
+        if (shippingLoading) shippingLoading.classList.add('hidden');
+        if (shippingError) shippingError.classList.remove('hidden');
+        
+        displayFallbackShipping();
       }
     }
     
-    // FIXED: Display fallback shipping options when Swell returns null
-    function displayFallbackShippingOptions() {
+    function displayFallbackShipping() {
       const shippingOptions = document.getElementById('shipping-options');
+      if (!shippingOptions) return;
       
-      // Default shipping options for Germany
       const fallbackRates = [
-        {
-          id: 'standard',
-          name: 'Standard Shipping',
-          description: '5-7 business days',
-          price: 4.99
-        },
-        {
-          id: 'express',
-          name: 'Express Shipping',
-          description: '2-3 business days',
-          price: 9.99
-        }
+        { id: 'standard', name: 'Standard Shipping', description: '5-7 business days', price: 4.99 },
+        { id: 'express', name: 'Express Shipping', description: '2-3 business days', price: 9.99 }
       ];
       
       shippingOptions.innerHTML = '';
@@ -1038,51 +588,27 @@ const metadata = {
         optionDiv.innerHTML = `
           <label class="flex items-center justify-between cursor-pointer">
             <div class="flex items-center">
-              <input
-                type="radio"
-                name="shipping_method"
-                value="${rate.id}"
-                ${index === 0 ? 'checked' : ''}
-                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-              />
-              <div class="ml-3">
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  ${rate.name}
-                </p>
-                <p class="text-xs text-gray-600 dark:text-gray-300">
-                  ${rate.description}
-                </p>
+              <input type="radio" name="shipping_method" value="${rate.id}" ${index === 0 ? 'checked' : ''} class="mr-3">
+              <div>
+                <div class="font-medium text-gray-900 dark:text-white">${rate.name}</div>
+                <div class="text-sm text-gray-600 dark:text-gray-300">${rate.description}</div>
               </div>
             </div>
-            <span class="text-sm font-medium text-gray-900 dark:text-white">
-              ${formatPrice(rate.price, cart.currency || 'EUR')}
-            </span>
+            <span class="font-medium text-gray-900 dark:text-white">€${rate.price.toFixed(2)}</span>
           </label>
         `;
         
         shippingOptions.appendChild(optionDiv);
       });
       
-      // Update shipping cost in summary
-      updateShippingCost(fallbackRates[0].price);
-      
-      // Add event listeners for shipping method changes
-      shippingOptions.querySelectorAll('input[name="shipping_method"]').forEach(input => {
-        input.addEventListener('change', (e) => {
-          const selectedRate = fallbackRates.find(rate => rate.id === e.target.value);
-          if (selectedRate) {
-            updateShippingCost(selectedRate.price);
-          }
-          updatePlaceOrderButton();
-        });
-      });
-      
-      updatePlaceOrderButton();
+      // Auto-select first option
+      selectedShippingMethod = fallbackRates[0].id;
+      updateShippingTotal();
     }
     
-    // Display shipping options
     function displayShippingOptions(rates) {
       const shippingOptions = document.getElementById('shipping-options');
+      if (!shippingOptions) return;
       
       shippingOptions.innerHTML = '';
       
@@ -1093,327 +619,149 @@ const metadata = {
         optionDiv.innerHTML = `
           <label class="flex items-center justify-between cursor-pointer">
             <div class="flex items-center">
-              <input
-                type="radio"
-                name="shipping_method"
-                value="${rate.id}"
-                ${index === 0 ? 'checked' : ''}
-                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-              />
-              <div class="ml-3">
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                  ${rate.name}
-                </p>
-                ${rate.description ? `
-                  <p class="text-xs text-gray-600 dark:text-gray-300">
-                    ${rate.description}
-                  </p>
-                ` : ''}
+              <input type="radio" name="shipping_method" value="${rate.id}" ${index === 0 ? 'checked' : ''} class="mr-3">
+              <div>
+                <div class="font-medium text-gray-900 dark:text-white">${rate.name}</div>
+                <div class="text-sm text-gray-600 dark:text-gray-300">${rate.description || ''}</div>
               </div>
             </div>
-            <span class="text-sm font-medium text-gray-900 dark:text-white">
-              ${formatPrice(rate.price, cart.currency || 'EUR')}
-            </span>
+            <span class="font-medium text-gray-900 dark:text-white">€${rate.price.toFixed(2)}</span>
           </label>
         `;
         
         shippingOptions.appendChild(optionDiv);
       });
       
-      // Update shipping cost in summary
+      // Auto-select first option
       if (rates.length > 0) {
-        updateShippingCost(rates[0].price);
-      }
-      
-      // Add event listeners for shipping method changes
-      shippingOptions.querySelectorAll('input[name="shipping_method"]').forEach(input => {
-        input.addEventListener('change', (e) => {
-          const selectedRate = rates.find(rate => rate.id === e.target.value);
-          if (selectedRate) {
-            updateShippingCost(selectedRate.price);
-          }
-          updatePlaceOrderButton();
-        });
-      });
-      
-      updatePlaceOrderButton();
-    }
-    
-    // Update shipping cost in order summary
-    function updateShippingCost(cost) {
-      const shippingCostSection = document.getElementById('checkout-shipping-cost');
-      const shippingCostAmount = document.getElementById('shipping-cost-amount');
-      const totalEl = document.getElementById('checkout-total');
-      
-      if (cost > 0) {
-        shippingCostSection.classList.remove('hidden');
-        shippingCostAmount.textContent = formatPrice(cost, cart.currency || 'EUR');
-        
-        // Update total
-        const subtotal = cart.sub_total || cart.subtotal || 0;
-        const tax = cart.tax_total || 0;
-        const total = subtotal + cost + tax;
-        totalEl.textContent = formatPrice(total, cart.currency || 'EUR');
-      } else {
-        shippingCostSection.classList.add('hidden');
-        // Reset total to original
-        const total = cart.grand_total || cart.total || (cart.sub_total || 0);
-        totalEl.textContent = formatPrice(total, cart.currency || 'EUR');
+        selectedShippingMethod = rates[0].id;
+        updateShippingTotal();
       }
     }
     
-    // Update place order button state
-    function updatePlaceOrderButton() {
-      const hasShippingInfo = document.getElementById('checkout-address1').value &&
-                              document.getElementById('checkout-city').value &&
-                              document.getElementById('checkout-zip').value &&
-                              document.getElementById('checkout-country').value;
-                              
-      const hasShippingMethod = document.querySelector('input[name="shipping_method"]:checked');
-      const hasPaymentMethod = document.querySelector('input[name="payment_method"]:checked');
-      
-      placeOrderBtn.disabled = !hasShippingInfo || !hasShippingMethod || !hasPaymentMethod;
-    }
-    
-    // Get shipping address from form
     function getShippingAddress() {
+      // This would be retrieved from the AddressList component
+      // For now, we'll get it from the form fields if they exist
       return {
-        first_name: document.getElementById('checkout-first-name')?.value || '',
-        last_name: document.getElementById('checkout-last-name')?.value || '',
-        address1: document.getElementById('checkout-address1')?.value || '',
-        address2: document.getElementById('checkout-address2')?.value || '',
-        city: document.getElementById('checkout-city')?.value || '',
-        zip: document.getElementById('checkout-zip')?.value || '',
-        state: document.getElementById('checkout-state')?.value || '',
-        country: document.getElementById('checkout-country')?.value || ''
+        first_name: document.getElementById('address-first-name')?.value || '',
+        last_name: document.getElementById('address-last-name')?.value || '',
+        address1: document.getElementById('address-address1')?.value || '',
+        address2: document.getElementById('address-address2')?.value || '',
+        city: document.getElementById('address-city')?.value || '',
+        zip: document.getElementById('address-zip')?.value || '',
+        country: document.getElementById('address-country')?.value || 'DE',
+        state: document.getElementById('address-state')?.value || ''
       };
     }
     
-    // Handle country change
-    function handleCountryChange() {
-      const country = countrySelect.value;
-      const requiresState = ['US', 'CA'].includes(country);
-      
-      if (requiresState) {
-        stateField.classList.remove('hidden');
-        document.getElementById('checkout-state').required = true;
-      } else {
-        stateField.classList.add('hidden');
-        document.getElementById('checkout-state').required = false;
-      }
-      
-      // Trigger shipping calculation
-      setTimeout(calculateShipping, 100);
+    function isValidAddress(address) {
+      return address.address1 && address.city && address.zip && address.country;
     }
     
-    // Continue as guest
-    function continueAsGuest() {
-      guestCheckoutSection.classList.add('hidden');
-      checkoutFormContainer.classList.remove('hidden');
-      setupShippingCalculation();
-      
-      // Set Germany as default for guests
-      document.getElementById('checkout-country').value = 'DE';
+    function updateShippingTotal() {
+      // Update the shipping total in the cart
+      // This would be handled by the shipping calculation
+      validateForm();
     }
     
-    // FIXED: Save address to Swell account
-    async function saveAddressToAccount() {
-      if (!currentUser) {
-        console.log('📍 Cannot save address: user not authenticated');
-        return;
-      }
+    function validateForm() {
+      const address = getShippingAddress();
+      const hasValidAddress = isValidAddress(address);
+      const hasShipping = selectedShippingMethod || false;
+      const hasPayment = selectedPaymentMethod || false;
       
-      try {
-        const address = getShippingAddress();
+      const isValid = hasValidAddress && hasShipping && hasPayment;
+      
+      if (placeOrderBtn) {
+        placeOrderBtn.disabled = !isValid;
         
-        // Validate address
-        if (!isValidAddress(address)) {
-          console.log('📍 Cannot save invalid address');
-          return;
+        if (isValid) {
+          placeOrderBtn.classList.remove('bg-gray-400');
+          placeOrderBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        } else {
+          placeOrderBtn.classList.add('bg-gray-400');
+          placeOrderBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
         }
-        
-        console.log('📍 Saving address to account:', address);
-        
-        // Update the account's shipping address
-        const result = await window.swell.account.update({
-          shipping: address
-        });
-        
-        console.log('✅ Address saved successfully:', result);
-        
-        // Update the UI
-        saveAddressBtn.textContent = '✓ Address Saved';
-        saveAddressBtn.classList.add('text-green-600');
-        
-        // Reload saved addresses
-        await loadSavedAddresses(result);
-        
-      } catch (error) {
-        console.error('❌ Error saving address:', error);
-        showError('Failed to save address. Please try again.');
       }
     }
     
-    // Handle form submission
-    async function handleFormSubmission(e) {
-      e.preventDefault();
-      
+    async function handlePlaceOrder() {
       if (isProcessingOrder) return;
       
       try {
         isProcessingOrder = true;
-        setSubmitButtonLoading(true);
+        if (placeOrderBtn) {
+          placeOrderBtn.textContent = 'Processing...';
+          placeOrderBtn.disabled = true;
+        }
         
-        console.log('🛒 Processing checkout...');
-        
-        // For now, we'll use a basic order submission since Stripe Elements aren't working
-        // This should be replaced with proper payment processing once Stripe is configured
+        console.log('🛒 Processing order...');
         
         // Collect order data
         const orderData = {
-          account: currentUser ? {
-            email: currentUser.email,
-            first_name: currentUser.displayName?.split(' ')[0] || '',
-            last_name: currentUser.displayName?.split(' ').slice(1).join(' ') || ''
-          } : null,
+          email: document.getElementById('checkout-email')?.value,
           shipping: getShippingAddress(),
-          billing: sameAsShippingCheckbox.checked ? getShippingAddress() : getBillingAddress(),
-          items: cart.items
+          billing: document.getElementById('same-as-shipping')?.checked ? 
+            getShippingAddress() : getBillingAddress(),
+          payment_method: selectedPaymentMethod,
+          shipping_method: selectedShippingMethod
         };
-        
-        // Add selected shipping method
-        const selectedShipping = document.querySelector('input[name="shipping_method"]:checked');
-        if (selectedShipping) {
-          orderData.shipping_method = selectedShipping.value;
-        }
         
         console.log('🛒 Order data:', orderData);
         
-        // For demo purposes, simulate order processing
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Submit order
+        const result = await window.swell.cart.submitOrder(orderData);
         
-        // Save address if requested and user is authenticated
-        if (currentUser && saveAddressBtn.dataset.saveRequested) {
-          await saveAddressToAccount();
+        if (result) {
+          console.log('✅ Order submitted successfully:', result);
+          
+          // Redirect to confirmation page
+          window.location.href = `/order-confirmation?order=${result.number}`;
+        } else {
+          throw new Error('Order submission failed');
         }
         
-        // In a real implementation, this would submit to Swell
-        // const result = await window.swell.cart.submitOrder(orderData);
-        
-        // For now, simulate success
-        console.log('✅ Order processed successfully (demo)');
-        showMessage('Order processed successfully! (Demo mode)', 'success');
-        
-        // Redirect would happen here
-        // window.location.href = `/order-confirmation?order=${result.id}`;
-        
       } catch (error) {
-        console.error('🛒 Checkout error:', error);
-        showError(`Checkout failed: ${error.message}`);
-      } finally {
+        console.error('❌ Order placement failed:', error);
+        showError('Failed to place order. Please try again.');
+        
         isProcessingOrder = false;
-        setSubmitButtonLoading(false);
+        if (placeOrderBtn) {
+          placeOrderBtn.textContent = 'Place Order';
+          placeOrderBtn.disabled = false;
+        }
       }
     }
     
-    // Get billing address
     function getBillingAddress() {
-      if (sameAsShippingCheckbox.checked) {
-        return getShippingAddress();
-      }
-      
-      // Implementation for separate billing address
-      return getShippingAddress(); // Fallback for now
+      // Return billing address if different from shipping
+      return getShippingAddress(); // Placeholder
     }
     
-    // Set submit button loading state
-    function setSubmitButtonLoading(loading) {
-      const btn = document.getElementById('place-order-btn');
-      const text = document.getElementById('place-order-text');
-      const loadingText = document.getElementById('place-order-loading');
-      
-      if (loading) {
-        btn.disabled = true;
-        text.classList.add('hidden');
-        loadingText.classList.remove('hidden');
-      } else {
-        btn.disabled = false;
-        text.classList.remove('hidden');
-        loadingText.classList.add('hidden');
-      }
-    }
-    
-    // Show error message
     function showError(message) {
-      const errorContainer = document.getElementById('checkout-error');
-      errorContainer.innerHTML = `
-        <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800 dark:bg-red-900 dark:border-red-700 dark:text-red-300">
-          ${message}
-        </div>
-      `;
-      errorContainer.classList.remove('hidden');
-      errorContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // You can implement a toast notification system here
+      console.error(message);
+      alert(message); // Temporary
     }
     
-    // Show success message
-    function showMessage(text, type = 'info') {
-      const messageEl = document.createElement('div');
-      messageEl.className = `fixed top-4 right-4 z-50 p-4 rounded-md mb-4 ${
-        type === 'error' ? 'bg-red-100 text-red-800' : 
-        type === 'success' ? 'bg-green-100 text-green-800' : 
-        'bg-blue-100 text-blue-800'
-      }`;
-      messageEl.textContent = text;
-      
-      document.body.appendChild(messageEl);
-      
-      setTimeout(() => messageEl.remove(), 5000);
-    }
+    // Start shipping calculation when address is populated
+    // This would be triggered by the AddressList component
     
-    // Utility function for debouncing
-    function debounce(func, wait) {
-      let timeout;
-      return function executedFunction(...args) {
-        const later = () => {
-          clearTimeout(timeout);
-          func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-      };
-    }
+    // Initialize form validation
+    setTimeout(() => {
+      validateForm();
+    }, 1000);
     
-    // Event listeners
-    document.getElementById('guest-checkout-btn')?.addEventListener('click', continueAsGuest);
-    
-    document.getElementById('sign-in-checkout-btn')?.addEventListener('click', () => {
-      if (window.authHandler) {
-        window.authHandler.openModal('signin');
-      }
-    });
-    
-    saveAddressBtn?.addEventListener('click', () => {
-      saveAddressBtn.dataset.saveRequested = 'true';
-      saveAddressBtn.textContent = '✓ Will save address';
-      saveAddressBtn.classList.add('text-green-600');
-    });
-    
-    sameAsShippingCheckbox?.addEventListener('change', () => {
-      if (sameAsShippingCheckbox.checked) {
-        billingFields.classList.add('hidden');
-      } else {
-        billingFields.classList.remove('hidden');
-      }
-    });
-    
-    // Add payment method change listeners
-    document.querySelectorAll('input[name="payment_method"]').forEach(input => {
-      input.addEventListener('change', updatePlaceOrderButton);
-    });
-    
-    checkoutForm?.addEventListener('submit', handleFormSubmission);
-    
-    // Initialize checkout
-    await initializeCheckout();
+    console.log('🛒 Enhanced checkout ready');
   });
+</script>
+
+<!-- Development tools notice -->
+<script>
+  // Development tools
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname.includes('localhost'))) {
+    console.log('🔧 Development mode detected');
+    console.log('💡 To use shipping debug tools, add this to your HTML:');
+    console.log('<script src="/src/scripts/shipping-debug.js"><\/script>');
+  }
 </script>

@@ -1,7 +1,9 @@
 ---
 // src/pages/account.astro - User Account Dashboard
 import PageLayout from '~/layouts/PageLayout.astro';
-import { getCanonical, getHomePermalink } from '~/utils/permalinks';
+import AddressList from '~/components/checkout/AddressList.astro';
+import PaymentMethodsList from '~/components/checkout/PaymentMethodsList.astro';
+import { getCanonical } from '~/utils/permalinks';
 
 const metadata = {
   title: 'My Account - Synoptic',
@@ -101,6 +103,28 @@ const metadata = {
                 Edit Profile
               </button>
             </div>
+          </div>
+
+          <!-- Address Management Card -->
+          <div class="mb-8 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+            <AddressList 
+              showAddForm={true} 
+              showUseButtons={false} 
+              allowDelete={true} 
+              title="My Addresses"
+              className="account-addresses"
+            />
+          </div>
+
+          <!-- Payment Methods Card -->
+          <div class="mb-8 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
+            <PaymentMethodsList 
+              showAddForm={true} 
+              showUseButtons={false} 
+              allowDelete={true} 
+              title="My Payment Methods"
+              className="account-payment-methods"
+            />
           </div>
 
           <!-- Security Settings Card -->

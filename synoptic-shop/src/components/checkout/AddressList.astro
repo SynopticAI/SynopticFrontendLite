@@ -1,0 +1,640 @@
+---
+// src/components/checkout/AddressList.astro
+// Reusable component for displaying and managing addresses
+
+export interface Props {
+  showAddForm?: boolean;
+  showUseButtons?: boolean;
+  allowDelete?: boolean;
+  title?: string;
+  className?: string;
+}
+
+const { 
+  showAddForm = true, 
+  showUseButtons = false, 
+  allowDelete = true, 
+  title = "Saved Addresses",
+  className = ""
+} = Astro.props;
+---
+
+<div class={`address-list-container ${className}`}>
+  <!-- Address List Header -->
+  <div class="flex justify-between items-center mb-4">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+      {title}
+    </h3>
+    {showAddForm && (
+      <button
+        type="button"
+        id="add-address-btn"
+        class="text-blue-600 hover:text-blue-700 text-sm font-medium"
+      >
+        + Add New Address
+      </button>
+    )}
+  </div>
+
+  <!-- Saved Addresses List -->
+  <div id="saved-addresses-list" class="space-y-3 mb-4">
+    <!-- Addresses will be populated here -->
+  </div>
+
+  <!-- Loading State -->
+  <div id="addresses-loading" class="text-center py-4 hidden">
+    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+    <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">Loading addresses...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div id="addresses-empty" class="text-center py-4 hidden">
+    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+    </svg>
+    <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">No saved addresses yet</p>
+  </div>
+
+  <!-- Add/Edit Address Form -->
+  {showAddForm && (
+    <div id="address-form-container" class="hidden">
+      <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4">
+        <h4 class="font-medium text-gray-900 dark:text-white mb-4">
+          <span id="address-form-title">Add New Address</span>
+        </h4>
+        
+        <form id="address-form" class="space-y-4">
+          <input type="hidden" id="address-id" />
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="address-first-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                First Name *
+              </label>
+              <input
+                type="text"
+                id="address-first-name"
+                required
+                class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            
+            <div>
+              <label for="address-last-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Last Name *
+              </label>
+              <input
+                type="text"
+                id="address-last-name"
+                required
+                class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label for="address-address1" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Address Line 1 *
+            </label>
+            <input
+              type="text"
+              id="address-address1"
+              required
+              class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          
+          <div>
+            <label for="address-address2" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Address Line 2 (Optional)
+            </label>
+            <input
+              type="text"
+              id="address-address2"
+              class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label for="address-city" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                City *
+              </label>
+              <input
+                type="text"
+                id="address-city"
+                required
+                class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            
+            <div>
+              <label for="address-zip" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                ZIP Code *
+              </label>
+              <input
+                type="text"
+                id="address-zip"
+                required
+                class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            
+            <div>
+              <label for="address-country" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Country *
+              </label>
+              <select
+                id="address-country"
+                required
+                class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              >
+                <option value="">Select Country</option>
+                <option value="DE">Germany</option>
+                <option value="AT">Austria</option>
+                <option value="CH">Switzerland</option>
+                <option value="FR">France</option>
+                <option value="IT">Italy</option>
+                <option value="ES">Spain</option>
+                <option value="NL">Netherlands</option>
+                <option value="BE">Belgium</option>
+                <option value="US">United States</option>
+                <option value="GB">United Kingdom</option>
+              </select>
+            </div>
+          </div>
+          
+          <div id="address-state-field" class="hidden">
+            <label for="address-state" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              State/Province
+            </label>
+            <input
+              type="text"
+              id="address-state"
+              class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          
+          <div>
+            <label for="address-phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Phone (Optional)
+            </label>
+            <input
+              type="tel"
+              id="address-phone"
+              class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          
+          <div class="flex space-x-3">
+            <button
+              type="button"
+              id="save-address-btn"
+              class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Save Address
+            </button>
+            <button
+              type="button"
+              id="cancel-address-btn"
+              class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )}
+</div>
+
+<!-- Address List JavaScript -->
+<script>
+class AddressListManager {
+  constructor(config = {}) {
+    this.config = {
+      showAddForm: true,
+      showUseButtons: false,
+      allowDelete: true,
+      onUseAddress: null,
+      onAddressChange: null,
+      ...config
+    };
+    
+    this.addresses = [];
+    this.currentUser = null;
+    this.isEditing = false;
+    this.editingId = null;
+    
+    this.init();
+  }
+  
+  init() {
+    this.bindEvents();
+    this.loadAddresses();
+    
+    // Subscribe to auth changes
+    if (window.authStateManager) {
+      window.authStateManager.subscribe((user) => {
+        this.currentUser = user;
+        if (user) {
+          this.loadAddresses();
+        } else {
+          this.clearAddresses();
+        }
+      });
+    }
+  }
+  
+  bindEvents() {
+    // Add address button
+    const addBtn = document.getElementById('add-address-btn');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => this.showAddForm());
+    }
+    
+    // Form buttons
+    const saveBtn = document.getElementById('save-address-btn');
+    const cancelBtn = document.getElementById('cancel-address-btn');
+    
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => this.saveAddress());
+    }
+    
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => this.hideAddForm());
+    }
+    
+    // Country change for state field
+    const countrySelect = document.getElementById('address-country');
+    if (countrySelect) {
+      countrySelect.addEventListener('change', (e) => {
+        const stateField = document.getElementById('address-state-field');
+        const stateRequiredCountries = ['US', 'CA'];
+        
+        if (stateRequiredCountries.includes(e.target.value)) {
+          stateField.classList.remove('hidden');
+        } else {
+          stateField.classList.add('hidden');
+        }
+      });
+    }
+  }
+  
+  async loadAddresses() {
+    if (!this.currentUser) {
+      this.showEmptyState();
+      return;
+    }
+    
+    try {
+      this.showLoading();
+      
+      const swell = window.swell;
+      if (!swell) {
+        throw new Error('Swell not available');
+      }
+      
+      // Get account with addresses
+      const account = await swell.account.get();
+      
+      // Extract addresses from account
+      const addresses = [];
+      
+      // Add shipping address if exists
+      if (account.shipping && this.isValidAddress(account.shipping)) {
+        addresses.push({
+          id: 'shipping',
+          type: 'shipping',
+          ...account.shipping
+        });
+      }
+      
+      // Add billing address if exists and different from shipping
+      if (account.billing && this.isValidAddress(account.billing)) {
+        const isDifferent = !this.addressesEqual(account.shipping, account.billing);
+        if (isDifferent) {
+          addresses.push({
+            id: 'billing',
+            type: 'billing',
+            ...account.billing
+          });
+        }
+      }
+      
+      this.addresses = addresses;
+      this.renderAddresses();
+      
+    } catch (error) {
+      console.error('❌ Error loading addresses:', error);
+      this.showError('Failed to load addresses');
+    }
+  }
+  
+  renderAddresses() {
+    const container = document.getElementById('saved-addresses-list');
+    const loading = document.getElementById('addresses-loading');
+    const empty = document.getElementById('addresses-empty');
+    
+    loading.classList.add('hidden');
+    
+    if (this.addresses.length === 0) {
+      empty.classList.remove('hidden');
+      container.innerHTML = '';
+      return;
+    }
+    
+    empty.classList.add('hidden');
+    container.innerHTML = '';
+    
+    this.addresses.forEach(address => {
+      const addressDiv = this.createAddressElement(address);
+      container.appendChild(addressDiv);
+    });
+  }
+  
+  createAddressElement(address) {
+    const div = document.createElement('div');
+    div.className = 'border border-gray-200 rounded-lg p-4 dark:border-gray-700';
+    
+    const addressText = this.formatAddress(address);
+    
+    div.innerHTML = `
+      <div class="flex justify-between items-start">
+        <div class="flex-1">
+          <div class="text-sm font-medium text-gray-900 dark:text-white">
+            ${address.first_name} ${address.last_name}
+          </div>
+          <div class="text-sm text-gray-600 dark:text-gray-300 mt-1">
+            ${addressText}
+          </div>
+          ${address.phone ? `<div class="text-sm text-gray-600 dark:text-gray-300">${address.phone}</div>` : ''}
+        </div>
+        <div class="flex space-x-2">
+          ${this.config.showUseButtons ? `
+            <button type="button" class="text-blue-600 hover:text-blue-700 text-sm use-address-btn">
+              Use
+            </button>
+          ` : ''}
+          <button type="button" class="text-gray-600 hover:text-gray-700 text-sm edit-address-btn">
+            Edit
+          </button>
+          ${this.config.allowDelete ? `
+            <button type="button" class="text-red-600 hover:text-red-700 text-sm delete-address-btn">
+              Delete
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+    
+    // Bind events
+    if (this.config.showUseButtons) {
+      div.querySelector('.use-address-btn').addEventListener('click', () => {
+        if (this.config.onUseAddress) {
+          this.config.onUseAddress(address);
+        }
+      });
+    }
+    
+    div.querySelector('.edit-address-btn').addEventListener('click', () => {
+      this.editAddress(address);
+    });
+    
+    if (this.config.allowDelete) {
+      div.querySelector('.delete-address-btn').addEventListener('click', () => {
+        this.deleteAddress(address);
+      });
+    }
+    
+    return div;
+  }
+  
+  formatAddress(address) {
+    const parts = [
+      address.address1,
+      address.address2,
+      `${address.zip} ${address.city}`,
+      address.country
+    ].filter(Boolean);
+    
+    return parts.join(', ');
+  }
+  
+  showAddForm() {
+    this.isEditing = false;
+    this.editingId = null;
+    this.clearForm();
+    document.getElementById('address-form-title').textContent = 'Add New Address';
+    document.getElementById('address-form-container').classList.remove('hidden');
+  }
+  
+  hideAddForm() {
+    this.isEditing = false;
+    this.editingId = null;
+    document.getElementById('address-form-container').classList.add('hidden');
+    this.clearForm();
+  }
+  
+  editAddress(address) {
+    this.isEditing = true;
+    this.editingId = address.id;
+    this.populateForm(address);
+    document.getElementById('address-form-title').textContent = 'Edit Address';
+    document.getElementById('address-form-container').classList.remove('hidden');
+  }
+  
+  populateForm(address) {
+    document.getElementById('address-id').value = address.id || '';
+    document.getElementById('address-first-name').value = address.first_name || '';
+    document.getElementById('address-last-name').value = address.last_name || '';
+    document.getElementById('address-address1').value = address.address1 || '';
+    document.getElementById('address-address2').value = address.address2 || '';
+    document.getElementById('address-city').value = address.city || '';
+    document.getElementById('address-zip').value = address.zip || '';
+    document.getElementById('address-country').value = address.country || '';
+    document.getElementById('address-state').value = address.state || '';
+    document.getElementById('address-phone').value = address.phone || '';
+  }
+  
+  clearForm() {
+    document.getElementById('address-form').reset();
+    document.getElementById('address-id').value = '';
+  }
+  
+  async saveAddress() {
+    if (!this.currentUser) {
+      this.showError('Please sign in to save addresses');
+      return;
+    }
+    
+    const formData = this.getFormData();
+    if (!this.validateForm(formData)) {
+      return;
+    }
+    
+    try {
+      const saveBtn = document.getElementById('save-address-btn');
+      const originalText = saveBtn.textContent;
+      saveBtn.textContent = 'Saving...';
+      saveBtn.disabled = true;
+      
+      const swell = window.swell;
+      if (!swell) {
+        throw new Error('Swell not available');
+      }
+      
+      // Save to Swell account
+      let updateData = {};
+      
+      if (this.isEditing && this.editingId === 'shipping') {
+        updateData.shipping = formData;
+      } else if (this.isEditing && this.editingId === 'billing') {
+        updateData.billing = formData;
+      } else {
+        // New address - save as shipping by default
+        updateData.shipping = formData;
+      }
+      
+      await swell.account.update(updateData);
+      
+      // Reload addresses
+      await this.loadAddresses();
+      
+      this.hideAddForm();
+      this.showSuccess('Address saved successfully!');
+      
+      // Notify parent components
+      if (this.config.onAddressChange) {
+        this.config.onAddressChange();
+      }
+      
+    } catch (error) {
+      console.error('❌ Error saving address:', error);
+      this.showError('Failed to save address. Please try again.');
+    } finally {
+      const saveBtn = document.getElementById('save-address-btn');
+      saveBtn.textContent = 'Save Address';
+      saveBtn.disabled = false;
+    }
+  }
+  
+  async deleteAddress(address) {
+    if (!confirm('Are you sure you want to delete this address?')) {
+      return;
+    }
+    
+    try {
+      const swell = window.swell;
+      if (!swell) {
+        throw new Error('Swell not available');
+      }
+      
+      // Clear the address from account
+      let updateData = {};
+      if (address.id === 'shipping') {
+        updateData.shipping = null;
+      } else if (address.id === 'billing') {
+        updateData.billing = null;
+      }
+      
+      await swell.account.update(updateData);
+      
+      // Reload addresses
+      await this.loadAddresses();
+      
+      this.showSuccess('Address deleted successfully!');
+      
+      // Notify parent components
+      if (this.config.onAddressChange) {
+        this.config.onAddressChange();
+      }
+      
+    } catch (error) {
+      console.error('❌ Error deleting address:', error);
+      this.showError('Failed to delete address. Please try again.');
+    }
+  }
+  
+  getFormData() {
+    return {
+      first_name: document.getElementById('address-first-name').value.trim(),
+      last_name: document.getElementById('address-last-name').value.trim(),
+      address1: document.getElementById('address-address1').value.trim(),
+      address2: document.getElementById('address-address2').value.trim(),
+      city: document.getElementById('address-city').value.trim(),
+      zip: document.getElementById('address-zip').value.trim(),
+      country: document.getElementById('address-country').value,
+      state: document.getElementById('address-state').value.trim(),
+      phone: document.getElementById('address-phone').value.trim()
+    };
+  }
+  
+  validateForm(data) {
+    const required = ['first_name', 'last_name', 'address1', 'city', 'zip', 'country'];
+    
+    for (const field of required) {
+      if (!data[field]) {
+        this.showError(`Please fill in the ${field.replace('_', ' ')} field`);
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  isValidAddress(address) {
+    return address && address.address1 && address.city && address.zip && address.country;
+  }
+  
+  addressesEqual(addr1, addr2) {
+    if (!addr1 || !addr2) return false;
+    
+    const fields = ['address1', 'address2', 'city', 'zip', 'country', 'state'];
+    return fields.every(field => addr1[field] === addr2[field]);
+  }
+  
+  showLoading() {
+    document.getElementById('addresses-loading').classList.remove('hidden');
+    document.getElementById('addresses-empty').classList.add('hidden');
+  }
+  
+  showEmptyState() {
+    document.getElementById('addresses-loading').classList.add('hidden');
+    document.getElementById('addresses-empty').classList.remove('hidden');
+  }
+  
+  clearAddresses() {
+    this.addresses = [];
+    document.getElementById('saved-addresses-list').innerHTML = '';
+    this.showEmptyState();
+  }
+  
+  showError(message) {
+    // You can implement a toast notification system here
+    console.error(message);
+    alert(message); // Temporary
+  }
+  
+  showSuccess(message) {
+    // You can implement a toast notification system here
+    console.log(message);
+    // alert(message); // Temporary - comment out for less intrusive UX
+  }
+}
+
+// Initialize address list when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  // Wait for auth state to be ready
+  function initAddressList() {
+    if (window.authStateManager) {
+      window.addressListManager = new AddressListManager();
+    } else {
+      setTimeout(initAddressList, 100);
+    }
+  }
+  
+  initAddressList();
+});
+</script>

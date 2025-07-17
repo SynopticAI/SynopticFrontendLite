@@ -247,6 +247,19 @@ class AddressListManager {
     }
   }
   
+  async waitForSwell(maxAttempts = 30) {
+    for (let i = 0; i < maxAttempts; i++) {
+      if (window.swell && typeof window.swell.account === 'object') {
+        console.log('✅ Swell is available for AddressList');
+        return window.swell;
+      }
+      console.log(`⏳ Waiting for Swell... (${i + 1}/${maxAttempts})`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    console.error('❌ Swell not available after waiting');
+    return null;
+  }
+  
   bindEvents() {
     // Add address button
     const addBtn = document.getElementById('add-address-btn');
@@ -291,7 +304,8 @@ class AddressListManager {
     try {
       this.showLoading();
       
-      const swell = window.swell;
+      // Wait for Swell to be available
+      const swell = await this.waitForSwell();
       if (!swell) {
         throw new Error('Swell not available');
       }
@@ -480,13 +494,13 @@ class AddressListManager {
       saveBtn.textContent = 'Saving...';
       saveBtn.disabled = true;
       
-      const swell = window.swell;
+      const swell = await this.waitForSwell();
       if (!swell) {
         throw new Error('Swell not available');
       }
       
       // Save to Swell account
-      let updateData = {};
+      const updateData = {};
       
       if (this.isEditing && this.editingId === 'shipping') {
         updateData.shipping = formData;
@@ -526,13 +540,13 @@ class AddressListManager {
     }
     
     try {
-      const swell = window.swell;
+      const swell = await this.waitForSwell();
       if (!swell) {
         throw new Error('Swell not available');
       }
       
       // Clear the address from account
-      let updateData = {};
+      const updateData = {};
       if (address.id === 'shipping') {
         updateData.shipping = null;
       } else if (address.id === 'billing') {

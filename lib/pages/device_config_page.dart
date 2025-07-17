@@ -10,6 +10,7 @@ import 'package:ai_device_manager/l10n/app_localizations.dart';
 import 'package:ai_device_manager/pages/notification_settings_page.dart';
 
 import 'package:ai_device_manager/l10n/context_extensions.dart';
+import 'package:ai_device_manager/widgets/credit_usage_widget.dart';
 
 class DeviceConfigPage extends StatefulWidget {
   final Device device;
@@ -268,6 +269,10 @@ Future<void> _deleteDevice() async {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                CreditUsageWidget(
+                  deviceId: widget.device.id,
+                  showIcon: true,
+                ),
                 // Device Header Card (tappable to edit name/description)
                 InkWell(
                   onTap: _editDeviceInfo,

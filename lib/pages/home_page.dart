@@ -15,6 +15,7 @@ import 'package:ai_device_manager/services/notification_service.dart';
 import 'package:ai_device_manager/utils/app_theme.dart';
 
 import 'package:ai_device_manager/l10n/context_extensions.dart';
+import 'package:ai_device_manager/widgets/credit_usage_widget.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -832,6 +833,9 @@ Widget _buildDeviceTile(Device device, DeviceGroup group, {Key? key}) {
           ),
           body: Column(
             children: [
+              CreditUsageWidget(
+                showIcon: true,
+              ),
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: _firestore

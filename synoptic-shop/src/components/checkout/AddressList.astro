@@ -260,7 +260,7 @@ class AddressListManager {
     return null;
   }
   
-  async waitForSwellAccount(swell, maxAttempts = 20) {
+  async waitForSwellAccount(swell, maxAttempts = 10) {
     for (let i = 0; i < maxAttempts; i++) {
       try {
         const account = await swell.account.get();
@@ -269,13 +269,29 @@ class AddressListManager {
           return account;
         }
         console.log(`⏳ Waiting for Swell account... (${i + 1}/${maxAttempts})`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
       } catch (error) {
         console.log(`⏳ Swell account error, retrying... (${i + 1}/${maxAttempts}):`, error.message);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
-    console.log('⚠️ Swell account not available after waiting, proceeding with empty addresses');
+    
+    // If no account found, try to get cart addresses as fallback
+    console.log('⚠️ No Swell account found, checking cart for addresses...');
+    try {
+      const cart = await swell.cart.get();
+      if (cart && (cart.shipping || cart.billing)) {
+        console.log('✅ Found addresses in cart');
+        return {
+          shipping: cart.shipping,
+          billing: cart.billing
+        };
+      }
+    } catch (error) {
+      console.log('❌ Error getting cart addresses:', error.message);
+    }
+    
+    console.log('⚠️ No addresses found, proceeding with empty state');
     return null;
   }
   
@@ -520,29 +536,63 @@ class AddressListManager {
         throw new Error('Swell not available');
       }
       
-      // Save to Swell account
-      const updateData = {};
+      // Try to save to account first, fallback to cart if not authenticated
+      let success = false;
       
-      if (this.isEditing && this.editingId === 'shipping') {
-        updateData.shipping = formData;
-      } else if (this.isEditing && this.editingId === 'billing') {
-        updateData.billing = formData;
-      } else {
-        // New address - save as shipping by default
-        updateData.shipping = formData;
+      try {
+        // Attempt to save to Swell account
+        const updateData = {};
+        
+        if (this.isEditing && this.editingId === 'shipping') {
+          updateData.shipping = formData;
+        } else if (this.isEditing && this.editingId === 'billing') {
+          updateData.billing = formData;
+        } else {
+          // New address - save as shipping by default
+          updateData.shipping = formData;
+        }
+        
+        await swell.account.update(updateData);
+        console.log('✅ Address saved to Swell account');
+        success = true;
+        
+      } catch (accountError) {
+        console.log('⚠️ Account save failed, trying cart fallback:', accountError.message);
+        
+        // Fallback: Save to cart instead
+        try {
+          const cartUpdateData = {};
+          
+          if (this.isEditing && this.editingId === 'shipping') {
+            cartUpdateData.shipping = formData;
+          } else if (this.isEditing && this.editingId === 'billing') {
+            cartUpdateData.billing = formData;
+          } else {
+            // New address - save as shipping by default
+            cartUpdateData.shipping = formData;
+          }
+          
+          await swell.cart.update(cartUpdateData);
+          console.log('✅ Address saved to cart as fallback');
+          success = true;
+          
+        } catch (cartError) {
+          console.error('❌ Cart save also failed:', cartError.message);
+          throw new Error('Failed to save address to both account and cart');
+        }
       }
       
-      await swell.account.update(updateData);
-      
-      // Reload addresses
-      await this.loadAddresses();
-      
-      this.hideAddForm();
-      this.showSuccess('Address saved successfully!');
-      
-      // Notify parent components
-      if (this.config.onAddressChange) {
-        this.config.onAddressChange();
+      if (success) {
+        // Reload addresses
+        await this.loadAddresses();
+        
+        this.hideAddForm();
+        this.showSuccess('Address saved successfully!');
+        
+        // Notify parent components
+        if (this.config.onAddressChange) {
+          this.config.onAddressChange();
+        }
       }
       
     } catch (error) {

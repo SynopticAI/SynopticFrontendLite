@@ -260,6 +260,25 @@ class AddressListManager {
     return null;
   }
   
+  async waitForSwellAccount(swell, maxAttempts = 20) {
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const account = await swell.account.get();
+        if (account !== null) {
+          console.log('✅ Swell account is available for AddressList');
+          return account;
+        }
+        console.log(`⏳ Waiting for Swell account... (${i + 1}/${maxAttempts})`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (error) {
+        console.log(`⏳ Swell account error, retrying... (${i + 1}/${maxAttempts}):`, error.message);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    console.log('⚠️ Swell account not available after waiting, proceeding with empty addresses');
+    return null;
+  }
+  
   bindEvents() {
     // Add address button
     const addBtn = document.getElementById('add-address-btn');
@@ -310,30 +329,32 @@ class AddressListManager {
         throw new Error('Swell not available');
       }
       
-      // Get account with addresses
-      const account = await swell.account.get();
+      // Wait for account to be available (authentication might still be in progress)
+      const account = await this.waitForSwellAccount(swell);
       
       // Extract addresses from account
       const addresses = [];
       
-      // Add shipping address if exists
-      if (account.shipping && this.isValidAddress(account.shipping)) {
-        addresses.push({
-          id: 'shipping',
-          type: 'shipping',
-          ...account.shipping
-        });
-      }
-      
-      // Add billing address if exists and different from shipping
-      if (account.billing && this.isValidAddress(account.billing)) {
-        const isDifferent = !this.addressesEqual(account.shipping, account.billing);
-        if (isDifferent) {
+      if (account) {
+        // Add shipping address if exists
+        if (account.shipping && this.isValidAddress(account.shipping)) {
           addresses.push({
-            id: 'billing',
-            type: 'billing',
-            ...account.billing
+            id: 'shipping',
+            type: 'shipping',
+            ...account.shipping
           });
+        }
+        
+        // Add billing address if exists and different from shipping
+        if (account.billing && this.isValidAddress(account.billing)) {
+          const isDifferent = !this.addressesEqual(account.shipping, account.billing);
+          if (isDifferent) {
+            addresses.push({
+              id: 'billing',
+              type: 'billing',
+              ...account.billing
+            });
+          }
         }
       }
       

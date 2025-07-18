@@ -108,8 +108,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pleaseFillInAllFields => 'Please fill in all fields';
 
   @override
-  String get needHelpConfiguring =>
-      'Need help configuring your device? I can assist you with:';
+  String get needHelpConfiguring => 'Need help configuring your device? I can assist you with:';
 
   @override
   String get settingUpCamera => 'Setting up camera parameters';
@@ -172,12 +171,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statusOperational => 'Model is trained and ready for testing';
 
   @override
-  String get statusBusyTraining =>
-      'Model is currently being trained. Please wait';
+  String get statusBusyTraining => 'Model is currently being trained. Please wait';
 
   @override
-  String get statusBusyTesting =>
-      'Model evaluation is in progress. Please wait';
+  String get statusBusyTesting => 'Model evaluation is in progress. Please wait';
 
   @override
   String get statusError => 'An error occurred. Please try again';
@@ -196,8 +193,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get busyUploading => 'Busy - Uploading';
 
   @override
-  String get statusBusyUploading =>
-      'Files are currently being uploaded. Please wait.';
+  String get statusBusyUploading => 'Files are currently being uploaded. Please wait.';
 
   @override
   String get addDeviceTitle => 'Add New Device';
@@ -281,8 +277,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deviceConfigPageAiAssistant => 'AI Assistant';
 
   @override
-  String get deviceConfigPageAiAssistantHelp =>
-      'Need help configuring your device? I can assist you with:';
+  String get deviceConfigPageAiAssistantHelp => 'Need help configuring your device? I can assist you with:';
 
   @override
   String get deviceConfigPageCameraParams => 'Setting up camera parameters';
@@ -291,12 +286,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deviceConfigPageModelType => 'Choosing the right model type';
 
   @override
-  String get deviceConfigPageDataRequirements =>
-      'Understanding data requirements';
+  String get deviceConfigPageDataRequirements => 'Understanding data requirements';
 
   @override
-  String get deviceConfigPageActionsNotifications =>
-      'Configuring actions and notifications';
+  String get deviceConfigPageActionsNotifications => 'Configuring actions and notifications';
 
   @override
   String get deviceConfigPageStartChat => 'Start Chat';
@@ -320,8 +313,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deviceConfigPageWarning => 'Warning';
 
   @override
-  String get deviceConfigPageModelTypeWarning =>
-      'Changing the model type will reset all labels to 0.0. Do you want to proceed?';
+  String get deviceConfigPageModelTypeWarning => 'Changing the model type will reset all labels to 0.0. Do you want to proceed?';
 
   @override
   String get deviceConfigPageCancel => 'Cancel';
@@ -370,15 +362,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deviceConfigPageDeviceNotFound => 'Device not found';
 
   @override
-  String get deviceConfigPageCannotDelete =>
-      'Cannot delete device while operations are in progress';
+  String get deviceConfigPageCannotDelete => 'Cannot delete device while operations are in progress';
 
   @override
   String get deviceConfigPageDeleteConfirmationTitle => 'Delete Device';
 
   @override
-  String get deviceConfigPageDeleteConfirmationContent =>
-      'Are you sure you want to delete this device? This will permanently delete all data, images, and settings. This action cannot be undone.';
+  String get deviceConfigPageDeleteConfirmationContent => 'Are you sure you want to delete this device? This will permanently delete all data, images, and settings. This action cannot be undone.';
 
   @override
   String get deviceDashboardPageLatestOutput => 'Latest Output';
@@ -418,12 +408,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deviceDashboardPageNoHourlyData => 'No hourly data available';
 
   @override
-  String get deviceDashboardPageNoDistributionData =>
-      'No distribution data available';
+  String get deviceDashboardPageNoDistributionData => 'No distribution data available';
 
   @override
-  String get deviceDashboardPageNoDataSelectedRange =>
-      'No data for selected time range';
+  String get deviceDashboardPageNoDataSelectedRange => 'No data for selected time range';
 
   @override
   String get assistantChat => 'Assistant Chat';
@@ -445,8 +433,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get espConfigTitle => 'ESP Configuration';
 
   @override
-  String get espConfigDescription =>
-      'Configure your ESP device settings below.';
+  String get espConfigDescription => 'Configure your ESP device settings below.';
 
   @override
   String get espWifiSSID => 'WiFi SSID';
@@ -470,16 +457,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get permissionsRequired => 'Permissions Required';
 
   @override
-  String get permissionsBluetoothLocationMessage =>
-      'This app needs Bluetooth and Location permissions to find and connect to cameras. Please grant these permissions to continue.';
+  String get permissionsBluetoothLocationMessage => 'This app needs Bluetooth and Location permissions to find and connect to cameras. Please grant these permissions to continue.';
 
   @override
-  String get permissionsBluetoothMessage =>
-      'This app needs Bluetooth permissions to find and connect to cameras. Please grant these permissions to continue.';
+  String get permissionsBluetoothMessage => 'This app needs Bluetooth permissions to find and connect to cameras. Please grant these permissions to continue.';
 
   @override
-  String get espSetupCameraLaterExplanation =>
-      'You can either connect a camera now or set it up later';
+  String get espSetupCameraLaterExplanation => 'You can either connect a camera now or set it up later';
 
   @override
   String get noCameraConnected => 'No camera connected';
@@ -494,8 +478,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get motionTriggered => 'Motion Triggered';
 
   @override
-  String get motionTriggeredExplanation =>
-      'Capture images when motion is detected';
+  String get motionTriggeredExplanation => 'Capture images when motion is detected';
 
   @override
   String get hours => 'Hours';
@@ -519,8 +502,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openSettings => 'Open Settings';
 
   @override
-  String get toContinuePleaseEnable =>
-      'To continue, please enable the following:';
+  String get toContinuePleaseEnable => 'To continue, please enable the following:';
 
   @override
   String get swipeToAssignClass => 'swipe to assign class';
@@ -583,8 +565,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get testCamera => 'Test Camera';
 
   @override
-  String get testCameraDescription =>
-      'Use your camera to test the inference model';
+  String get testCameraDescription => 'Use your camera to test the inference model';
 
   @override
   String get cameraTesting => 'Test Camera';
@@ -596,15 +577,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationSettings => 'Notification Settings';
 
   @override
-  String get notificationSettingsDescription =>
-      'Configure when to receive notifications';
+  String get notificationSettingsDescription => 'Configure when to receive notifications';
 
   @override
   String get notificationConfigTitle => 'Notification Configuration';
 
   @override
-  String get notificationConfigDescription =>
-      'Configure when to receive notifications for each detected class.';
+  String get notificationConfigDescription => 'Configure when to receive notifications for each detected class.';
 
   @override
   String get countThreshold => 'Count Threshold';
@@ -613,8 +592,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get locationTrigger => 'Location';
 
   @override
-  String get notifyWhenExceedsThreshold =>
-      'Notify when count exceeds threshold:';
+  String get notifyWhenExceedsThreshold => 'Notify when count exceeds threshold:';
 
   @override
   String get drawRegionToTrigger => 'Draw region to trigger notification:';

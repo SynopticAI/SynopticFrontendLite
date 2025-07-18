@@ -623,19 +623,20 @@ class _DeviceDashboardPageState extends State<DeviceDashboardPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.device.name),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.photo_camera),
-            tooltip: 'Test Inference',
-            onPressed: () {
-              Navigator.pushNamed(
-                context,
-                '/test_camera',
-                arguments: {'device': widget.device, 'userId': widget.userId},
-              );
-            },
-          ),
-        ],
+        // COMMENTED OUT BECAUSE APPLE REVIEWER THOUGH BUTTON WAS UNRESPONSIVE
+        // actions: [
+        //   IconButton(
+        //     icon: const Icon(Icons.photo_camera),
+        //     tooltip: 'Test Inference',
+        //     onPressed: () {
+        //       Navigator.pushNamed(
+        //         context,
+        //         '/test_camera',
+        //         arguments: {'device': widget.device, 'userId': widget.userId},
+        //       );
+        //     },
+        //   ),
+        // ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),

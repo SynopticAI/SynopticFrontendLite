@@ -108,7 +108,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get pleaseFillInAllFields => 'Bitte alle Felder füllen';
 
   @override
-  String get needHelpConfiguring => 'Benötigen Sie Hilfe bei der Konfiguration? Ich kann Ihnen helfen bei:';
+  String get needHelpConfiguring =>
+      'Benötigen Sie Hilfe bei der Konfiguration? Ich kann Ihnen helfen bei:';
 
   @override
   String get settingUpCamera => 'Einrichten der Kameraparameter';
@@ -120,7 +121,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get understandingData => 'Verständnis der Datenanforderungen';
 
   @override
-  String get configuringActions => 'Konfigurieren von Aktionen und Benachrichtigungen';
+  String get configuringActions =>
+      'Konfigurieren von Aktionen und Benachrichtigungen';
 
   @override
   String get logout => 'Abmelden';
@@ -171,13 +173,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get statusOperational => 'Modell ist trainiert und bereit für Tests';
 
   @override
-  String get statusBusyTraining => 'Modell wird derzeit trainiert. Bitte warten';
+  String get statusBusyTraining =>
+      'Modell wird derzeit trainiert. Bitte warten';
 
   @override
   String get statusBusyTesting => 'Modellevaluierung läuft. Bitte warten';
 
   @override
-  String get statusError => 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut';
+  String get statusError =>
+      'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut';
 
   @override
   String statusBusy(String status) {
@@ -193,7 +197,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get busyUploading => 'Beschäftigt - Hochladen';
 
   @override
-  String get statusBusyUploading => 'Dateien werden derzeit hochgeladen. Bitte warten.';
+  String get statusBusyUploading =>
+      'Dateien werden derzeit hochgeladen. Bitte warten.';
 
   @override
   String get addDeviceTitle => 'Neues Gerät hinzufügen';
@@ -205,7 +210,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get logoutConfirmTitle => 'Abmelden';
 
   @override
-  String get logoutConfirmMessage => 'Sind Sie sicher, dass Sie sich abmelden möchten?';
+  String get logoutConfirmMessage =>
+      'Sind Sie sicher, dass Sie sich abmelden möchten?';
 
   @override
   String get noTaskDescription => 'Keine Aufgabenbeschreibung';
@@ -277,10 +283,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get deviceConfigPageAiAssistant => 'KI-Assistent';
 
   @override
-  String get deviceConfigPageAiAssistantHelp => 'Brauchen Sie Hilfe bei der Einrichtung Ihres Geräts? Ich kann Sie unterstützen bei:';
+  String get deviceConfigPageAiAssistantHelp =>
+      'Brauchen Sie Hilfe bei der Einrichtung Ihres Geräts? Ich kann Sie unterstützen bei:';
 
   @override
-  String get deviceConfigPageCameraParams => 'Kameraeinstellungen konfigurieren';
+  String get deviceConfigPageCameraParams =>
+      'Kameraeinstellungen konfigurieren';
 
   @override
   String get deviceConfigPageModelType => 'Den richtigen Modelltyp auswählen';
@@ -289,7 +297,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get deviceConfigPageDataRequirements => 'Datenanforderungen verstehen';
 
   @override
-  String get deviceConfigPageActionsNotifications => 'Aktionen und Benachrichtigungen';
+  String get deviceConfigPageActionsNotifications =>
+      'Aktionen und Benachrichtigungen';
 
   @override
   String get deviceConfigPageStartChat => 'Chat starten';
@@ -313,7 +322,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get deviceConfigPageWarning => 'Warnung';
 
   @override
-  String get deviceConfigPageModelTypeWarning => 'Das Ändern des Modelltyps setzt alle Labels auf 0.0 zurück. Möchten Sie fortfahren?';
+  String get deviceConfigPageModelTypeWarning =>
+      'Das Ändern des Modelltyps setzt alle Labels auf 0.0 zurück. Möchten Sie fortfahren?';
 
   @override
   String get deviceConfigPageCancel => 'Abbrechen';
@@ -362,13 +372,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get deviceConfigPageDeviceNotFound => 'Gerät nicht gefunden';
 
   @override
-  String get deviceConfigPageCannotDelete => 'Gerät kann nicht gelöscht werden, während Vorgänge laufen';
+  String get deviceConfigPageCannotDelete =>
+      'Gerät kann nicht gelöscht werden, während Vorgänge laufen';
 
   @override
   String get deviceConfigPageDeleteConfirmationTitle => 'Gerät löschen';
 
   @override
-  String get deviceConfigPageDeleteConfirmationContent => 'Möchten Sie dieses Gerät wirklich löschen? Dadurch werden alle Daten, Bilder und Einstellungen dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.';
+  String get deviceConfigPageDeleteConfirmationContent =>
+      'Möchten Sie dieses Gerät wirklich löschen? Dadurch werden alle Daten, Bilder und Einstellungen dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.';
 
   @override
   String get deviceDashboardPageLatestOutput => 'Neueste Ausgabe';
@@ -405,13 +417,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get deviceDashboardPageNoOutputData => 'Keine Ausgabedaten verfügbar';
 
   @override
-  String get deviceDashboardPageNoHourlyData => 'Keine stündlichen Daten verfügbar';
+  String get deviceDashboardPageNoHourlyData =>
+      'Keine stündlichen Daten verfügbar';
 
   @override
-  String get deviceDashboardPageNoDistributionData => 'Keine Verteilungsdaten verfügbar';
+  String get deviceDashboardPageNoDistributionData =>
+      'Keine Verteilungsdaten verfügbar';
 
   @override
-  String get deviceDashboardPageNoDataSelectedRange => 'Keine Daten für den ausgewählten Zeitraum verfügbar';
+  String get deviceDashboardPageNoDataSelectedRange =>
+      'Keine Daten für den ausgewählten Zeitraum verfügbar';
 
   @override
   String get assistantChat => 'Assistenten-Chat';
@@ -433,7 +448,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get espConfigTitle => 'ESP-Konfiguration';
 
   @override
-  String get espConfigDescription => 'Konfigurieren Sie unten die Einstellungen Ihres ESP-Geräts.';
+  String get espConfigDescription =>
+      'Konfigurieren Sie unten die Einstellungen Ihres ESP-Geräts.';
 
   @override
   String get espWifiSSID => 'WiFi-SSID';
@@ -457,13 +473,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get permissionsRequired => 'Berechtigungen benötigt';
 
   @override
-  String get permissionsBluetoothLocationMessage => 'Bluetooth und GPS Berechtigungen werden zum verbinde der Kamera benötigt. Bitte geben sie diese Funktionen frei.';
+  String get permissionsBluetoothLocationMessage =>
+      'Bluetooth und GPS Berechtigungen werden zum verbinde der Kamera benötigt. Bitte geben sie diese Funktionen frei.';
 
   @override
-  String get permissionsBluetoothMessage => 'Bluetooth Berechtigungen werden zum verbinde der Kamera benötigt. Bitte geben sie diese Funktionen frei.';
+  String get permissionsBluetoothMessage =>
+      'Bluetooth Berechtigungen werden zum verbinde der Kamera benötigt. Bitte geben sie diese Funktionen frei.';
 
   @override
-  String get espSetupCameraLaterExplanation => 'Sie können die Kamera sowohl jetzt als auch später einrichten';
+  String get espSetupCameraLaterExplanation =>
+      'Sie können die Kamera sowohl jetzt als auch später einrichten';
 
   @override
   String get noCameraConnected => 'Keine Kamera verbunden';
@@ -472,13 +491,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get saveImages => 'Bilder speichern';
 
   @override
-  String get saveImagesExplanation => 'Speichere aufgenommene Bilder im Gerätspeicher';
+  String get saveImagesExplanation =>
+      'Speichere aufgenommene Bilder im Gerätspeicher';
 
   @override
   String get motionTriggered => 'Bewegungsauslöser';
 
   @override
-  String get motionTriggeredExplanation => 'Nimmt Bilder auf wenn Bewegung erkannt wird';
+  String get motionTriggeredExplanation =>
+      'Nimmt Bilder auf wenn Bewegung erkannt wird';
 
   @override
   String get hours => 'Stunden';
@@ -502,7 +523,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get openSettings => 'Einstellungen öffnen';
 
   @override
-  String get toContinuePleaseEnable => 'Um fortzufahren, bitte folgendes anschalten:';
+  String get toContinuePleaseEnable =>
+      'Um fortzufahren, bitte folgendes anschalten:';
 
   @override
   String get swipeToAssignClass => 'Wischen zur Klassifizierung';
@@ -565,7 +587,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get testCamera => 'Test Kamera';
 
   @override
-  String get testCameraDescription => 'Benutze deine Kamera um die KI zu testen';
+  String get testCameraDescription =>
+      'Benutze deine Kamera um die KI zu testen';
 
   @override
   String get cameraTesting => 'Kamera testen';
@@ -577,13 +600,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get notificationSettings => 'Benachrichtigungseinstellungen';
 
   @override
-  String get notificationSettingsDescription => 'Konfigurieren Sie, wann Sie Benachrichtigungen erhalten';
+  String get notificationSettingsDescription =>
+      'Konfigurieren Sie, wann Sie Benachrichtigungen erhalten';
 
   @override
   String get notificationConfigTitle => 'Benachrichtigungskonfiguration';
 
   @override
-  String get notificationConfigDescription => 'Konfigurieren Sie, wann Sie für jede erkannte Klasse Benachrichtigungen erhalten.';
+  String get notificationConfigDescription =>
+      'Konfigurieren Sie, wann Sie für jede erkannte Klasse Benachrichtigungen erhalten.';
 
   @override
   String get countThreshold => 'Anzahlschwellenwert';
@@ -592,10 +617,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get locationTrigger => 'Standort';
 
   @override
-  String get notifyWhenExceedsThreshold => 'Benachrichtigen, wenn die Anzahl den Schwellenwert überschreitet:';
+  String get notifyWhenExceedsThreshold =>
+      'Benachrichtigen, wenn die Anzahl den Schwellenwert überschreitet:';
 
   @override
-  String get drawRegionToTrigger => 'Zeichnen Sie einen Bereich, um eine Benachrichtigung auszulösen:';
+  String get drawRegionToTrigger =>
+      'Zeichnen Sie einen Bereich, um eine Benachrichtigung auszulösen:';
 
   @override
   String get saveSettings => 'Einstellungen speichern';

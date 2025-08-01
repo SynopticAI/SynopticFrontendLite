@@ -9,9 +9,22 @@ import 'package:ai_device_manager/device.dart';
 import 'package:ai_device_manager/widgets/latest_received_image.dart';
 import 'package:ai_device_manager/l10n/app_localizations.dart';
 import 'dart:io' show Platform;
+import 'dart:async';
 
 import 'package:ai_device_manager/l10n/context_extensions.dart';
 
+  // WiFi Network class
+  class WifiNetwork {
+    final String ssid;
+    final int signalStrength;
+    final bool isSecured;
+
+    WifiNetwork({
+      required this.ssid,
+      required this.signalStrength,
+      required this.isSecured,
+    });
+  }
 class ESPConfigPage extends StatefulWidget {
   final String deviceId;
   final String userId;
@@ -26,6 +39,16 @@ class ESPConfigPage extends StatefulWidget {
   State<ESPConfigPage> createState() => _ESPConfigPageState();
 }
 
+enum ConnectionState {
+  scanning,
+  connecting,
+  waitingForCredentials,
+  waitingForHeartbeat,
+  connected,
+  connectionSuccess, // New state for showing success message
+  failed
+}
+
 class _ESPConfigPageState extends State<ESPConfigPage> {
   // Firebase instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -38,17 +61,29 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
   bool _showDeviceList = true;
   bool _isLoading = true;
 
+  // Connection state management
+  ConnectionState _connectionState = ConnectionState.scanning;
+  String? _savedCameraId;
+  String? _savedDeviceName; // Store ESP32 device name for reconnection
+  Timer? _heartbeatTimer;
+  StreamSubscription? _heartbeatSubscription;
+  
+  // WiFi networks
+  List<WifiNetwork> _availableNetworks = [];
+  bool _isLoadingNetworks = false;
+  WifiNetwork? _selectedNetwork;
+
   // Camera settings state
   int _hours = 0;
   int _minutes = 1;
   int _seconds = 0;
   bool _motionTriggered = false;
   bool _saveImages = true;
-  String? _savedCameraId;
 
   // Constants
   static const String _targetCharacteristicUuid = "87654321-4321-4321-4321-abcdefabcdef";
   static const Duration _scanDuration = Duration(seconds: 5);
+  static const Duration _heartbeatTimeout = Duration(seconds: 60); // Wait 60 seconds for heartbeat
 
   @override
   void initState() {
@@ -58,6 +93,8 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
 
   @override
   void dispose() {
+    _heartbeatTimer?.cancel();
+    _heartbeatSubscription?.cancel();
     _disconnectDevice();
     super.dispose();
   }
@@ -65,9 +102,10 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
   // Initialization methods
   Future<void> _initialize() async {
     await _loadSettings();
-    _validateLoadedSettings(); // Add this line
+    _validateLoadedSettings();
     if (_savedCameraId != null) {
       setState(() => _showDeviceList = false);
+      _connectionState = ConnectionState.connected;
     } else {
       await _checkBluetoothPermissions();
     }
@@ -85,13 +123,12 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
     if (!doc.exists) return true;
 
     final data = doc.data()!;
-    // Check if last_conversation_summary exists and is not empty
     final hasConversationHistory = data.containsKey('last_conversation_summary') && 
                                  data['last_conversation_summary'] != null &&
                                  data['last_conversation_summary'].toString().isNotEmpty;
     
     return !hasConversationHistory;
-}
+  }
 
   Future<void> _navigateNext(BuildContext context) async {
     bool isInitial = await _isInitialSetup();
@@ -133,6 +170,7 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
         _motionTriggered = data['motionTriggered'] ?? false;
         _saveImages = data['saveImages'] ?? true;
         _savedCameraId = data['connectedCameraId'];
+        _savedDeviceName = data['espDeviceName']; // Load saved ESP32 device name
         _showDeviceList = data['connectedCameraId'] == null;
       });
     } catch (e) {
@@ -140,19 +178,205 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
     }
   }
 
-  // Permission handling
+  // WiFi Network Scanning
+  Future<void> _scanWifiNetworks() async {
+    setState(() {
+      _isLoadingNetworks = true;
+      _availableNetworks.clear();
+    });
+
+    try {
+      // TODO: Implement actual WiFi network scanning
+      // This is a placeholder - actual implementation depends on platform capabilities
+      // For now, we'll get the current network and add some mock networks
+      final networkInfo = NetworkInfo();
+      final currentSSID = await networkInfo.getWifiName();
+      
+      // Mock networks for demonstration
+      _availableNetworks = [
+        if (currentSSID != null) 
+          WifiNetwork(
+            ssid: currentSSID.replaceAll('"', ''), 
+            signalStrength: -30, 
+            isSecured: true
+          ),
+        WifiNetwork(ssid: "Office_WiFi", signalStrength: -45, isSecured: true),
+        WifiNetwork(ssid: "Guest_Network", signalStrength: -60, isSecured: false),
+        WifiNetwork(ssid: "Factory_WiFi", signalStrength: -55, isSecured: true),
+      ];
+
+      // Sort by signal strength
+      _availableNetworks.sort((a, b) => b.signalStrength.compareTo(a.signalStrength));
+      
+    } catch (e) {
+      print('Error scanning WiFi networks: $e');
+      // Fallback to manual entry
+    } finally {
+      setState(() => _isLoadingNetworks = false);
+    }
+  }
+
+  // Heartbeat monitoring
+  void _startHeartbeatMonitoring() {
+    print('Starting heartbeat monitoring for device ${widget.deviceId}');
+    
+    // Listen to heartbeat updates in Firestore
+    _heartbeatSubscription = _firestore
+        .collection('users')
+        .doc(widget.userId)
+        .collection('devices')
+        .doc(widget.deviceId)
+        .snapshots()
+        .listen((snapshot) {
+      if (!snapshot.exists) return;
+      
+      final data = snapshot.data()!;
+      final lastHeartbeat = data['last_heartbeat'] as String?;
+      
+      if (lastHeartbeat != null) {
+        print('Received heartbeat: $lastHeartbeat');
+        _onHeartbeatReceived();
+      }
+    });
+
+    // Set timeout for heartbeat
+    _heartbeatTimer = Timer(_heartbeatTimeout, () {
+      if (_connectionState == ConnectionState.waitingForHeartbeat) {
+        print('Heartbeat timeout - assuming WiFi credentials failed');
+        _onHeartbeatTimeout();
+      }
+    });
+  }
+
+  void _onHeartbeatReceived() {
+    print('✅ Heartbeat received - WiFi connection successful');
+    _heartbeatTimer?.cancel();
+    _heartbeatSubscription?.cancel();
+    
+    setState(() {
+      _connectionState = ConnectionState.connectionSuccess;
+      _showDeviceList = false;
+    });
+    
+    // Save the successful connection
+    _updateFirestore({
+      'connectedCameraId': _selectedDevice?.id.toString(),
+      'espDeviceName': _savedDeviceName, // Save ESP32 device name
+    });
+    
+    // Show success message for 3 seconds, then proceed to settings
+    Timer(Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _connectionState = ConnectionState.connected;
+        });
+      }
+    });
+  }
+
+  void _onHeartbeatTimeout() {
+    print('❌ Heartbeat timeout - WiFi credentials likely incorrect');
+    _heartbeatTimer?.cancel();
+    _heartbeatSubscription?.cancel();
+    
+    setState(() {
+      _connectionState = ConnectionState.failed;
+    });
+    
+    // Show reconnection dialog
+    _showReconnectionDialog();
+  }
+
+  void _showReconnectionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.wifi_off, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Connection Failed'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('The device could not connect to WiFi. This usually means:'),
+            SizedBox(height: 8),
+            Text('• Incorrect WiFi password'),
+            Text('• WiFi network is out of range'),
+            Text('• Network security settings'),
+            SizedBox(height: 16),
+            Text('Would you like to try different WiFi credentials?'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _navigateNext(context); // Skip WiFi setup
+            },
+            child: Text('Skip for Now'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _reconnectToESP32();
+            },
+            child: Text('Try Again'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _reconnectToESP32() async {
+    if (_savedDeviceName == null) {
+      _showError('No saved device name for reconnection');
+      return;
+    }
+
+    setState(() {
+      _connectionState = ConnectionState.connecting;
+      _isLoading = true;
+    });
+
+    print('Attempting to reconnect to ESP32: $_savedDeviceName');
+    
+    // Start scanning for the specific device
+    await _startScanning();
+    
+    // Look for the saved device name
+    BluetoothDevice? targetDevice;
+    for (var device in _foundDevices) {
+      if (device.name == _savedDeviceName) {
+        targetDevice = device;
+        break;
+      }
+    }
+
+    if (targetDevice != null) {
+      print('Found target device: $_savedDeviceName');
+      await _connectToDevice(targetDevice);
+    } else {
+      _showError('Could not find device $_savedDeviceName. Please try scanning again.');
+      setState(() {
+        _connectionState = ConnectionState.scanning;
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Permission handling (existing code with minor updates)
   Future<void> _checkBluetoothPermissions() async {
     try {
-      // For iOS, we'll use a simplified approach that skips unnecessary checks
       if (Platform.isIOS) {
-        // For iOS, directly start scanning which will trigger the iOS system dialog if needed
-        // This avoids our custom dialogs entirely for iOS
         _startScanning();
         return;
       }
       
-      // Android-specific flow below
-      // Check if Bluetooth is enabled
       bool isBtEnabled = await FlutterBluePlus.isOn;
       bool isLocationEnabled = await Permission.location.serviceStatus.isEnabled;
       
@@ -162,7 +386,6 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
         return;
       }
       
-      // Request Android permissions
       Map<Permission, PermissionStatus> statuses = await [
         Permission.bluetoothScan,
         Permission.bluetoothConnect,
@@ -178,8 +401,6 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
       _showError('Permission check failed: $e');
     }
   }
-
-
 
   void _showServicesDialog(bool needsBluetooth, bool needsLocation) {
     showDialog(
@@ -219,7 +440,6 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              // Directly open system settings (not app settings)
               if (needsBluetooth) {
                 if (Platform.isAndroid) {
                   await FlutterBluePlus.turnOn();
@@ -230,7 +450,6 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
               if (needsLocation) {
                 await openAppSettings();
               }
-              // Recheck after a brief pause
               await Future.delayed(Duration(milliseconds: 500));
               await _checkBluetoothPermissions();
             },
@@ -241,69 +460,328 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
     );
   }
 
-
-  Future<void> _showWiFiCredentialsDialog(String currentSSID) async {
-    final TextEditingController ssidController = TextEditingController(text: currentSSID);
+  Future<void> _showWiFiCredentialsDialog() async {
+    // First scan for available networks
+    await _scanWifiNetworks();
+    
     final TextEditingController passwordController = TextEditingController();
     
     return showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('WiFi'),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            // Check if we can enable the Connect button
+            bool canConnect = _selectedNetwork != null && 
+                            (!_selectedNetwork!.isSecured || passwordController.text.isNotEmpty);
+            
+            return AlertDialog(
+              title: const Text('WiFi Configuration'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Select WiFi Network:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    SizedBox(height: 8),
+                    
+                    // Network selection
+                    if (_isLoadingNetworks)
+                      Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: CircularProgressIndicator(),
+                        ),
+                      )
+                    else if (_availableNetworks.isNotEmpty)
+                      Container(
+                        height: 200,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ListView.builder(
+                          itemCount: _availableNetworks.length,
+                          itemBuilder: (context, index) {
+                            final network = _availableNetworks[index];
+                            final isSelected = _selectedNetwork == network;
+                            
+                            return ListTile(
+                              dense: true,
+                              selected: isSelected,
+                              leading: Icon(
+                                network.isSecured ? Icons.wifi_lock : Icons.wifi,
+                                color: _getSignalColor(network.signalStrength),
+                              ),
+                              title: Text(network.ssid),
+                              subtitle: Text('${network.signalStrength} dBm'),
+                              trailing: _getSignalIcon(network.signalStrength),
+                              onTap: () {
+                                setDialogState(() {
+                                  _selectedNetwork = network;
+                                  // Clear password when switching networks
+                                  passwordController.clear();
+                                });
+                              },
+                            );
+                          },
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(Icons.wifi_off, color: Colors.grey),
+                            SizedBox(height: 8),
+                            Text('No networks found'),
+                            TextButton(
+                              onPressed: () async {
+                                setDialogState(() => _isLoadingNetworks = true);
+                                await _scanWifiNetworks();
+                                setDialogState(() => _isLoadingNetworks = false);
+                              },
+                              child: Text('Scan Again'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    
+                    SizedBox(height: 16),
+                    
+                    // Manual SSID entry option
+                    TextButton.icon(
+                      icon: Icon(Icons.edit),
+                      label: Text('Enter Network Manually'),
+                      onPressed: () {
+                        // Show manual entry dialog
+                        _showManualNetworkDialog(setDialogState, passwordController);
+                      },
+                    ),
+                    
+                    SizedBox(height: 16),
+                    
+                    // Password field (only show if network is selected and secured)
+                    if (_selectedNetwork != null && _selectedNetwork!.isSecured) ...[
+                      TextField(
+                        controller: passwordController,
+                        decoration: InputDecoration(
+                          labelText: 'Password for ${_selectedNetwork!.ssid}',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.lock),
+                          errorText: _selectedNetwork!.isSecured && passwordController.text.isEmpty 
+                              ? 'Password required for secured network' 
+                              : null,
+                        ),
+                        obscureText: true,
+                        onChanged: (value) {
+                          // Trigger rebuild to update button state
+                          setDialogState(() {});
+                        },
+                      ),
+                    ],
+                    
+                    // Show network selection status
+                    if (_selectedNetwork != null) ...[
+                      SizedBox(height: 16),
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _selectedNetwork!.isSecured ? Icons.wifi_lock : Icons.wifi,
+                              color: Colors.blue,
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Selected: ${_selectedNetwork!.ssid}',
+                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  Text(
+                                    _selectedNetwork!.isSecured ? 'Secured network' : 'Open network',
+                                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else ...[
+                      SizedBox(height: 16),
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.warning, color: Colors.orange, size: 20),
+                            SizedBox(width: 8),
+                            Text('Select WiFi network'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(context.l10n.cancel),
+                ),
+                ElevatedButton(
+                  onPressed: canConnect ? () async {
+                    Navigator.pop(context);
+                    await _sendWiFiCredentials(_selectedNetwork!.ssid, passwordController.text);
+                  } : null,
+                  child: Text('Connect'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<String?> _getPasswordForNetwork(String ssid) async {
+    final TextEditingController passwordController = TextEditingController();
+    
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Enter Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Network: $ssid'),
+            SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              decoration: InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+              ),
+              obscureText: true,
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, passwordController.text),
+            child: Text('Connect'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showManualNetworkDialog(StateSetter setDialogState, TextEditingController passwordController) {
+    final TextEditingController ssidController = TextEditingController();
+    bool isSecured = true; // Default assume secured
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setManualDialogState) => AlertDialog(
+          title: Text('Enter Network Manually'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: ssidController,
                 decoration: InputDecoration(
-                  labelText: context.l10n.espWifiSSID,
+                  labelText: 'Network Name (SSID)',
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: passwordController,
-                decoration: InputDecoration(
-                  labelText: context.l10n.espWifiPassword,
-                  border: OutlineInputBorder(),
-                ),
-                obscureText: true,
+              SizedBox(height: 16),
+              SwitchListTile(
+                title: Text('Secured Network'),
+                subtitle: Text('Does this network require a password?'),
+                value: isSecured,
+                onChanged: (value) {
+                  setManualDialogState(() {
+                    isSecured = value;
+                  });
+                },
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(context.l10n.cancel),
+              child: Text('Cancel'),
             ),
-            TextButton(
-              onPressed: () async {
-                if (ssidController.text.isEmpty || passwordController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(context.l10n.pleaseFillInAllFields)),
-                  );
-                  return;
+            ElevatedButton(
+              onPressed: () {
+                if (ssidController.text.isNotEmpty) {
+                  setDialogState(() {
+                    _selectedNetwork = WifiNetwork(
+                      ssid: ssidController.text,
+                      signalStrength: -50, // Default
+                      isSecured: isSecured,
+                    );
+                    // Clear password when selecting manual network
+                    passwordController.clear();
+                  });
+                  Navigator.pop(context);
                 }
-                
-                Navigator.pop(context);
-                await _sendWiFiCredentials(
-                  ssidController.text,
-                  passwordController.text,
-                );
               },
-              child: Text(context.l10n.connect),
+              child: Text('Select'),
             ),
           ],
-        );
-      },
+        ),
+      ),
     );
+  }
+
+  Color _getSignalColor(int signalStrength) {
+    if (signalStrength >= -50) return Colors.green;
+    if (signalStrength >= -70) return Colors.orange;
+    return Colors.red;
+  }
+
+  Widget _getSignalIcon(int signalStrength) {
+    if (signalStrength >= -50) return Icon(Icons.signal_wifi_4_bar, color: Colors.green, size: 20);
+    if (signalStrength >= -60) return Icon(Icons.network_wifi_3_bar, color: Colors.orange, size: 20);
+    if (signalStrength >= -70) return Icon(Icons.network_wifi_2_bar, color: Colors.orange, size: 20);
+    return Icon(Icons.signal_wifi_0_bar, color: Colors.red, size: 20);
   }
 
   Future<void> _sendWiFiCredentials(String ssid, String password) async {
     if (_wifiCharacteristic == null) {
       _showError('Device not properly connected');
+      return;
+    }
+
+    // Validate inputs
+    if (ssid.isEmpty) {
+      _showError('SSID cannot be empty');
       return;
     }
 
@@ -314,8 +792,15 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
       await _wifiCharacteristic!.write(credentials.codeUnits);
       
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('WiFi credentials sent to device')),
+        SnackBar(content: Text('WiFi credentials sent to device: $ssid')),
       );
+
+      // Start waiting for heartbeat
+      setState(() {
+        _connectionState = ConnectionState.waitingForHeartbeat;
+      });
+      
+      _startHeartbeatMonitoring();
       
     } catch (e) {
       _showError('Failed to send WiFi credentials: $e');
@@ -334,13 +819,12 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(context.l10n.cancel) // Use cancel here, not "fill fields"
+            child: Text(context.l10n.cancel)
           ),
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
               await openAppSettings();
-              // Recheck after settings change
               await _checkBluetoothPermissions();
             },
             child: Text(context.l10n.openSettings)
@@ -350,7 +834,7 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
     );
   }
 
-  // Bluetooth scanning and connection
+  // Bluetooth scanning and connection (updated)
   Future<void> _startScanning() async {
     setState(() {
       _foundDevices.clear();
@@ -378,65 +862,44 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
     }
   }
 
-
-  Future<void> _fetchDeviceName(BluetoothDevice device) async {
-    try {
-      await device.connect();
-      await Future.delayed(const Duration(seconds: 1));  // Give time for name retrieval
-      await device.disconnect();
-
-      // Force UI update with the retrieved name
-      setState(() {});
-    } catch (e) {
-      print('Failed to fetch device name: $e');
-    }
-  }
-
-
-
   Future<void> _connectToDevice(BluetoothDevice device) async {
-  try {
-    setState(() => _isLoading = true);
-    
-    // Connect to the device
-    await device.connect();
-    setState(() => _selectedDevice = device);
+    try {
+      setState(() => _isLoading = true);
+      
+      // Connect to the device
+      await device.connect();
+      setState(() => _selectedDevice = device);
 
-    // Discover services
-    List<BluetoothService> services = await device.discoverServices();
-    
-    // Find our target characteristic
-    for (var service in services) {
-      for (var characteristic in service.characteristics) {
-        if (characteristic.uuid.toString() == _targetCharacteristicUuid) {
-          _wifiCharacteristic = characteristic;
-          
-          // Get current WiFi SSID
-          final networkInfo = NetworkInfo();
-          final ssid = await networkInfo.getWifiName(); // Returns with quotes, need to clean
-          final cleanSSID = ssid?.replaceAll('"', '') ?? '';
-          
-          // Show WiFi credentials dialog
-          if (mounted) {
-            await _showWiFiCredentialsDialog(cleanSSID);
+      // Save device name for potential reconnection
+      _savedDeviceName = device.name;
+
+      // Discover services
+      List<BluetoothService> services = await device.discoverServices();
+      
+      // Find our target characteristic
+      for (var service in services) {
+        for (var characteristic in service.characteristics) {
+          if (characteristic.uuid.toString() == _targetCharacteristicUuid) {
+            _wifiCharacteristic = characteristic;
+            
+            // Show WiFi credentials dialog with network selection
+            if (mounted) {
+              await _showWiFiCredentialsDialog();
+            }
+            
+            break;
           }
-          
-          break;
         }
       }
-    }
 
-    setState(() {
-      _showDeviceList = false;
-      _savedCameraId = device.id.toString();
-    });
-    
-  } catch (e) {
-    _showError('Failed to connect: $e');
-  } finally {
-    setState(() => _isLoading = false);
+      // Don't change state here - wait for heartbeat confirmation
+      
+    } catch (e) {
+      _showError('Failed to connect: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
-}
 
   Future<void> _disconnectDevice() async {
     if (_selectedDevice != null) {
@@ -451,7 +914,7 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
     }
   }
 
-  // Settings management
+  // Settings management (existing code)
   Future<void> _saveAndExit() async {
     setState(() => _isLoading = true);
     try {
@@ -462,6 +925,7 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
         'motionTriggered': _motionTriggered,
         'saveImages': _saveImages,
         'connectedCameraId': _savedCameraId,
+        'espDeviceName': _savedDeviceName, // Save ESP32 device name
       });
       
       if (mounted) {
@@ -489,38 +953,35 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
     );
   }
 
+  // Time validation (existing code)
   void _updateTimeWithValidation({int? hours, int? minutes, int? seconds}) {
-  // Use current values if not specified
-  int newHours = hours ?? _hours;
-  int newMinutes = minutes ?? _minutes;
-  int newSeconds = seconds ?? _seconds;
-  
-  // Calculate total seconds
-  int totalSeconds = (newHours * 3600) + (newMinutes * 60) + newSeconds;
-  
-  // If total is less than 10 seconds, adjust to minimum
-  if (totalSeconds < 10) {
-    // Set to exactly 10 seconds
-    newHours = 0;
-    newMinutes = 0;
-    newSeconds = 10;
+    int newHours = hours ?? _hours;
+    int newMinutes = minutes ?? _minutes;
+    int newSeconds = seconds ?? _seconds;
+    
+    int totalSeconds = (newHours * 3600) + (newMinutes * 60) + newSeconds;
+    
+    if (totalSeconds < 10) {
+      newHours = 0;
+      newMinutes = 0;
+      newSeconds = 10;
+    }
+    
+    setState(() {
+      _hours = newHours;
+      _minutes = newMinutes;
+      _seconds = newSeconds;
+    });
   }
-  
-  setState(() {
-    _hours = newHours;
-    _minutes = newMinutes;
-    _seconds = newSeconds;
-  });
-}
 
-void _validateLoadedSettings() {
-  int totalSeconds = (_hours * 3600) + (_minutes * 60) + _seconds;
-  if (totalSeconds < 10) {
-    _updateTimeWithValidation();
+  void _validateLoadedSettings() {
+    int totalSeconds = (_hours * 3600) + (_minutes * 60) + _seconds;
+    if (totalSeconds < 10) {
+      _updateTimeWithValidation();
+    }
   }
-}
 
-  // UI Components
+  // UI Components (existing code with updates)
   Widget _buildNumberPicker(String label, int value, Function(int) onChanged, {int max = 59}) {
     return Column(
       children: [
@@ -578,6 +1039,9 @@ void _validateLoadedSettings() {
                         ),
                       ),
                       Text(_savedCameraId ?? "Unknown ID"),
+                      if (_savedDeviceName != null)
+                        Text('Device: $_savedDeviceName', 
+                             style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                     ],
                   ),
                 ),
@@ -595,7 +1059,7 @@ void _validateLoadedSettings() {
           ),
         ),
 
-        // Camera settings
+        // Camera settings (existing code)
         Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -674,6 +1138,122 @@ void _validateLoadedSettings() {
     );
   }
 
+  // Success confirmation screen
+  Widget _buildConnectionSuccess() {
+    return Center(
+      child: Card(
+        margin: const EdgeInsets.all(16),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Success checkmark animation
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.check,
+                  color: Colors.white,
+                  size: 40,
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Camera WiFi Connected!',
+                style: TextStyle(
+                  fontSize: 20, 
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green[700],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Your camera is now connected and will start sending images.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                ),
+              ),
+              SizedBox(height: 20),
+              // Progress indicator to show it's moving to next step
+              SizedBox(
+                width: 200,
+                child: LinearProgressIndicator(
+                  color: Colors.green,
+                  backgroundColor: Colors.green.withOpacity(0.2),
+                ),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Proceeding to camera settings...',
+                style: TextStyle(
+                  fontSize: 12, 
+                  color: Colors.grey[500],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Waiting for heartbeat screen
+  Widget _buildWaitingForHeartbeat() {
+    return Center(
+      child: Card(
+        margin: const EdgeInsets.all(16),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text(
+                'Connecting to WiFi...',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Please wait while your device connects to the WiFi network.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+              SizedBox(height: 16),
+              LinearProgressIndicator(),
+              SizedBox(height: 16),
+              Text(
+                'This usually takes 10-60 seconds',
+                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              ),
+              SizedBox(height: 24),
+              TextButton(
+                onPressed: () {
+                  _heartbeatTimer?.cancel();
+                  _heartbeatSubscription?.cancel();
+                  setState(() {
+                    _connectionState = ConnectionState.scanning;
+                    _showDeviceList = true;
+                  });
+                },
+                child: Text('Cancel'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildDeviceList() {
     return Column(
       children: [
@@ -706,8 +1286,6 @@ void _validateLoadedSettings() {
     );
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -723,52 +1301,61 @@ void _validateLoadedSettings() {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Show skip button only during initial setup and when camera isn't configured
-            if (_showDeviceList)
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(context.l10n.noCameraConnected,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+            // Show different UI based on connection state
+            if (_connectionState == ConnectionState.waitingForHeartbeat)
+              _buildWaitingForHeartbeat()
+            else if (_connectionState == ConnectionState.connectionSuccess)
+              _buildConnectionSuccess()
+            else if (_connectionState == ConnectionState.connected)
+              _buildConnectedCamera()
+            else ...[
+              // Show skip button only during initial setup and when camera isn't configured
+              if (_showDeviceList)
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(context.l10n.noCameraConnected,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(context.l10n.espSetupCameraLaterExplanation,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () => _navigateNext(context),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          const SizedBox(height: 8),
+                          Text(context.l10n.espSetupCameraLaterExplanation,
+                            textAlign: TextAlign.center,
                           ),
-                          child: Text(
-                            context.l10n.espSetupCameraLater,
-                            style: TextStyle(fontSize: 16),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () => _navigateNext(context),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: Text(
+                              context.l10n.espSetupCameraLater,
+                              style: TextStyle(fontSize: 16),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            
-            // Rest of the content
-            _showDeviceList ? _buildDeviceList() : _buildConnectedCamera(),
+              
+              // Device list
+              _buildDeviceList(),
+            ],
           ],
         ),
       ),
       floatingActionButton: _showDeviceList ? FloatingActionButton(
         onPressed: () async {
-          await _checkBluetoothPermissions(); // Now checks Bluetooth/Location before scanning
+          await _checkBluetoothPermissions();
         },
         child: const Icon(Icons.refresh),
       ) : null,

@@ -888,6 +888,7 @@ Widget _buildDeviceTile(Device device, DeviceGroup group, {Key? key}) {
                     }
                     
                     return ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 160), // Add padding for 2 device cards height
                       itemCount: _groups.length,
                       itemBuilder: (context, index) {
                         final group = _groups[index];

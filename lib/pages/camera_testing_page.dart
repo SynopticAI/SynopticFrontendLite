@@ -889,6 +889,7 @@ Future<void> _processInference() async {
       children: [
         // Image with overlaid results
         Expanded(
+          flex: 2, // Give more space to the image
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -947,13 +948,18 @@ Future<void> _processInference() async {
           ),
         ),
         
-        // Results section
+        // Scrollable Results section
         if (_inferenceResults != null && !_isProcessing)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            color: Colors.black.withOpacity(0.7),
-            child: _buildResultsText(),
+          Expanded(
+            flex: 1, // Give limited space to results section
+            child: Container(
+              width: double.infinity,
+              color: Colors.black.withOpacity(0.7),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: _buildResultsText(),
+              ),
+            ),
           ),
       ],
     );

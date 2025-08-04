@@ -200,9 +200,9 @@ class _ESPConfigPageState extends State<ESPConfigPage> {
             signalStrength: -30, 
             isSecured: true
           ),
-        WifiNetwork(ssid: "Office_WiFi", signalStrength: -45, isSecured: true),
-        WifiNetwork(ssid: "Guest_Network", signalStrength: -60, isSecured: false),
-        WifiNetwork(ssid: "Factory_WiFi", signalStrength: -55, isSecured: true),
+        // WifiNetwork(ssid: "Office_WiFi", signalStrength: -45, isSecured: true),
+        // WifiNetwork(ssid: "Guest_Network", signalStrength: -60, isSecured: false),
+        // WifiNetwork(ssid: "Factory_WiFi", signalStrength: -55, isSecured: true),
       ];
 
       // Sort by signal strength
